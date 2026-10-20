@@ -1,0 +1,5 @@
+{
+  "env": {
+    "PONYTAIL_SUBAGENT_MATCHER": "^(test-writer|frontend-dev|infra-dev)$"
+  }
+}

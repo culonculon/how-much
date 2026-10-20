@@ -1,0 +1,120 @@
+{
+  "$comment": "how-much만의 값. .claude/(역할·훅·스킬)는 이 파일의 이름만 부른다 — 11/8 뒤 .claude/를 떼어 내도 이 파일은 앱에 남는다. 2026-10-20 사용자 결정(지금 나누기).",
+  "issue_key": "CAREER",
+  "spec_dir": "specs/{ISSUE}-{slug}",
+  "areas": {
+    "spec": [
+      "specs/**"
+    ],
+    "contracts": [
+      "contracts/**"
+    ],
+    "adr": [
+      "docs/adr/**"
+    ],
+    "ui": [
+      "app/src/**"
+    ],
+    "unit_test": [
+      "app/tests/**"
+    ],
+    "e2e": [
+      "e2e/**"
+    ],
+    "guard": [
+      "api/**"
+    ],
+    "infra": [
+      "infra/**"
+    ],
+    "ci": [
+      ".github/**"
+    ],
+    "runbook": [
+      "docs/runbook/**"
+    ],
+    "reference": [
+      "docs/reference/**"
+    ],
+    "readme": [
+      "README.md"
+    ]
+  },
+  "roles": {
+    "spec-writer": {
+      "writes": [
+        "spec"
+      ]
+    },
+    "architect": {
+      "writes": [
+        "spec",
+        "contracts",
+        "adr"
+      ]
+    },
+    "test-writer": {
+      "writes": [
+        "unit_test",
+        "e2e"
+      ]
+    },
+    "frontend-dev": {
+      "writes": [
+        "ui"
+      ]
+    },
+    "infra-dev": {
+      "writes": [
+        "infra",
+        "ci"
+      ]
+    },
+    "reviewer": {
+      "writes": []
+    },
+    "release-ops": {
+      "writes": [
+        "runbook"
+      ]
+    }
+  },
+  "human_only": {
+    "$comment": "역할이 쓰지 않는 구역. guard·reference는 사용자와 함께 하는 앞 세션, readme는 사용자.",
+    "areas": [
+      "guard",
+      "reference",
+      "readme"
+    ]
+  },
+  "strict_review_areas": [
+    "guard"
+  ],
+  "checks": {
+    "$comment": "실제 명령은 저장소를 만든 뒤 채운다. plan은 CI에서만.",
+    "app": {
+      "lint": "TODO",
+      "test": "TODO",
+      "e2e": "TODO",
+      "build": "TODO"
+    },
+    "infra": {
+      "fmt": "terraform fmt -check -recursive infra",
+      "validate": "TODO",
+      "scan": "trivy config infra"
+    },
+    "ci_only": [
+      "terraform plan"
+    ]
+  },
+  "templates": {
+    "spec": "specs/_template.md",
+    "pr": ".github/pull_request_template.md"
+  },
+  "pr_required_sections": [
+    "결정",
+    "범위 변경",
+    "새 의존성",
+    "비용·남용 영향"
+  ]
+}

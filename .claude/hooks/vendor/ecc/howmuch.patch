@@ -1,0 +1,38 @@
+--- /tmp/claude-0/-home-claude/7b1e3586-6d0a-542a-9381-69e3548f991d/scratchpad/ecc/repo/scripts/hooks/config-protection.js	2026-10-20 00:11:35.988933148 +0000
++++ .claude/hooks/vendor/ecc/config-protection.js	2026-10-20 00:26:36.372449714 +0000
+@@ -114,6 +114,16 @@
+  * place of fixing the code; editing a bundler or test-runner config is
+  * ordinary work, and sweeping those in would make the hook obstructive.
+  */
++// how-much 추가(2026-10-20, 사용자 결정): 테스트·보안 설정도 느슨하게 못 고치게 한다.
++// ECC 원본은 vitest/playwright 설정을 일부러 빼 두었다(평범한 작업이라서) — 막히면 사람이 고친다.
++const HOWMUCH_PROTECTED = [
++  /^vitest\.config\.(js|mjs|cjs|ts)$/i,
++  /^playwright\.config\.(js|mjs|cjs|ts)$/i,
++  /^\.gitleaks\.toml$/i,
++  /^\.trivyignore(\.yaml)?$/i,
++];
++const HOWMUCH_PROTECTED_DIRS = [/(^|[\\/])\.github[\\/]workflows[\\/]/i];
++
+ const PROTECTED_PATTERNS = [
+   // eslint.config.base.mjs, prettier.config.shared.cjs, stylelint.config.local.js ...
+   /^(eslint|prettier|stylelint|commitlint|oxlint)\.config(\.[A-Za-z0-9_-]+)*\.(js|mjs|cjs|ts|mts|cts)$/i,
+@@ -123,7 +133,8 @@
+ 
+ function isProtectedName(basename) {
+   const lower = basename.toLowerCase();
+-  return PROTECTED_FILES.has(basename)
++  return HOWMUCH_PROTECTED.some((re) => re.test(basename))
++    || PROTECTED_FILES.has(basename)
+     || PROTECTED_FILES.has(lower)
+     || PROTECTED_PATTERNS.some((re) => re.test(basename));
+ }
+@@ -167,7 +178,7 @@
+   // silently overwrite the real config while the guard returned exit 0.
+   // On genuinely case-sensitive filesystems this only costs a false positive
+   // on a distinct file that differs from a protected name by case alone.
+-  if (isProtectedName(basename)) {
++  if (isProtectedName(basename) || HOWMUCH_PROTECTED_DIRS.some((re) => re.test(filePath))) {
+     // Allow first-time creation — there's no existing config to weaken.
+     // The hook's purpose is blocking modifications; writing a brand-new
+     // config file in a project that has none is a legitimate bootstrap
