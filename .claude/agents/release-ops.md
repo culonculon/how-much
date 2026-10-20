@@ -5,6 +5,13 @@ tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
 skills:
   - verify-before-claiming
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit|MultiEdit|NotebookEdit"
+      hooks:
+        - type: command
+          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/block-outside-area.js" release-ops
+          timeout: 10
 ---
 
 > 경로·이름은 이 파일에 적지 않는다. 'OO 구역'은 저장소 루트 `pipeline.config.json`의 `areas`를 뜻한다.

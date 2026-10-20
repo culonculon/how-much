@@ -7,6 +7,13 @@ skills:
   - premortem
   - weigh-tradeoffs
   - bite-sized-plan
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit|MultiEdit|NotebookEdit"
+      hooks:
+        - type: command
+          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/block-outside-area.js" architect
+          timeout: 10
 ---
 
 > 경로·이름은 이 파일에 적지 않는다. 'OO 구역'은 저장소 루트 `pipeline.config.json`의 `areas`를 뜻한다.

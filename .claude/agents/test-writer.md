@@ -7,6 +7,16 @@ skills:
   - verifiability-first
   - premortem
   - verify-before-claiming
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit|MultiEdit|NotebookEdit"
+      hooks:
+        - type: command
+          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/block-outside-area.js" test-writer
+          timeout: 10
+        - type: command
+          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/vendor/ecc/config-protection.js"
+          timeout: 10
 ---
 
 > 경로·이름은 이 파일에 적지 않는다. 'OO 구역'은 저장소 루트 `pipeline.config.json`의 `areas`를 뜻한다.
