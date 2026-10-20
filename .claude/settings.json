@@ -1,5 +1,16 @@
 {
   "env": {
     "PONYTAIL_SUBAGENT_MATCHER": "^(test-writer|frontend-dev|infra-dev)$"
+  },
+  "extraKnownMarketplaces": {
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "ponytail@ponytail": true
   }
 }

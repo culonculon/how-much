@@ -7,7 +7,7 @@ skills:
   - adversarial-review
   - verify-before-claiming
   - fresh-context-review
-  - ponytail-review
+  - ponytail:ponytail-review
 ---
 
 > 경로·이름은 이 파일에 적지 않는다. 'OO 구역'은 저장소 루트 `pipeline.config.json`의 `areas`를 뜻한다.
