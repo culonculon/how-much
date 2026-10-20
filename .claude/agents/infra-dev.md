@@ -15,6 +15,17 @@ hooks:
         - type: command
           command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/block-outside-area.js" infra-dev
           timeout: 10
+  PostToolUse:
+    - matcher: "Write|Edit|MultiEdit|NotebookEdit"
+      hooks:
+        - type: command
+          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/record-edited-files.js"
+          timeout: 10
+  Stop:
+    - hooks:
+        - type: command
+          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/stop-check.js" infra-dev
+          timeout: 600
 ---
 
 > 경로·이름은 이 파일에 적지 않는다. 'OO 구역'은 저장소 루트 `pipeline.config.json`의 `areas`를 뜻한다.

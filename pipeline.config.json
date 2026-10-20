@@ -107,6 +107,17 @@
       "terraform plan"
     ]
   },
+  "check_areas": {
+    "$comment": "바뀐 구역 → 돌릴 checks 묶음. 훅 ⑥(Stop)이 읽는다. 2026-10-20.",
+    "app": [
+      "ui",
+      "unit_test",
+      "e2e"
+    ],
+    "infra": [
+      "infra"
+    ]
+  },
   "templates": {
     "spec": "specs/_template.md",
     "pr": ".github/pull_request_template.md"
