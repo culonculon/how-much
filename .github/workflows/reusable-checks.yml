@@ -126,6 +126,20 @@ jobs:
           echo "### terraform plan" >> "$GITHUB_STEP_SUMMARY"
           grep -E '^(Plan:|No changes)' plan.txt >> "$GITHUB_STEP_SUMMARY" || true
 
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - env:
+          TITLE: ${{ github.event.pull_request.title }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then echo "건너뜀: PR이 아님" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          key=$(jq -r '.issue_key' pipeline.config.json)
+          if printf '%s' "$TITLE" | grep -Eq "^${key}-[0-9]+: .+"; then echo "통과: $TITLE" >> "$GITHUB_STEP_SUMMARY"
+          else echo "::error::PR 제목은 '${key}-N: 요약' 이어야 Jira에 붙는다 (지금: $TITLE)"; exit 1; fi
+
   gitleaks:
     name: gitleaks
     runs-on: ubuntu-24.04

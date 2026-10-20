@@ -1,9 +1,10 @@
 # how-much CI (CAREER-23). 검사 내용은 reusable-checks.yml, 명령은 pipeline.config.json.
-# 브랜치 규칙의 필수 검사: checks / app · checks / infra · checks / plan · checks / gitleaks
+# 브랜치 규칙의 필수 검사: checks / app · checks / infra · checks / plan · checks / gitleaks · checks / pr-title
 name: ci
 
 on:
   pull_request:
+    types: [opened, edited, synchronize, reopened]
   push:
     branches: [main]
 
