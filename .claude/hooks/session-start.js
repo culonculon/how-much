@@ -50,6 +50,11 @@ function build(cwd) {
 function main(raw) {
   let input = {};
   try { input = JSON.parse(raw || '{}'); } catch { /* 빈 입력 */ }
+  // 시작 때 이미 바뀌어 있던 파일 지문 — 훅 ⑥이 '이 세션이 바꾼 것'만 보게 한다
+  try {
+    const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: input.cwd || process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    require('./session-baseline').snapshot(root, input.session_id, input.source);
+  } catch { /* 지문이 없으면 훅 ⑥은 예전처럼 모든 변경을 본다 */ }
   let text = '';
   try { text = build(input.cwd || process.cwd()); } catch { return 0; }
   if (text) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: text } }));

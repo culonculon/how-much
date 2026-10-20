@@ -2,7 +2,8 @@
 'use strict';
 // 훅 ⑥ Stop — 만드는 역할 (2026-10-20 사용자 결정). 사용: node stop-check.js <역할 이름> [--only=lint,build]
 // --only: 이 이름의 검사만 돌린다. test-writer는 '지금은 실패하는 테스트'를 쓰므로 --only=lint (사용자 결정).
-// 1) 바뀐 파일 = 훅 ⑤ 기록 + git status (Bash로 쓴 파일도 잡힌다)
+// 0) 역할의 마지막 답이 "[멈춤]"으로 시작하면(사용자에게 물어야 할 때) 검사 없이 보내 주고 알린다 (10/20 사용자 결정)
+// 1) 바뀐 파일 = 훅 ⑤ 기록 + git status (Bash로 쓴 파일도 잡힌다). 세션 시작 때와 내용이 같은 파일은 넘긴다(session-baseline)
 // 2) 맡은 구역 밖 변경 → 돌려보냄 (훅 ③과 같은 기준)
 // 3) 바뀐 구역의 검사 명령(pipeline.config.json checks, 구역↔묶음은 check_areas)을 돌림 → 실패면 돌려보냄
 //    - 통과할 때까지 매번 돌려보낸다(횟수 상한 없음). 명령 하나 시간 상한 120초.
@@ -12,6 +13,9 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { decide } = require('./block-outside-area');
 const { recordFile } = require('./record-edited-files');
+const { unchangedSinceStart } = require('./session-baseline');
+
+const PAUSE_MARK = '[멈춤]';
 
 const CHECK_TIMEOUT_MS = 120000;
 const TAIL_LINES = 40;
@@ -44,7 +48,8 @@ function run(role, input, only) {
   const cwd = input.cwd || process.cwd();
   const root = repoRoot(cwd);
   const config = JSON.parse(fs.readFileSync(path.join(root, 'pipeline.config.json'), 'utf8'));
-  const changed = [...new Set([...recorded(input.session_id), ...gitChanged(root)])];
+  const changed = [...new Set([...recorded(input.session_id), ...gitChanged(root)])]
+    .filter((abs) => !unchangedSinceStart(input.session_id, abs));
   const problems = [];
   const notices = [];
 
@@ -75,10 +80,30 @@ function run(role, input, only) {
   return { problems, notices };
 }
 
+function lastAssistantText(input) {
+  if (typeof input.last_assistant_message === 'string') return input.last_assistant_message;
+  try {
+    const lines = fs.readFileSync(input.transcript_path, 'utf8').trim().split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const rec = JSON.parse(lines[i]);
+      if (rec.type !== 'assistant') continue;
+      const content = rec.message && rec.message.content;
+      const text = Array.isArray(content) ? content.filter((c) => c.type === 'text').map((c) => c.text).join('\n') : String(content || '');
+      if (text.trim()) return text;
+    }
+  } catch { /* 기록을 못 읽으면 멈춤 표시 없음으로 본다 */ }
+  return '';
+}
+
 function main(raw, role, onlyArg) {
   const only = onlyArg && onlyArg.startsWith('--only=') ? onlyArg.slice(7).split(',').filter(Boolean) : null;
   let input = {};
   try { input = JSON.parse(raw || '{}'); } catch { /* 빈 입력 */ }
+  const last = lastAssistantText(input).trim();
+  if (last.startsWith(PAUSE_MARK)) {
+    process.stdout.write(JSON.stringify({ systemMessage: `[how-much 훅 ⑥] ${role || '역할'}이 멈춤 보고로 끝냄 — 끝내기 전 검사를 돌리지 않았다: ${last.split('\n')[0].slice(0, 200)}` }));
+    return 0;
+  }
   let result;
   try {
     if (!role) throw new Error('역할 이름 인자가 없음');
