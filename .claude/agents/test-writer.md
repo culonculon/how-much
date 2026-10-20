@@ -26,7 +26,7 @@ hooks:
   Stop:
     - hooks:
         - type: command
-          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/stop-check.js" test-writer
+          command: node "$CLAUDE_PROJECT_DIR/.claude/hooks/stop-check.js" test-writer --only=lint
           timeout: 600
 ---
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict';
-// 훅 ⑥ Stop — 만드는 역할 (2026-10-20 사용자 결정). 사용: node stop-check.js <역할 이름>
+// 훅 ⑥ Stop — 만드는 역할 (2026-10-20 사용자 결정). 사용: node stop-check.js <역할 이름> [--only=lint,build]
+// --only: 이 이름의 검사만 돌린다. test-writer는 '지금은 실패하는 테스트'를 쓰므로 --only=lint (사용자 결정).
 // 1) 바뀐 파일 = 훅 ⑤ 기록 + git status (Bash로 쓴 파일도 잡힌다)
 // 2) 맡은 구역 밖 변경 → 돌려보냄 (훅 ③과 같은 기준)
 // 3) 바뀐 구역의 검사 명령(pipeline.config.json checks, 구역↔묶음은 check_areas)을 돌림 → 실패면 돌려보냄
@@ -39,7 +40,7 @@ const globToRegex = require('./block-outside-area').globToRegex;
 const areaOf = (areas, rel) => Object.keys(areas).filter((a) => (areas[a] || []).some((g) => globToRegex(g).test(rel)));
 const tail = (s) => String(s || '').replace(/\x1b\[[0-9;]*m/g, '').trim().split('\n').slice(-TAIL_LINES).join('\n');
 
-function run(role, input) {
+function run(role, input, only) {
   const cwd = input.cwd || process.cwd();
   const root = repoRoot(cwd);
   const config = JSON.parse(fs.readFileSync(path.join(root, 'pipeline.config.json'), 'utf8'));
@@ -63,6 +64,7 @@ function run(role, input) {
     const cmds = (config.checks || {})[group] || {};
     for (const [name, cmd] of Object.entries(cmds)) {
       if (name.startsWith('$')) continue;
+      if (only && !only.includes(name)) continue;
       if (!cmd || cmd === 'TODO') { notices.push(`${group}.${name} 검사 명령이 아직 없음(TODO) — 건너뜀`); continue; }
       const r = spawnSync(cmd, { cwd: root, shell: true, encoding: 'utf8', timeout: CHECK_TIMEOUT_MS });
       if (r.error && r.error.code === 'ETIMEDOUT') problems.push(`${group}.${name} 시간 초과(${CHECK_TIMEOUT_MS / 1000}초): ${cmd}`);
@@ -73,13 +75,14 @@ function run(role, input) {
   return { problems, notices };
 }
 
-function main(raw, role) {
+function main(raw, role, onlyArg) {
+  const only = onlyArg && onlyArg.startsWith('--only=') ? onlyArg.slice(7).split(',').filter(Boolean) : null;
   let input = {};
   try { input = JSON.parse(raw || '{}'); } catch { /* 빈 입력 */ }
   let result;
   try {
     if (!role) throw new Error('역할 이름 인자가 없음');
-    result = run(role, input);
+    result = run(role, input, only);
   } catch (e) {
     // 훅 자체가 못 돈 경우(설정·git 문제)는 역할이 고칠 수 없으니 돌려보내지 않고 알린다 — 끝없이 도는 것 방지.
     result = { problems: [], notices: [`끝내기 전 검사를 돌리지 못함(${e.message}) — 사용자가 훅 설정을 확인`] };
@@ -100,6 +103,6 @@ if (require.main === module) {
   let raw = '';
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', (c) => { raw += c; });
-  process.stdin.on('end', () => process.exit(main(raw, process.argv[2])));
+  process.stdin.on('end', () => process.exit(main(raw, process.argv[2], process.argv[3])));
 }
 module.exports = { run };
