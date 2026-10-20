@@ -1,0 +1,138 @@
+# 떼어 낼 구역(11/8 뒤 분리 저장소로). 앱 경로·값은 적지 않고 저장소 루트 pipeline.config.json을 읽는다.
+# 2026-10-20 사용자 결정: 검사 일은 매번 돌고, 해당 없으면(코드 없음·명령 TODO·역할 변수 없음) '건너뜀'을 적고 통과한다.
+# → 필수 검사 이름이 항상 생긴다. action은 커밋 SHA로 고정한다.
+name: reusable-checks
+
+on:
+  workflow_call:
+    inputs:
+      app_dir:
+        description: 앱 폴더(package.json이 있는 곳)
+        type: string
+        default: app
+      infra_dir:
+        description: Terraform 폴더
+        type: string
+        default: infra
+      terraform_version:
+        type: string
+        default: 1.13.1
+      aws_region:
+        type: string
+        default: ap-northeast-2
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: app
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: has
+        run: |
+          if [ -f "${{ inputs.app_dir }}/package.json" ]; then echo "app=true" >> "$GITHUB_OUTPUT"
+          else echo "app=false" >> "$GITHUB_OUTPUT"; echo "건너뜀: ${{ inputs.app_dir }}/package.json 없음" >> "$GITHUB_STEP_SUMMARY"; fi
+      - if: steps.has.outputs.app == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+      - if: steps.has.outputs.app == 'true'
+        run: |
+          if [ -f "${{ inputs.app_dir }}/package-lock.json" ]; then npm ci --prefix "${{ inputs.app_dir }}"; else npm install --prefix "${{ inputs.app_dir }}"; fi
+      - if: steps.has.outputs.app == 'true'
+        name: checks.app (pipeline.config.json)
+        run: |
+          fail=0
+          for name in $(jq -r '.checks.app | keys_unsorted[] | select(startswith("$") | not)' pipeline.config.json); do
+            cmd=$(jq -r --arg n "$name" '.checks.app[$n]' pipeline.config.json)
+            if [ -z "$cmd" ] || [ "$cmd" = "TODO" ]; then echo "- 건너뜀: app.$name (TODO)" >> "$GITHUB_STEP_SUMMARY"; continue; fi
+            echo "::group::app.$name — $cmd"
+            if bash -c "$cmd"; then echo "- 통과: app.$name" >> "$GITHUB_STEP_SUMMARY"
+            else echo "- 실패: app.$name" >> "$GITHUB_STEP_SUMMARY"; fail=1; fi
+            echo "::endgroup::"
+          done
+          exit $fail
+
+  infra:
+    name: infra
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: has
+        run: |
+          if [ -n "$(find "${{ inputs.infra_dir }}" -name '*.tf' 2>/dev/null | head -1)" ]; then echo "tf=true" >> "$GITHUB_OUTPUT"
+          else echo "tf=false" >> "$GITHUB_OUTPUT"; echo "건너뜀: ${{ inputs.infra_dir }}/*.tf 없음" >> "$GITHUB_STEP_SUMMARY"; fi
+      - if: steps.has.outputs.tf == 'true'
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+      - if: steps.has.outputs.tf == 'true'
+        name: checks.infra fmt·validate (pipeline.config.json)
+        run: |
+          fail=0
+          for name in fmt validate; do
+            cmd=$(jq -r --arg n "$name" '.checks.infra[$n] // "TODO"' pipeline.config.json)
+            if [ "$cmd" = "TODO" ]; then echo "- 건너뜀: infra.$name (TODO)" >> "$GITHUB_STEP_SUMMARY"; continue; fi
+            echo "::group::infra.$name — $cmd"
+            if bash -c "$cmd"; then echo "- 통과: infra.$name" >> "$GITHUB_STEP_SUMMARY"
+            else echo "- 실패: infra.$name" >> "$GITHUB_STEP_SUMMARY"; fail=1; fi
+            echo "::endgroup::"
+          done
+          exit $fail
+      # trivy-action 0.0.1~0.34.2 태그는 2026-03 공급망 공격으로 오염됨(CVE-2026-33634) — 사고 뒤 릴리스 SHA로 고정
+      - if: steps.has.outputs.tf == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: ${{ inputs.infra_dir }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: has
+        env:
+          ROLE: ${{ vars.AWS_PLAN_ROLE_ARN }}
+        run: |
+          why=""
+          [ "${{ github.event_name }}" = "pull_request" ] || why="PR이 아님"
+          [ -n "$why" ] || [ -n "$(find "${{ inputs.infra_dir }}" -name '*.tf' 2>/dev/null | head -1)" ] || why="${{ inputs.infra_dir }}/*.tf 없음"
+          [ -n "$why" ] || [ -n "$ROLE" ] || why="저장소 변수 AWS_PLAN_ROLE_ARN 없음"
+          if [ -z "$why" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; echo "건너뜀: $why" >> "$GITHUB_STEP_SUMMARY"; fi
+      - if: steps.has.outputs.run == 'true'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+      - if: steps.has.outputs.run == 'true'
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+          terraform_wrapper: false
+      - if: steps.has.outputs.run == 'true'
+        working-directory: ${{ inputs.infra_dir }}
+        run: |
+          set -o pipefail
+          terraform init -input=false
+          terraform plan -input=false -lock-timeout=60s -no-color -out=tfplan | tee plan.txt
+          echo "### terraform plan" >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^(Plan:|No changes)' plan.txt >> "$GITHUB_STEP_SUMMARY" || true
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

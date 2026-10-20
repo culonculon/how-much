@@ -1,0 +1,22 @@
+# how-much CI (CAREER-23). 검사 내용은 reusable-checks.yml, 명령은 pipeline.config.json.
+# 브랜치 규칙의 필수 검사: checks / app · checks / infra · checks / plan · checks / gitleaks
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    permissions:
+      contents: read
+      id-token: write # plan의 OIDC (포크 PR은 토큰을 못 받음)
+    uses: ./.github/workflows/reusable-checks.yml
