@@ -97,10 +97,10 @@
   "checks": {
     "$comment": "실제 명령은 저장소를 만든 뒤 채운다. plan은 CI에서만.",
     "app": {
-      "lint": "TODO",
-      "test": "TODO",
+      "lint": "npm --prefix app run lint",
+      "test": "npm --prefix app test",
       "e2e": "TODO",
-      "build": "TODO"
+      "build": "npm --prefix app run build"
     },
     "infra": {
       "fmt": "terraform fmt -check -recursive infra",
