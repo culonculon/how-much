@@ -21,6 +21,7 @@
 ## 3. 폴더와 누가 쓰나
 - 경로와 담당의 원본은 `pipeline.config.json`의 `areas` · `roles` · `human_only`다. 아래는 읽기 쉽게 옮긴 요약.
   - `app/src/` 화면·감정 호출 어댑터 — frontend-dev
+  - `app/` 바로 아래 설정 파일(package.json · lock · Vite·lint 설정 · index.html) — frontend-dev (`app_config`, 10/20). 이미 있는 lint·vitest·playwright 설정 고치기는 훅이 막는다
   - `app/tests/`, `e2e/` — test-writer
   - `api/` 서버 쪽 AI 호출, 비용·남용 막기 — **함께 한다(앞 세션)**, 역할은 쓰지 않음
   - `infra/` Terraform, `.github/` CI — infra-dev (함께 한다)
