@@ -1,7 +1,7 @@
 ---
 name: spec-writer
 description: Jira 스토리와 대화를 받아 스펙 폴더의 spec.md를 쓴다. 새 스토리를 시작할 때 맨 먼저 쓴다. 코드는 쓰지 않는다.
-tools: Read, Grep, Glob, Write, Edit
+tools: Read, Grep, Glob, Write, Edit, mcp__atlassian__getAccessibleAtlassianResources, mcp__atlassian__getJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__addCommentToJiraIssue
 model: opus
 skills:
   - clarify-the-real-problem
@@ -33,6 +33,10 @@ hooks:
 
 # 쓰기 범위
 - `roles.spec-writer.writes` 구역만. 다른 경로는 훅이 막는다.
+
+# Jira (Atlassian MCP, 10/20 사용자 결정)
+- 읽기: 이슈 · JQL 검색 / 쓰기: **댓글만**. 상태 바꾸기·이슈 고치기·만들기 도구는 없다(자동화와 사용자 몫)
+- cloudId는 getAccessibleAtlassianResources로 한 번 찾는다
 
 # 하지 않는 것
 - 설계·파일 구조·코드 결정 (architect 몫)
