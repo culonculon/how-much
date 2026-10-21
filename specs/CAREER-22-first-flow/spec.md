@@ -78,11 +78,12 @@
 - 10/20: e2e(Playwright)와 `checks.app.e2e`는 이 스토리에서 채운다. `checks.app.e2e` 값은 사용자가 채운다
 - 10/21: 사진은 브라우저에서 줄여 올리는 것이 기본 — 이 스토리에는 넣지 않음(업로드 스토리로)
 - 10/21: 사연 태그는 여러 개, 0개도 됨
+- 10/21: e2e는 CI에서도 돈다 — `checks.app.e2e` = `cd e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test`(plan 질문 4의 A). macOS에서 sudo 없이 지나감 확인(U2)
 - 10/21: CAREER-22는 맡긴다가 맞음(CAREER-24 spec의 '함께 타이핑' 줄을 이 PR에서 고침)
 
 ## 열린 질문
 - 질문 1~3: 10/21 사용자가 답함 → '정해진 것'으로 옮김
-- 질문 4: e2e를 CI `checks / app`에서도 돌릴까(브라우저 설치 시간·캐시)? 이 스펙의 AC-11은 로컬 실행만 요구한다 — 담당: 사용자와 infra-dev(함께 한다) · 때: `checks.app.e2e`를 채우는 앞 세션에서
+- 질문 4: 10/21 사용자 답 → '정해진 것'으로 옮김
 - 질문 5: Playwright 설정 파일과 의존성을 어디에 두나(`e2e/` 쪽 = test-writer, `app/` 바로 아래 = frontend-dev), 개발 서버를 누가 켜나(Playwright `webServer` 등) — 담당: architect · 때: plan.md에서
 - 질문 6: 가짜 감정이 얼마나 기다렸다 끝나나(AC-7의 갸웃이 보일 만큼), 값을 어떻게 정하나(고정 · 마음 가격에 따라 · 무작위) — e2e가 흔들리지 않게 테스트에서 값과 시간을 고정할 수 있어야 한다 — 담당: architect · 때: plan.md와 contracts에서
 - 질문 7: 감정 함수의 입력 모양(사진을 넘기나, 마음 가격·태그를 어떤 값으로 넘기나)과 실패했을 때(진짜 AI에서 생길 오류) 화면 — 이번 가짜 함수는 실패하지 않는다고 두고, 모양만 contracts에 정한다 — 담당: architect · 때: contracts에서(만들기 시작 전)
