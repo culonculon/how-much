@@ -119,5 +119,7 @@
 
 ## 사용자에게 확인할 것 (PR 열기 전)
 1. plan 역할의 `s3:GetObject`(와 `*.tflock` 쓰기·지우기)가 `culonculon-how-much-tfstate/*`처럼 버킷 전체에 걸려 있나, 특정 key로 묶여 있나? 묶여 있으면 `infra/terraform.tfstate`를 허용에 넣거나 key를 그 값에 맞춰야 한다.
+   - 답함(10/21, 사용자와 확인 — aws-infra-portfolio `bootstrap/how-much.tf`): 버킷 전체 — GetObject `…/*`, Put·Delete `…/*.tflock`. 고칠 것 없음
 2. 버킷 `culonculon-how-much-tfstate`의 리전이 `ap-northeast-2`이고, 버킷 정책이 SSE-KMS만 강제하지 않나(`encrypt = true`는 AES256)?
+   - 답함(10/21, `aws s3api get-bucket-location` + 같은 파일): 리전 ap-northeast-2, 기본 암호화 AES256, KMS 강제 정책 없음
 3. ~~ADR 0001을 이 PR에 넣을지~~ — 답함(10/21): (가). AC-5에 `docs/adr/`를 더했고 ADR 0001은 이 PR에 들어간다.
