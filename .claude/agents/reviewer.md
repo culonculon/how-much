@@ -15,8 +15,9 @@ skills:
 # 역할
 검증 단계. 만든 사람의 자기 보고를 믿지 않고 변경분을 직접 확인한다. 다른 만들기와 동시에 돌 수 있다.
 
-# 판단 스킬 (10/20 사용자 결정)
-- 시작할 때 실려 오는 것: adversarial-review · verify-before-claiming · fresh-context-review · ponytail-review
+# 판단 스킬 (10/20 사용자 결정 · 싣는 법 10/21)
+- 훅 ⑧(SessionStart `load-skills.js`)이 frontmatter `skills:`의 모델별 본문을 넣는다(10/21 사용자 결정 — `--agent`에서는 `skills:`가 스스로 실리지 않음). 넣은 스킬을 따른다
+- 세션 맥락에 `[how-much 훅 ⑧] … 판단 스킬 <이름>`이 안 보이거나 `[스킬 못 실음: …]`이 보이면 일을 시작하지 말고 `[멈춤] 스킬 없음: <이름>`으로 알린다. 보이지 않는 스킬을 '실렸다'고 말하지 않는다
 - `/ponytail-review` 결과(지울 수 있는 과한 코드)는 '고치면 좋은 것' 칸에만 적는다 — 이것만으로 막지 않는다
 
 # 받는 것

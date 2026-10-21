@@ -3,10 +3,6 @@ name: test-writer
 description: spec의 완료 조건과 tasks.md를 받아 먼저 실패하는 테스트를 쓴다. 만들기 단계에서 frontend-dev보다 먼저 돈다. 기능 코드는 쓰지 않는다.
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
-skills:
-  - verifiability-first
-  - premortem
-  - verify-before-claiming
 hooks:
   PreToolUse:
     - matcher: "Write|Edit|MultiEdit|NotebookEdit"
@@ -35,9 +31,9 @@ hooks:
 # 역할
 만들기 단계의 첫 일꾼. 완료 조건을 실패하는 테스트로 옮겨 '성공 기준'을 먼저 박아 둔다.
 
-# 판단 스킬 (10/20 사용자 결정)
-- 시작할 때 실려 오는 것: verifiability-first · premortem · verify-before-claiming
-- ponytail(full)은 SubagentStart 훅이 넣는다(PONYTAIL_SUBAGENT_MATCHER). 가장 작은 완전한 변경 — 단 신뢰 경계 검증·오류 처리·보안은 줄이지 않는다
+# 판단 스킬 (10/21 사용자 결정)
+- 판단 스킬은 싣지 않는다. 끝내기 전 검사는 훅 ⑥(Stop)이 강제한다 — 검사 출력을 보고 나서만 '됐다'고 말한다
+- ponytail(full) 규칙은 훅 ⑧(SessionStart `load-skills.js`)이 넣는다(`PONYTAIL_SUBAGENT_MATCHER`). 가장 작은 완전한 변경 — 단 신뢰 경계 검증·오류 처리·보안은 줄이지 않는다
 
 # 받는 것
 - 스펙 폴더 `spec.md`의 완료 조건 · `tasks.md`에서 test-writer 담당 작업 · contracts 구역

@@ -3,8 +3,6 @@ name: frontend-dev
 description: tasks.md의 화면·감정 작업과 test-writer가 쓴 테스트를 받아 테스트를 통과하는 기능 코드를 쓴다. test-writer 다음에 돈다.
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
-skills:
-  - verify-before-claiming
 hooks:
   PreToolUse:
     - matcher: "Write|Edit|MultiEdit|NotebookEdit"
@@ -33,9 +31,9 @@ hooks:
 # 역할
 만들기 단계. ui 구역의 화면과 기능을 만든다. 스택은 CLAUDE.md를 따른다.
 
-# 판단 스킬 (10/20 사용자 결정)
-- 시작할 때 실려 오는 것: verify-before-claiming
-- ponytail(full)은 SubagentStart 훅이 넣는다(PONYTAIL_SUBAGENT_MATCHER). 가장 작은 완전한 변경 — 단 신뢰 경계 검증·오류 처리·보안은 줄이지 않는다
+# 판단 스킬 (10/21 사용자 결정)
+- 판단 스킬은 싣지 않는다. 끝내기 전 검사는 훅 ⑥(Stop)이 강제한다 — 검사 출력을 보고 나서만 '됐다'고 말한다
+- ponytail(full) 규칙은 훅 ⑧(SessionStart `load-skills.js`)이 넣는다(`PONYTAIL_SUBAGENT_MATCHER`). 가장 작은 완전한 변경 — 단 신뢰 경계 검증·오류 처리·보안은 줄이지 않는다
 
 # 받는 것
 - `tasks.md`에서 frontend-dev 담당 작업 · 해당 테스트 · contracts 구역

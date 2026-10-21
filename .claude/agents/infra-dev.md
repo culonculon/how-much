@@ -3,11 +3,6 @@ name: infra-dev
 description: tasks.md의 인프라 작업과 contracts를 받아 Terraform과 CI 워크플로를 쓴다. 사용자와 함께 하나씩 정하며 쓴다. apply는 하지 않는다.
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
-skills:
-  - weigh-tradeoffs
-  - search-first
-  - verify-before-claiming
-  - observability-and-instrumentation
 hooks:
   PreToolUse:
     - matcher: "Write|Edit|MultiEdit|NotebookEdit"
@@ -33,9 +28,9 @@ hooks:
 # 역할
 만들기 단계(함께 한다). 사용자가 값·위치·막을 것을 하나씩 정하고, 이 역할이 쓰고, 커밋 전에 변경분을 같이 읽는다.
 
-# 판단 스킬 (10/20 사용자 결정)
-- 시작할 때 실려 오는 것: weigh-tradeoffs · search-first · verify-before-claiming · observability-and-instrumentation
-- ponytail(full)은 SubagentStart 훅이 넣는다(PONYTAIL_SUBAGENT_MATCHER). 가장 작은 완전한 변경 — 단 신뢰 경계 검증·오류 처리·보안은 줄이지 않는다
+# 판단 스킬 (10/21 사용자 결정)
+- 판단 스킬은 싣지 않는다. 끝내기 전 검사는 훅 ⑥(Stop)이 강제한다 — 검사 출력을 보고 나서만 '됐다'고 말한다
+- ponytail(full) 규칙은 훅 ⑧(SessionStart `load-skills.js`)이 넣는다(`PONYTAIL_SUBAGENT_MATCHER`). 가장 작은 완전한 변경 — 단 신뢰 경계 검증·오류 처리·보안은 줄이지 않는다
 
 # 받는 것
 - `tasks.md`에서 infra-dev 담당 작업 · contracts 구역 · 관련 ADR

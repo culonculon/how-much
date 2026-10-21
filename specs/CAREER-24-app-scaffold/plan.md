@@ -59,7 +59,7 @@ Vite 공식 템플릿(`create-vite`, `react` JS 템플릿)으로 `app/`을 만�
 ## 실패 시나리오 (premortem) — 각각 막는 곳
 1. **테스트 0개인데 통과** → vitest는 테스트 파일이 없으면 종료 코드 1이 기본이다. `--passWithNoTests`를 쓰지 않는 것으로 막는다. 테스트 파일 이름은 `*.test.jsx`여야 기본 include에 잡힌다.
 2. **`test`가 끝나지 않음** → `vitest`(감시 모드) 대신 `vitest run`.
-3. **AC-4(a)가 안 잡힘** → 템플릿 규칙이 `varsIgnorePattern: '^[A-Z_]'`라서 `FOO`·`_x` 같은 이름은 안 쓰여도 통과한다. 확인할 때는 **소문자 이름**(`const unusedValue = 1`)을 쓴다. 규칙은 그대로 둔다(React 컴포넌트 import 오탐을 막는 템플릿 기본).
+3. **AC-4(a)가 안 잡힘** → (10/21 고침) 실제 `app/eslint.config.js`(Vite 8.3 템플릿)에는 `varsIgnorePattern`이 없다 — `js.configs.recommended`의 `no-unused-vars` 기본값이라 안 쓴 변수는 이름과 상관없이 에러다. 확인용 `const unusedValue = 1`은 그대로 유효하다. 규칙은 그대로 둔다.
 4. **AC-1 콘솔 에러** → `public/`을 지우면 `/vite.svg` 파비콘이 404로 콘솔 에러가 난다. `<link rel="icon" href="data:,">`로 요청 자체를 없앤다.
 5. **AC-4(c)가 안 잡힘** → `vite build`는 import로 이어진 파일만 묶는다. 문법 오류는 `App.jsx`나 `main.jsx`에 넣어야 한다(따로 떨어진 새 파일이면 build가 통과해 버린다).
 6. **lint가 build 결과를 검사** → 템플릿의 `globalIgnores(['dist'])`가 막는다. T2 검사는 build 뒤에 lint를 한 번 더 돌려 확인한다.

@@ -1,6 +1,7 @@
 {
   "env": {
-    "PONYTAIL_SUBAGENT_MATCHER": "^(test-writer|frontend-dev|infra-dev)$"
+    "PONYTAIL_SUBAGENT_MATCHER": "^(test-writer|frontend-dev|infra-dev)$",
+    "PONYTAIL_DEFAULT_MODE": "off"
   },
   "extraKnownMarketplaces": {
     "ponytail": {
@@ -38,9 +39,28 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.js\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/load-skills.js\" 0",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/load-skills.js\" 1",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/load-skills.js\" 2",
+            "timeout": 10
           }
         ]
       }
     ]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
   }
 }
