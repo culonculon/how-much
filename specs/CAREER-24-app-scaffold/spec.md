@@ -47,7 +47,7 @@
 ## 정해진 것 (10/20 사용자 결정)
 - 누가 무엇을 쓰나: `app/` 바로 아래 설정 파일(package.json · lock · Vite·lint 설정 · index.html · `app/.gitignore`)은 frontend-dev(`app_config` 구역, PR #4) · `app/src/`는 frontend-dev · `app/tests/`는 test-writer · `pipeline.config.json`의 `checks.app` 채우기는 사용자(앞 세션)
 - e2e는 이번에 빼고 CAREER-22로 미룬다
-- 뼈대(시작 화면 한 장 + 테스트 1개)는 에이전트가 만들고, CAREER-22 흐름은 그 위에서 사용자가 Claude와 함께 타이핑한다
+- 뼈대(시작 화면 한 장 + 테스트 1개)는 에이전트가 만들고, CAREER-22 흐름도 그 위에서 에이전트 파이프라인으로 만든다(맡긴다 — 10/19 결정, 10/21 사용자 확인으로 이 줄 고침)
 
 ## 열린 질문
 - 질문 4: Node 버전을 고정할지(CI는 지금 `lts/*`), lock 파일과 `npm ci`를 쓸지 — 담당: architect · 때: plan.md에서
