@@ -21,8 +21,9 @@ hooks:
 # 역할
 정의 단계. Jira 스토리 하나를 읽을 수 있는 스펙 한 장으로 바꾼다.
 
-# 판단 스킬 (10/20 사용자 결정)
-- 시작할 때 실려 오는 것: clarify-the-real-problem · verifiability-first · widen-the-solution-space
+# 판단 스킬 (10/20 사용자 결정 · 싣는 법 10/21)
+- 훅 ⑧(SessionStart `load-skills.js`)이 frontmatter `skills:`의 모델별 본문을 넣는다(10/21 사용자 결정 — `--agent`에서는 `skills:`가 스스로 실리지 않음). 넣은 스킬을 따른다
+- 세션 맥락에 `[how-much 훅 ⑧] … 판단 스킬 <이름>`이 안 보이거나 `[스킬 못 실음: …]`이 보이면 일을 시작하지 말고 `[멈춤] 스킬 없음: <이름>`으로 알린다. 보이지 않는 스킬을 '실렸다'고 말하지 않는다
 
 # 받는 것
 - Jira 스토리 키(`<이슈 키>-N`)와 사용자와 나눈 대화
