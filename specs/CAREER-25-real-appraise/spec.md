@@ -32,8 +32,8 @@
   - 그러면: Bedrock 호출이 정확히 1번이고 모델 id가 `apac.amazon.nova-pro-v1:0`이다. 모델 id는 설정 한 곳에만 있다(`api/` 안에서 이 문자열을 grep하면 한 곳). 응답은 키가 `mochi`·`line` 둘뿐이고, `mochi`는 가짜가 고른 등급에 서버 표가 매긴 값과 같으며(등급 1~5 다섯 경우 모두), `line`은 공백만이 아니며 30자 이하다. 등급→모찌 표는 `api/` 안 한 곳에만 있다
 - AC-2 서버는 브라우저가 보낸 값을 믿지 않는다
   - 주어진: AC-1과 같은 테스트
-  - 할 때: (a) 모르는 `myPrice` (b) 모르는 태그 id (c) 같은 태그 두 번 (d) 태그 17개 (e) JPEG가 아닌 파일(PNG · 이미지가 아닌 것) (f) 서버 바이트 상한 1MB를 1바이트 넘는 JPEG (g) 위치 정보(EXIF GPS)가 담긴 JPEG로 부른다
-  - 그러면: 일곱 경우 모두 `invalid_input`으로 끝나고 Bedrock 호출은 0번이다 (contracts/appraise.md §7). 상한과 정확히 같은 크기의 JPEG와, GPS 없이 다른 EXIF만 든 JPEG는 통과한다(Bedrock 호출 1번). 1MB를 몇 바이트로 세는지는 contracts에 적힌 값을 따른다
+  - 할 때: (a) 모르는 `myPrice` (b) 모르는 태그 id (c) 같은 태그 두 번 (d) 태그 17개 (e) JPEG가 아닌 파일(PNG · 이미지가 아닌 것) (f) 서버 바이트 상한 1MB를 1바이트 넘는 JPEG (g) 위치 정보(EXIF GPS)가 담긴 JPEG (h) 긴 변이 1024px를 넘는(1025px) JPEG로 부른다
+  - 그러면: 여덟 경우 모두 `invalid_input`으로 끝나고 Bedrock 호출은 0번이다 (contracts/appraise.md §7). 상한과 정확히 같은 크기의 JPEG, 긴 변이 정확히 1024px인 JPEG(10/21 사용자 승인 — contracts/appraise-http.md §3-4), GPS 없이 다른 EXIF만 든 JPEG는 통과한다(Bedrock 호출 1번). 1MB를 몇 바이트로 세는지는 contracts에 적힌 값을 따른다
 - AC-3 AI 출력이 정해진 모양이 아니면 `unavailable`이다 — 빈 성공으로 바꾸지 않는다
   - 주어진: 가짜 Bedrock이 (a) JSON이 아닌 글 (b) 등급 없음 (c) 등급이 1~5 밖·소수·문자열 (d) `line`이 빈 문자열 (e) `line`이 31자 (f) contracts에서 정한 출력 길이 상한을 넘는 글을 돌려준다
   - 할 때: 감정 입구를 부른다
