@@ -26,6 +26,7 @@ beforeEach(() => {
 afterEach(cleanup)
 
 const png = () => new File(['x'], 'cat.png', { type: 'image/png' })
+const jpg = () => new File(['x'], 'cat.jpg', { type: 'image/jpeg' })
 const txt = () => new File(['x'], 'note.txt', { type: 'text/plain' })
 
 function renderApp() {
@@ -164,6 +165,30 @@ test('AC-7 thinking state, disabled button, appraise called once', () => {
   expect(appraise).toHaveBeenCalledTimes(1)
   expect(appraise).toHaveBeenCalledWith({ photo, myPrice: 'ten', tags: ['how-1'] })
   expect(screen.queryByRole('region', { name: '감정 결과' })).toBeNull()
+})
+
+// AC-1: jpg도 미리보기가 나온다
+test('AC-1 shows a preview for a jpg file', () => {
+  renderApp()
+  pickFile(jpg())
+  expect(preview()).not.toBeNull()
+  expect(screen.queryByRole('alert')).toBeNull()
+})
+
+// AC-7/AC-9: 태그는 누른 순서가 아니라 contracts/appraise.md §3 표 순서로 넘어간다
+test('AC-7 passes several tags to appraise in contract order, not press order', () => {
+  holdAppraise()
+  renderApp()
+  const photo = png()
+  pickFile(photo)
+  pickPrice('🍡 10개')
+  ;['🧓 10년 넘음', '🏆 인생템', '🗑️ 못 버림', '🎁 선물'].forEach(pickTag)
+  fireEvent.click(submit())
+  expect(appraise).toHaveBeenCalledWith({
+    photo,
+    myPrice: 'ten',
+    tags: ['how-1', 'now-1', 'feeling-2', 'brag-2'],
+  })
 })
 
 // AC-8: 도장 + 결과 카드 (아저씨 값 · 내 값 · 대사)
