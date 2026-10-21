@@ -104,7 +104,7 @@
     },
     "infra": {
       "fmt": "terraform fmt -check -recursive infra",
-      "validate": "TODO",
+      "validate": "terraform -chdir=infra init -backend=false -input=false && terraform -chdir=infra validate",
       "scan": "trivy config infra"
     },
     "ci_only": [
