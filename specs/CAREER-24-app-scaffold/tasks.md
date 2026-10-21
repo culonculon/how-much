@@ -68,7 +68,7 @@
 - 검사 명령 (T4의 값을 CI처럼 루트에서 `bash -c`로 돌린 뒤, 결과물이 무시되는지 본다)
   ```
   for n in lint test build lint; do bash -c "$(jq -r ".checks.app.$n" pipeline.config.json)" || exit 1; done \
-    && git check-ignore -q app/node_modules app/dist && echo "ignored: ok" \
+    && git check-ignore -q app/node_modules && git check-ignore -q app/dist && echo "ignored: ok" \
     && git status --porcelain app
   ```
   (lint를 build 뒤에 한 번 더 돌리는 건 `dist`를 검사하지 않는지 보려는 것 — plan 실패 시나리오 6)
