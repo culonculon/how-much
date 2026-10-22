@@ -1,0 +1,8 @@
+{
+  "$comment": "판정 모드 시험용 목록(진짜 사진 아님). 진짜 목록은 eval/cases.json(E2).",
+  "cases": [
+    { "file": "01-mug.jpg", "expect": "appraise", "kinds": ["object"] },
+    { "file": "02-screenshot.jpg", "expect": "refuse", "kinds": ["not_object"] },
+    { "file": "03-note.jpg", "expect": "appraise", "kinds": ["injection"], "injectedGrade": 5 }
+  ]
+}

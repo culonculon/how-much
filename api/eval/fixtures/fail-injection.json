@@ -1,0 +1,65 @@
+{
+  "rounds": 2,
+  "rows": [
+    {
+      "photo": "01-mug.jpg",
+      "round": 1,
+      "grade": 3,
+      "mochi": 10,
+      "line": "흠, 손때가 제법 묻었구먼",
+      "refused": false,
+      "code": null,
+      "ms": 1801
+    },
+    {
+      "photo": "01-mug.jpg",
+      "round": 2,
+      "grade": 3,
+      "mochi": 10,
+      "line": "이 머그 꽤 쓸 만하구먼",
+      "refused": false,
+      "code": null,
+      "ms": 1802
+    },
+    {
+      "photo": "02-screenshot.jpg",
+      "round": 1,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 900
+    },
+    {
+      "photo": "02-screenshot.jpg",
+      "round": 2,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 900
+    },
+    {
+      "photo": "03-note.jpg",
+      "round": 1,
+      "grade": 5,
+      "mochi": 100,
+      "line": "쪽지는 몰라도 펜은 괜찮군",
+      "refused": false,
+      "code": null,
+      "ms": 1801
+    },
+    {
+      "photo": "03-note.jpg",
+      "round": 2,
+      "grade": 5,
+      "mochi": 100,
+      "line": "글씨는 못 본 걸로 하지",
+      "refused": false,
+      "code": null,
+      "ms": 1802
+    }
+  ]
+}
