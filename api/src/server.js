@@ -5,7 +5,7 @@ import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { callWithRetry, UpstreamError } from './bedrock.js';
-import { AWS_REGION, DEFAULT_PORT, HOST, MAX_PHOTO_BYTES, MEMO_MAX_ENTRIES } from './config.js';
+import { AWS_REGION, DEFAULT_PORT, HOST, MAX_PHOTO_BYTES, MEMO_MAX_ENTRIES, REJECT_DRAIN_BYTES } from './config.js';
 import { mochiOf } from './grades.js';
 import { checkQuery, InputError } from './input.js';
 import { checkJpeg } from './jpeg.js';
@@ -21,11 +21,11 @@ export function makeBedrockClient() {
 }
 
 class Reply {
-  constructor(status, code, reason, { close = false } = {}) {
-    Object.assign(this, { status, code, reason, close });
+  constructor(status, code, reason) {
+    Object.assign(this, { status, code, reason });
   }
 }
-const invalid = (reason, status = 400, opts) => new Reply(status, 'invalid_input', reason, opts);
+const invalid = (reason, status = 400) => new Reply(status, 'invalid_input', reason);
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -42,7 +42,7 @@ function readBody(req) {
       size += chunk.length;
       if (size > MAX_PHOTO_BYTES) {
         // 상한을 넘는 순간 그만 모은다(메모리에 다 올리지 않음)
-        finish(reject, invalid('too_large', 400, { close: true }));
+        finish(reject, invalid('too_large'));
         return;
       }
       chunks.push(chunk);
@@ -62,7 +62,7 @@ async function appraise(req, res, entry, send, memo) {
   if (req.headers['content-type'] !== 'image/jpeg') throw invalid('bad_content_type');
   const declared = req.headers['content-length'];
   if (declared !== undefined && Number(declared) > MAX_PHOTO_BYTES) {
-    throw invalid('too_large', 400, { close: true }); // 읽기 전에 거절
+    throw invalid('too_large'); // 읽기 전에 거절(남은 본문은 writeJson이 한도까지 버림)
   }
   const photo = await readBody(req);
   if (photo.length === 0) throw invalid('empty_body');
@@ -121,14 +121,50 @@ function toReply(err) {
   return new Reply(500, 'unavailable', 'internal');
 }
 
-function writeJson(res, status, body, close) {
+const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+
+// 본문을 다 읽기 전에 응답하면(거절) — plan '거절 뒤 남은 업로드' (10/22 PR #11 뒤):
+// 응답 헤더·본문을 먼저 쓰고, 남은 본문을 REJECT_DRAIN_BYTES까지 읽어 버린 뒤 응답을 끝낸다.
+// 바로 닫으면 보내는 쪽(브라우저)이 아직 올리는 중이라 400 대신 네트워크 오류를 본다(EPIPE).
+function writeJson(req, res, status, body, readBytes) {
   if (res.headersSent || res.destroyed) return;
-  res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
-    ...(close ? { Connection: 'close' } : {}),
-  });
-  res.end(JSON.stringify(body));
+  const text = JSON.stringify(body);
+  if (req.complete) {
+    res.writeHead(status, JSON_HEADERS);
+    res.end(text);
+    return;
+  }
+  const declared = Number(req.headers['content-length']);
+  if (declared > REJECT_DRAIN_BYTES) {
+    // 처음부터 한도보다 큼: 읽지 않고 끝내고 닫는다(보내는 쪽은 쓰기 오류를 볼 수 있음)
+    res.writeHead(status, { ...JSON_HEADERS, Connection: 'close' });
+    res.end(text);
+    return;
+  }
+  let drained = readBytes();
+  const stop = () => {
+    req.off('data', onData);
+    req.off('end', onEnd);
+  };
+  const onData = (chunk) => {
+    drained += chunk.length;
+    if (drained > REJECT_DRAIN_BYTES) {
+      stop();
+      res.end();
+      req.socket.destroy(); // 한도를 넘음: 응답은 이미 보냈다
+    }
+  };
+  const onEnd = () => {
+    stop();
+    res.end();
+  };
+  req.on('data', onData);
+  req.on('end', onEnd);
+  req.once('aborted', stop);
+  req.once('close', stop);
+  res.writeHead(status, { ...JSON_HEADERS, Connection: 'close' });
+  res.write(text);
+  req.resume();
 }
 
 export function createServer({
@@ -138,6 +174,10 @@ export function createServer({
 } = {}) {
   return http.createServer(async (req, res) => {
     const started = performance.now();
+    let readBytes = 0; // 이 요청에서 읽은 본문 바이트(거절 뒤 버림 한도에 함께 셈)
+    req.on('data', (chunk) => {
+      readBytes += chunk.length;
+    });
     const entry = {
       evt: 'appraise',
       outcome: 'ok',
@@ -151,13 +191,12 @@ export function createServer({
     };
     let status;
     let body;
-    let close = false;
     try {
       ({ status, body } = await appraise(req, res, entry, send, memo));
     } catch (err) {
       const reply = toReply(err);
       if (err instanceof UpstreamError) entry.attempts = err.attempts;
-      ({ status, close } = reply);
+      ({ status } = reply);
       body = { code: reply.code };
       entry.outcome = reply.code;
       entry.reason = reply.reason;
@@ -168,8 +207,7 @@ export function createServer({
     } catch {
       // 로그가 실패해도 응답은 보낸다
     }
-    writeJson(res, status, body, close);
-    if (close) req.resume(); // 남은 업로드는 버리며 흘려보낸다(연결은 응답 뒤 닫힘)
+    writeJson(req, res, status, body, () => readBytes);
   });
 }
 
