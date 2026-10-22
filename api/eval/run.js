@@ -44,11 +44,18 @@ function stamp(d = new Date()) {
 }
 
 async function liveMode() {
+  const memoMode = option('--memo');
+  if (memoMode !== 'on' && memoMode !== 'off') {
+    console.log('기억 켬/끔을 골라 주세요: --memo on|off (AC-12 (d) — 켬은 통과 기준, 끔은 흔들림 보고)');
+    process.exitCode = 2;
+    return;
+  }
   const { ROUNDS } = await import('./criteria.js');
   const cases = readCases();
   const rounds = Number(option('--rounds') ?? ROUNDS);
-  const calls = cases.length * rounds;
-  console.log(`계획: 사진 ${cases.length}장 × ${rounds}번 = ${calls}번 호출(재시도 빼고) · 약 ${calls * COST_PER_CALL_WON}원`);
+  // 켬: 사진마다 첫 회차만 Bedrock · 끔: 매번
+  const calls = memoMode === 'on' ? cases.length : cases.length * rounds;
+  console.log(`계획(기억 ${memoMode}): 사진 ${cases.length}장 × ${rounds}번 → ${calls}번 호출(재시도 빼고) · 약 ${calls * COST_PER_CALL_WON}원`);
   if (!args.includes('--yes')) {
     console.log('진짜 호출하려면 --yes를 붙여 다시 실행하세요. (AWS_PROFILE=terraform-admin)');
     process.exitCode = 2;
@@ -56,6 +63,8 @@ async function liveMode() {
   }
 
   const { makeBedrockClient } = await import('../src/server.js');
+  const { MEMO_MAX_ENTRIES } = await import('../src/config.js');
+  const { createMemo } = await import('../src/memo.js');
   const { runLive } = await import('./live.js');
   const client = makeBedrockClient();
   const usage = { attempts: 0, inputTokens: 0, outputTokens: 0 };
@@ -70,14 +79,16 @@ async function liveMode() {
     cases,
     photosDir: option('--photos') ?? 'eval/photos',
     rounds,
+    memo: createMemo({ maxEntries: memoMode === 'on' ? MEMO_MAX_ENTRIES : 0 }),
     log,
-    onRow: (r) => console.log(`${r.photo} #${r.round} ${r.refused ? '거절' : r.code ?? `등급 ${r.grade} · ${r.line}`} (${r.ms}ms)`),
+    onRow: (r) => console.log(`${r.photo} #${r.round} ${r.refused ? '거절' : r.code ?? `등급 ${r.grade} · ${r.line}`} [${r.memo}] (${r.ms}ms)`),
   });
 
   // 결과 파일 필드는 E1 모양뿐(plan 실패 시나리오 17)
   mkdirSync('eval/results', { recursive: true });
-  const file = join('eval/results', `${stamp()}.json`);
-  writeFileSync(file, `${JSON.stringify({ rounds: result.rounds, rows: result.rows }, null, 2)}\n`);
+  const file = join('eval/results', `${stamp()}-memo-${memoMode}.json`);
+  const saved = { memo: memoMode, rounds: result.rounds, rows: result.rows };
+  writeFileSync(file, `${JSON.stringify(saved, null, 2)}\n`);
   console.log(`결과 파일: ${file}`);
   console.log(`실제 Bedrock 호출 ${usage.attempts}번 · 입력 토큰 ${usage.inputTokens} · 출력 토큰 ${usage.outputTokens}`);
 
@@ -86,7 +97,7 @@ async function liveMode() {
     process.exitCode = 1;
     return;
   }
-  await report(result, cases);
+  await report(saved, cases);
 }
 
 const resultsPath = option('--judge');

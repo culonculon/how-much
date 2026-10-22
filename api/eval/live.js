@@ -9,11 +9,21 @@ import { createServer } from '../src/server.js';
 const QUERY = 'myPrice=ten';
 
 const emptyRow = (photo, round, ms) => ({
-  photo, round, grade: null, mochi: null, line: null, refused: false, code: null, ms,
+  photo, round, grade: null, mochi: null, line: null, refused: false, code: null, ms, memo: null,
 });
 
 export async function runLive({ send, cases, photosDir, rounds, memo, log = () => {}, onRow = () => {} }) {
-  const server = createServer({ send, log, memo });
+  // 서버는 응답을 쓰기 전에 로그 1줄을 찍는다 → fetch가 끝났을 때 그 요청의 memo를 이미 쥐고 있다(차례 호출이라 1:1)
+  let lastMemo = null;
+  const tap = (line) => {
+    try {
+      lastMemo = JSON.parse(line).memo ?? null;
+    } catch {
+      lastMemo = null;
+    }
+    log(line);
+  };
+  const server = createServer({ send, log: tap, memo });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}/api/appraise?${QUERY}`;
   const rows = [];
@@ -26,6 +36,8 @@ export async function runLive({ send, cases, photosDir, rounds, memo, log = () =
         const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: photo });
         const body = await res.json().catch(() => ({}));
         const row = emptyRow(c.file, round, Math.round(performance.now() - started));
+        row.memo = lastMemo; // 줄이 없었으면 null — 판정기가 실패로 본다
+        lastMemo = null;
 
         if (res.status === 200) {
           try {
