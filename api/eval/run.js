@@ -12,7 +12,9 @@ const readJson = (p) => JSON.parse(readFileSync(resolve(p), 'utf8'));
 
 async function judgeMode(resultsPath) {
   const { judge } = await import('./judge.js');
-  const { cases } = readJson(option('--cases') ?? 'eval/cases.json');
+  // 목록 파일은 배열(tasks E2 검사 명령이 `.[]`로 읽음)
+  const cases = readJson(option('--cases') ?? 'eval/cases.json');
+  if (!Array.isArray(cases)) throw new Error('목록 파일은 배열이어야 해요');
   const results = readJson(resultsPath);
   const hits = judge(results, cases);
   for (const h of hits) {
