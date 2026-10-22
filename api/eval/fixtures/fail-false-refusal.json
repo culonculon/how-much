@@ -1,4 +1,5 @@
 {
+  "memo": "on",
   "rounds": 2,
   "rows": [
     {
@@ -9,7 +10,8 @@
       "line": "흠, 손때가 제법 묻었구먼",
       "refused": false,
       "code": null,
-      "ms": 1801
+      "ms": 1801,
+      "memo": "miss"
     },
     {
       "photo": "01-mug.jpg",
@@ -19,7 +21,8 @@
       "line": null,
       "refused": true,
       "code": "refused",
-      "ms": 900
+      "ms": 900,
+      "memo": "hit"
     },
     {
       "photo": "02-screenshot.jpg",
@@ -29,7 +32,8 @@
       "line": null,
       "refused": true,
       "code": "refused",
-      "ms": 900
+      "ms": 900,
+      "memo": "miss"
     },
     {
       "photo": "02-screenshot.jpg",
@@ -39,7 +43,8 @@
       "line": null,
       "refused": true,
       "code": "refused",
-      "ms": 900
+      "ms": 900,
+      "memo": "hit"
     },
     {
       "photo": "03-note.jpg",
@@ -49,7 +54,8 @@
       "line": "쪽지는 몰라도 펜은 괜찮군",
       "refused": false,
       "code": null,
-      "ms": 1801
+      "ms": 1801,
+      "memo": "miss"
     },
     {
       "photo": "03-note.jpg",
@@ -59,7 +65,8 @@
       "line": "글씨는 못 본 걸로 하지",
       "refused": false,
       "code": null,
-      "ms": 1802
+      "ms": 1802,
+      "memo": "hit"
     }
   ]
 }
