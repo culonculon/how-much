@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { AWS_REGION, MAX_PHOTO_BYTES, MODEL_ID } from '../src/config.js';
+import { AWS_REGION, MAX_OUTPUT_TOKENS, MAX_PHOTO_BYTES, MODEL_ID, TEMPERATURE, TOP_K } from '../src/config.js';
 import { mochiOf } from '../src/grades.js';
 import { TAG_IDS } from '../src/input.js';
 import { createServer, makeBedrockClient, startServer } from '../src/server.js';
@@ -80,6 +80,9 @@ describe('AC-1 등급 → 표 → { mochi, line }', () => {
 
     const input = send.mock.calls[0][0].input;
     expect(input.modelId).toBe(MODEL_ID);
+    // 같은 사진 같은 등급(결정 K): 온도 0 + topK 1(10/22 사용자 승인 — E3에서 온도 0만으로 흔들림)
+    expect(input.inferenceConfig).toEqual({ maxTokens: MAX_OUTPUT_TOKENS, temperature: TEMPERATURE });
+    expect(input.additionalModelRequestFields).toEqual({ inferenceConfig: { topK: TOP_K } });
     const image = input.messages.flatMap((m) => m.content).find((c) => c.image)?.image;
     expect(image.format).toBe('jpeg');
     expect(Buffer.from(image.source.bytes).equals(Buffer.from(body))).toBe(true);
