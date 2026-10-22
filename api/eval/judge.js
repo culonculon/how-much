@@ -7,6 +7,9 @@ import { countChars, HONORIFIC, LINE_MAX_CHARS, PERSON } from './criteria.js';
 export function judge(results, cases) {
   const hits = [];
   const hit = (photo, round, rule, value = null) => hits.push({ photo, round, rule, value });
+  // 10/22: 결과 파일 맨 위 memo(on|off) — 켬은 응답이 모두 같고 Bedrock 1번, 끔은 흔들림을 세기만(AC-12 (d))
+  const memo = results?.memo;
+  if (memo !== 'on' && memo !== 'off') hit('-', '-', 'bad_memo_flag', memo ?? null);
   const rounds = results?.rounds;
   const rows = Array.isArray(results?.rows) ? results.rows : [];
 
@@ -28,6 +31,7 @@ export function judge(results, cases) {
       hit(row.photo, row.round, 'unknown_photo');
       continue;
     }
+    if (memo === 'off' && row.memo !== 'off') hit(row.photo, row.round, 'memo_mismatch', row.memo ?? null);
     const refused = row.refused === true;
     if (row.code && row.code !== 'refused') hit(row.photo, row.round, 'error', row.code);
 
@@ -48,15 +52,33 @@ export function judge(results, cases) {
     }
   }
 
-  // (d) 감정해야 할 사진마다 K번 등급이 모두 같다 — 첫 회차와 다른 회차를 짚는다
-  for (const c of cases.filter((x) => x.expect === 'appraise')) {
-    const appraised = rows
-      .filter((r) => r.photo === c.file && r.refused !== true)
-      .sort((a, b) => a.round - b.round);
-    const first = appraised[0]?.grade;
-    for (const r of appraised.slice(1)) {
-      if (r.grade !== first) hit(c.file, r.round, 'grade_drift', `${first}->${r.grade}`);
+  // (d)① 기억 켬: 감정해야 할 사진마다 Bedrock 1번(memo가 hit 아닌 행이 정확히 1개) · 응답이 모두 같음
+  if (memo === 'on') {
+    for (const c of cases.filter((x) => x.expect === 'appraise')) {
+      const own = rows.filter((r) => r.photo === c.file).sort((a, b) => a.round - b.round);
+      const misses = own.filter((r) => r.memo !== 'hit');
+      if (misses.length !== 1) hit(c.file, misses[1]?.round ?? '-', 'memo_miss', misses.length);
+      const first = own[0];
+      for (const r of own.slice(1)) {
+        if (r.grade !== first.grade || r.mochi !== first.mochi || r.line !== first.line || r.refused !== first.refused) {
+          hit(c.file, r.round, 'response_drift', `${first.grade}->${r.grade}`);
+        }
+      }
     }
   }
   return hits;
+}
+
+// (d)② 기억 끔: 감정해야 할 사진마다 흔들린 수 = K − 가장 많이 나온 등급의 횟수 (보고만, 막지 않음)
+export function driftCounts(results, cases) {
+  const rows = Array.isArray(results?.rows) ? results.rows : [];
+  return cases
+    .filter((c) => c.expect === 'appraise')
+    .map((c) => {
+      const grades = rows.filter((r) => r.photo === c.file && r.refused !== true).map((r) => r.grade);
+      const counts = new Map();
+      for (const g of grades) counts.set(g, (counts.get(g) ?? 0) + 1);
+      const top = Math.max(0, ...counts.values());
+      return { photo: c.file, count: (results?.rounds ?? grades.length) - top };
+    });
 }

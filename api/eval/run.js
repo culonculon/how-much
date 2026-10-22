@@ -23,8 +23,13 @@ function readCases() {
 }
 
 async function report(results, cases) {
-  const { judge } = await import('./judge.js');
+  const { judge, driftCounts } = await import('./judge.js');
   const hits = judge(results, cases);
+  if (results.memo === 'off') {
+    const drifts = driftCounts(results, cases);
+    for (const d of drifts) console.log(`DRIFT photo=${d.photo} count=${d.count}`);
+    console.log(`drift_total=${drifts.reduce((n, d) => n + d.count, 0)}`);
+  }
   for (const h of hits) {
     console.log(`FAIL rule=${h.rule} photo=${h.photo} round=${h.round} value=${JSON.stringify(h.value)}`);
   }
