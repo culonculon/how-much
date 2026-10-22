@@ -70,3 +70,44 @@ export const PNG_BYTES = Uint8Array.from([
 ]);
 
 export const TEXT_BYTES = new Uint8Array(Buffer.from('이건 사진이 아니에요', 'utf8'));
+
+// ── 서버 테스트용 (A4) ──
+import http from 'node:http';
+
+// Converse 응답 모양(output.message.content[0].text · stopReason · usage)
+export function converseReply(text, { stopReason = 'end_turn', inputTokens = 1520, outputTokens = 31 } = {}) {
+  return {
+    output: { message: { role: 'assistant', content: [{ text }] } },
+    stopReason,
+    usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
+  };
+}
+
+// 로그 줄 모으기
+export function collectLog() {
+  const lines = [];
+  return { lines, log: (line) => lines.push(line) };
+}
+
+// 빈 포트에 띄우고 기본 주소를 돌려준다
+export async function listen(server) {
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return `http://127.0.0.1:${server.address().port}`;
+}
+
+// fetch가 막는 헤더(Content-Length 거짓말)를 보내는 요청. body가 없으면 헤더만 보내고 응답을 기다린다
+export function rawPost(url, { headers = {}, body } = {}) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(url, { method: 'POST', headers }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        req.destroy();
+        resolve({ status: res.statusCode, headers: res.headers, text: Buffer.concat(chunks).toString('utf8') });
+      });
+    });
+    req.on('error', reject);
+    if (body === undefined) req.flushHeaders();
+    else req.end(body);
+  });
+}
