@@ -1,12 +1,13 @@
 [CAREER-25](https://culonculon98.atlassian.net/browse/CAREER-25) · spec: [spec.md](spec.md) · plan: [plan.md](plan.md) · 약속: [contracts/appraise-http.md](../../contracts/appraise-http.md) · 결정: [ADR-0002](../../docs/adr/0002-ai-call-bedrock-vpc-endpoint-nova-pro.md)
 
-상태: 승인됨 (2026-10-22 — 10/21 승인본 + spec 10/22 결정 1~3: U3 · A5 새로, E1 · E3 '10/22 고침' 단계, P1 · 표 갱신)
+상태: 승인됨 (2026-10-22 — 10/21 승인본 + spec 10/22 결정 1~3: U3 · A5 새로, E1 · E3 '10/22 고침' 단계, P1 · 표 갱신) · 10/22 PR #11 리뷰 뒤: A6 새로 · I1 trivy 기준 · P1 칸 · 10/22 사용자 승인: `REJECT_DRAIN_BYTES` 2,000,000(A6 단계 0 끝남) · contracts §2·§8 고침
 
 - 브랜치: `CAREER-25-real-appraise` 하나(이 저장소) + `culonculon/aws-infra-portfolio`의 브랜치 하나(I1).
 - 순서(10/21): **U1 → U2 → A1 → (A2 ∥ A3) → (A4 ∥ E1) → E3 → P1**, 그리고 **R1 · E2 · I1은 U1 뒤 아무 때나 [P]** (E3 전에 R1·E2가 끝나야 함)
 - **순서(10/22 다시)**: 끝남 — U1 · U2 · R1 · E2 · A1~A4 · E1 · E3 1차(진짜 실행 3번, 값 흔들림만 남음). 남은 것: **U3 → (A5 ∥ E1 고침) → E3 고침 → P1**, I1은 그대로 [P]
   - A5와 E1 고침은 파일이 겹치지 않는다(A5: `src/config.js`·`src/memo.js`·`src/server.js`·`eval/live.js`·`tests/memo.test.js`·`tests/server.test.js`·`tests/live.test.js` 공통 준비 / E1 고침: `eval/judge.js`·`eval/run.js` 판정 출력·`eval/fixtures/*`·`tests/judge.test.js`). E3 고침은 둘 다 끝난 뒤 — `run.js`·`live.js`·`live.test.js`를 다시 고친다
   - A5·E1 고침·E3 고침도 **테스트 커밋(빨강) → 구현 커밋(초록)** 두 개로 낸다
+- **순서(10/22 PR #11 리뷰 뒤)**: **A6 → P1 다시**(검사 다시 돌리기 · PR 칸 고치기). I1은 trivy 기준만 바뀜(그 저장소 PR 본문에 Jira 번호). A6은 PR #11 브랜치에 커밋 두 개를 더한다
   - `api/`는 `human_only`(guard)라 A·E·R 작업은 모두 **앞 세션(사용자와 함께)**이 한다. 백그라운드 만들기 세션을 쓰지 않는다. [P]는 '서로 다른 파일이고 서로 기대지 않음'의 뜻이다.
   - A1~A4는 작업마다 **테스트 커밋(빨강) → 구현 커밋(초록)** 두 개로 낸다(plan 질문 4 — reviewer가 순서를 본다).
 - 모든 명령은 **저장소 루트**에서 돌린다. 세션 보고에는 출력 그대로. PR '검사 결과' 칸에는 CI 링크만.
@@ -157,6 +158,27 @@
 - 검사 명령: `npm --prefix api test; echo "exit=$?"; grep -rnF '.remember(' api/src | wc -l; grep -n 'MEMO_MAX_ENTRIES' api/src/config.js`
 - 끝난 상태: 전체 통과(기존 102개 + 새 것) `exit=0`, `.remember(` 부르는 곳 `1`(server.js — 넣기는 한 곳), config에 `MEMO_MAX_ENTRIES` 한 줄.
 
+## A6 — 거절 뒤 남은 업로드 drain (AC-2(f) 흔들림) · 10/22 PR #11 리뷰 뒤 · P1 전
+- 담당: **앞 세션**
+- 파일: `api/src/config.js`(한 줄) · `api/src/server.js`(`writeJson`·거절 경로) · `api/tests/helpers.js`(도우미 하나) · `api/tests/server.test.js`
+- AC: AC-2(f)가 결정적으로 통과 · contracts §5(크기 거절은 400 `invalid_input`이지 네트워크 오류가 아님) · AC-6(로그 1줄 그대로)
+- 원본: plan '거절 뒤 남은 업로드' · 실패 시나리오 3 · 35~37
+- 단계
+  0. ✔ 끝남 — 10/22 사용자 승인: `REJECT_DRAIN_BYTES` = 2,000,000 (contracts/appraise-http.md §2·§8도 고침).
+  1. `config.js`에 `export const REJECT_DRAIN_BYTES = 2_000_000;` + 주석 "거절 뒤 남은 본문을 버리며 읽는 한도 — 넘으면 끊음. 원본: specs/CAREER-25-real-appraise/plan.md". **테스트 커밋에 넣는다** — 빠지면 빨강 이유가 동작이 아니라 import 오류가 된다.
+  2. `helpers.js`에 `uploadAfterResponse(url, { headers, body, keepAlive = false })` — `http.request`(POST, `keepAlive`가 거짓이면 `agent: false` → Node가 `Connection: close`를 붙인다, 참이면 `new http.Agent({ keepAlive: true })`) → `flushHeaders()`로 **헤더만** 보냄 → `response`가 오면 상태를 쥐고 응답 본문을 모으기 시작한 **뒤에** `body`를 64KiB씩 `write`(`false`면 `drain`을 기다림) → `end()`. 클라이언트 `error`는 던지지 않고 `errors` 배열에 모은다. 요청 `close`와 응답 `end`/`close`가 모두 오면 `{ status, text, errors }`로 끝낸다. 서버 쪽 바이트는 테스트가 `server.on('connection', (s) => sockets.push(s))`로 소켓을 쥐고, 소켓 `close` 뒤 `s.bytesRead`로 본다.
+  3. 테스트 쓰기 (빨강) — `server.test.js`에 `describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드)')`
+     - (1) `test.each` 클라이언트 둘(`Connection: close` · keep-alive): `Content-Length: MAX_PHOTO_BYTES + 1` + `makeJpeg({ totalBytes: MAX_PHOTO_BYTES + 1 })` → 상태 400, `JSON.parse(text)`가 `{"code":"invalid_input"}`, **`errors.length === 0`**, `send` 0번, 새 로그 줄 정확히 1줄이고 `reason: 'too_large'`. — 지금 코드는 400 뒤 소켓을 닫으므로 둘 다 반드시 `EPIPE`/`ECONNRESET`(결정적 빨강)
+     - (2) keep-alive, `Content-Length` 없이(chunked) `myPrice=five` + 3,000,000바이트 → 상태 400, 서버 소켓 `bytesRead < REJECT_DRAIN_BYTES + 100_000`(한 번 읽는 덩어리 64KiB + 헤더·chunk 틀 여유), 로그 1줄 `reason: 'bad_my_price'`. 클라이언트 쓰기 오류는 있어도 된다. — 지금 코드는 Node `_dump`가 3MB를 다 읽으므로 빨강(실패 시나리오 36)
+     - (3) `Content-Length: 3000000`(> 한도) → 400 `invalid_input`을 받는다. 그 뒤 연결이 끊겨도 된다(클라이언트 오류 허용). 서버 `bytesRead < REJECT_DRAIN_BYTES + 100_000`, 로그 1줄 `too_large`. — 지금도 초록(지키는 테스트)
+     - (4) drain 중 끊김: (1)처럼 보내다 절반에서 클라이언트 `destroy()` → 이어서 정상 사진 `call({ body: makeJpeg() })` → 200, `send` 1번, 끊긴 요청의 로그 줄은 1줄(실패 시나리오 37). — 지금도 초록일 수 있다(지키는 테스트)
+     - 지우기: 이미 있는 'Content-Length가 상한보다 크면 본문을 읽기 전에 400'(헤더만 보내고 응답 끝을 기다림) — `end()`를 미루면 멈춘다. (1)이 같은 것(400 · `send` 0 · `too_large`)을 보고 더 본다.
+  4. `npm --prefix api test -- tests/server.test.js` → (1) 두 줄과 (2)가 **위에 적은 이유로** 실패하는지 본다(`errors`에 `EPIPE`·`ECONNRESET` / `bytesRead` ≈ 3,000,000). 다른 이유(import·시간 초과)면 테스트를 고친다. 커밋: `CAREER-25: reject drain tests`
+  5. 구현 `server.js`(plan '거절 뒤 남은 업로드' 표 그대로): `writeJson`에서 `req.complete`면 지금처럼 `end`. 아니면 — `Content-Length`가 `REJECT_DRAIN_BYTES`보다 크면 `Connection: close`로 바로 `end`(지금 동작) / 아니면 drain 리스너(`data`에서 거절 전 읽은 바이트까지 합쳐 세기, 넘으면 `res.end()` + `req.socket.destroy()` · `end`에서 `res.end()` · `error`·`aborted`·`close`에서 조용히 정리)를 **먼저** 붙이고 `writeHead`(`Connection: close`) + `res.write(json)`. `readBody`가 지금까지 읽은 바이트 수를 거절 오류에 실어 넘긴다. `Reply.close`와 `req.resume()` 줄은 지운다. 로그 1줄은 지금 자리(응답 쓰기 전) 그대로.
+  6. `npm --prefix api test` 전체 통과 + 아래 되풀이 → 커밋: `CAREER-25: drain rejected uploads up to a limit`
+- 검사 명령: `npm --prefix api test; echo "exit=$?"; grep -n 'REJECT_DRAIN_BYTES' api/src/config.js; for i in $(seq 30); do npm --prefix api test -- tests/server.test.js >/dev/null 2>&1 || { echo "flaky at $i"; break; }; done; echo "repeat-done"`
+- 끝난 상태: `exit=0`, config에 `REJECT_DRAIN_BYTES` 한 줄(승인된 값), `flaky at`이 없고 `repeat-done`(server 테스트 30번 연속 통과 — reviewer가 본 26번 중 2번 실패를 넘는 횟수). 테스트 커밋이 구현 커밋보다 앞에 있다(`git log --oneline -3`).
+
 ## E1 — 판정기와 판정 모드 (AC-13) · 순서 5 · [P] (A4와, A2 뒤)
 - 담당: 앞 세션
 - 파일 (새로): `api/eval/criteria.js` · `api/eval/judge.js` · `api/eval/run.js`(판정 모드만 먼저) · `api/eval/fixtures/pass.json` · `api/eval/fixtures/fail-{honorific,person,long-line,false-refusal,grade-drift,injection}.json` · `api/eval/fixtures/cases.json` · `api/tests/judge.test.js`
@@ -248,10 +270,11 @@
      - EC2 보안 그룹 egress가 막혀 있으면 엔드포인트 보안 그룹으로 가는 443 egress 규칙
      - `aws_vpc_endpoint` `vpc_endpoint_type = "Interface"`, `service_name = "com.amazonaws.ap-northeast-2.bedrock-runtime"`, `private_dns_enabled = true`, `subnet_ids` = v1 EC2가 있는 서브넷 **하나**(AZ 1개, 10/21 확정), `security_group_ids` = 위 보안 그룹
      - `data "aws_bedrock_inference_profile"` (`inference_profile_id = "apac.amazon.nova-pro-v1:0"`) + EC2 역할에 `aws_iam_role_policy`: 문 1 `bedrock:InvokeModel` on 프로필 ARN / 문 2 `bedrock:InvokeModel` on `models[*].model_arn` + `Condition StringEquals bedrock:InferenceProfileArn` = 프로필 ARN
-  3. 그 저장소의 검사: `terraform fmt -check -recursive` · `terraform init -backend=false && terraform validate` · `trivy config --severity HIGH,CRITICAL --exit-code 1 .` → PR → 그 저장소 CI plan(세션에서 plan 금지).
+  3. 그 저장소의 검사: `terraform fmt -check -recursive` · `terraform init -backend=false && terraform validate` · trivy(HIGH·CRITICAL) → PR → 그 저장소 CI plan(세션에서 plan 금지).
+     - **trivy 기준(10/22 PR #11 리뷰 뒤 사용자 결정 — spec AC-14 (d))**: 이번 PR이 바꾼 파일에서 나온 것 0건. 원래 있던 2종 3곳(bootstrap S3 고객 관리 키 없음 2곳 · `infra/cdn.tf` CloudFront WAF 없음 1곳)은 앞 세션이 Jira에 따로 작업을 만들고 **번호를 이 PR(#11)과 그 저장소 PR(#2) 본문에 적는다**.
   4. plan 출력에서 '추가 N개'가 위 리소스뿐이고 변경·삭제가 0인지 본다. apply는 하지 않는다 — `api/`를 EC2에 배포하는 스토리 때 사용자가 한다(10/21 확정).
-- 검사 명령: (그 저장소 루트에서) `terraform fmt -check -recursive && terraform init -backend=false -input=false >/dev/null && terraform validate && trivy config --severity HIGH,CRITICAL --exit-code 1 . ; echo "exit=$?"; echo "star:"; grep -rniE 'resources?\s*=.*"\*"' --include=*.tf . | wc -l; gh pr checks`
-- 끝난 상태: `exit=0`, `star:` 다음 줄 `0`(그리고 바뀐 IAM 정책을 눈으로 한 번 더 — `jsonencode` 안 여러 줄 배열은 grep이 놓칠 수 있다), PR CI plan이 초록이고 '추가'만 있다. PR 링크를 P1에 적는다.
+- 검사 명령: (그 저장소 루트에서) `terraform fmt -check -recursive && terraform init -backend=false -input=false >/dev/null && terraform validate; echo "exit=$?"; trivy config --severity HIGH,CRITICAL --format json --quiet . | jq -r '.Results[]? | .Target as $t | .Misconfigurations[]? | "\($t) \(.ID)"' | sort > /tmp/aip-trivy.txt; echo "all:"; cat /tmp/aip-trivy.txt; echo "new:"; git diff --name-only origin/main...HEAD -- '*.tf' | grep -Ff - /tmp/aip-trivy.txt | wc -l; echo "star:"; grep -rniE 'resources?\s*=.*"\*"' --include=*.tf . | wc -l; gh pr checks`
+- 끝난 상태: `exit=0`, `all:` 아래가 원래 있던 3줄(bootstrap 2 · `infra/cdn.tf` 1)뿐이고 `new:` 다음 줄 `0`, `star:` 다음 줄 `0`(그리고 바뀐 IAM 정책을 눈으로 한 번 더 — `jsonencode` 안 여러 줄 배열은 grep이 놓칠 수 있다), PR CI plan이 초록이고 '추가'만 있다. PR 링크와 원래 있던 3곳의 Jira 번호를 P1에 적는다.
 
 ## P1 — PR과 CI (AC-15 · AC-16) · 순서 7
 - 담당: 앞 세션(PR 열기) · 사용자(머지)
@@ -261,10 +284,10 @@
   1. 저장소 루트에서 `checks.app` 전부(`api` 포함) · `checks.infra` 전부를 돌리고 출력 그대로 보고에 붙인다.
   2. PR 제목 `CAREER-25: real appraisal server with Nova Pro`.
   3. PR 칸
-     - 결정: ADR-0002 · contracts/appraise-http.md(새로) · appraise.md §5 `refused`와 안내 문구 · 서버 틀 `node:http` · EXIF 직접 파싱 · Converse · `api/` 테스트 vitest + `checks.app.api` · `myPrice`를 모델에 안 보냄 · (10/22) `TOP_K` 1 · 프롬프트 "두 등급 사이면 낮은 쪽" · 결과 기억(메모리 · LRU · `MEMO_MAX_ENTRIES` 값 · 0=끔 · 로그 `memo` · 해시 로그 안 남김 · 동시 요청 `raced`) — ADR 없음, 이유는 plan '열린 질문 8 답'
-     - 범위 변경: 서버 픽셀 상한(긴 변 > 1024px → `invalid_input`) — 10/21 사용자 승인, spec AC-2 (h)로 반영됨(U1). 결과 기억(AC-17)과 AC-12 (d) 나눔 — 10/22 사용자 결정, spec에 반영됨(재승인 10/22). 그 밖 없음
+     - 결정: ADR-0002 · contracts/appraise-http.md(새로) · appraise.md §5 `refused`와 안내 문구 · 서버 틀 `node:http` · EXIF 직접 파싱 · Converse · `api/` 테스트 vitest + `checks.app.api` · `myPrice`를 모델에 안 보냄 · (10/22) `TOP_K` 1 · 프롬프트 "두 등급 사이면 낮은 쪽" · 결과 기억(메모리 · LRU · `MEMO_MAX_ENTRIES` 값 · 0=끔 · 로그 `memo` · 해시 로그 안 남김 · 동시 요청 `raced`) — ADR 없음, 이유는 plan '열린 질문 8 답' · (10/22 PR #11 리뷰 뒤) 거절 뒤 남은 업로드 drain(`end()` 미룸 · `REJECT_DRAIN_BYTES` 2,000,000 — 10/22 사용자 승인 · contracts §2·§8) — ADR 없음, 이유와 버린 대안은 plan '거절 뒤 남은 업로드'
+     - 범위 변경: 서버 픽셀 상한(긴 변 > 1024px → `invalid_input`) — 10/21 사용자 승인, spec AC-2 (h)로 반영됨(U1). 결과 기억(AC-17)과 AC-12 (d) 나눔 — 10/22 사용자 결정, spec에 반영됨(재승인 10/22). AC-14 (d) 문구 '이번 변경으로 생긴 trivy HIGH·CRITICAL 0건(원래 있던 항목은 따로 Jira 작업)' — 10/22 PR #11 리뷰 뒤 사용자 결정, spec에 반영됨, 원래 있던 3곳의 Jira 번호. 그 밖 없음
      - 새 의존성: `api` dependencies `@aws-sdk/client-bedrock-runtime`(Bedrock 호출), devDependencies `vitest`(테스트) — 버전 한 줄씩. 기억은 `node:crypto`만(새 의존성 없음)
-     - 비용·남용 영향: spec 칸과 비교 + E3 고침 요약(켬·끔 두 실행의 사진 수 · K · 실제 Bedrock 호출 수 · (d)② `drift_total`과 사진별 흔들림 수 · 다시 돌린 횟수 · 대략 비용) + 기억 메모리 상한(약 4MB, 값에 따라) + I1 PR 링크와 그 CI plan 요약(추가·변경·삭제 개수) + "공개 입구 없음(127.0.0.1)"
+     - 비용·남용 영향: spec 칸과 비교 + E3 고침 요약(켬·끔 두 실행의 사진 수 · K · 실제 Bedrock 호출 수 · (d)② `drift_total`과 사진별 흔들림 수 · 다시 돌린 횟수 · 대략 비용) + 기억 메모리 상한(약 4MB, 값에 따라) + I1 PR 링크와 그 CI plan 요약(추가·변경·삭제 개수) + "공개 입구 없음(127.0.0.1)" + (10/22) 거절된 요청 하나가 서버에 읽게 하는 최대 바이트가 '한도 없음'(`too_large` 아닌 거절)에서 `REJECT_DRAIN_BYTES`로 줄어듦
      - 완료 조건 AC-1~6 · AC-11~17 ✔/✘ (AC-7~10은 '이 스토리에서 뺌')
      - 검사 결과: CI 링크만
 - 검사 명령: `for n in $(jq -r '.checks.app | keys_unsorted[] | select(startswith("$")|not)' pipeline.config.json); do echo "== app.$n"; bash -c "$(jq -r ".checks.app.$n" pipeline.config.json)" || exit 1; done; for n in fmt validate scan; do echo "== infra.$n"; bash -c "$(jq -r ".checks.infra.$n" pipeline.config.json)" || exit 1; done; git diff --stat origin/main...HEAD -- app infra; ls docs/adr/0002-*.md && grep -c 'Refs: CAREER-25' docs/adr/0002-*.md; gh pr checks --watch`
@@ -276,7 +299,7 @@
 | AC | 테스트 | 통과시키는 곳 | 그 밖 |
 |---|---|---|---|
 | AC-1 | A4 `server.test.js` · A2(표) | A4 · A2 | grep 한 곳: A4 검사 명령 |
-| AC-2 | A1 (a)~(e)(g)(h) · A4 HTTP로 전부 + (f) 경계 | A1 · A4 | 1MB·1024px: contracts §2·§3 · (h) spec 반영: U1 |
+| AC-2 | A1 (a)~(e)(g)(h) · A4 HTTP로 전부 + (f) 경계 · A6 (f) 거절 뒤 drain | A1 · A4 · A6 | 1MB·1024px: contracts §2·§3 · (h) spec 반영: U1 · drain 한도: plan '거절 뒤 남은 업로드' |
 | AC-3 | A2 `output.test.js` | A2 · A4(로그 `reason`) | |
 | AC-4 | A3 | A3 | 횟수 값: contracts §8 |
 | AC-5 | A3 (가짜 시계) | A3 | 시간 값: contracts §8 |
@@ -286,6 +309,6 @@
 | AC-12 | E3 고침 판정(켬·끔 두 파일) | E3 고침 · A5(기억) · A4(프롬프트) | 기준 근거: R1 · 값: plan 질문 3·5 · (d) 나눔: plan 질문 8 답 |
 | AC-13 | E1 · E1 고침 `judge.test.js` | E1 · E1 고침 | (g)(h) 10/22. CI에서도 돈다(호출 0) |
 | AC-17 | A5 `memo.test.js` | A5 | 상한 값: U3(사용자) · 로그·열쇠: plan 질문 8 답 |
-| AC-14 | I1 (다른 저장소 CI) | I1 | IAM·AZ·apply 시점: plan 질문 7 |
+| AC-14 | I1 (다른 저장소 CI) | I1 | IAM·AZ·apply 시점: plan 질문 7 · (d) 새 문구: 이번 변경분만 0건(10/22) |
 | AC-15 | P1 검사 명령 | 이 세션(architect)이 씀 · U1 승인 | |
 | AC-16 | P1 | 전부(AC-17 포함) | 명령: U2 |

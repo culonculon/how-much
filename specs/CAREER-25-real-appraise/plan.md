@@ -1,6 +1,6 @@
 [CAREER-25](https://culonculon98.atlassian.net/browse/CAREER-25) · spec: [spec.md](spec.md) · 작업: [tasks.md](tasks.md) · 약속: [contracts/appraise-http.md](../../contracts/appraise-http.md) · [contracts/appraise.md](../../contracts/appraise.md) · 결정: [ADR-0002](../../docs/adr/0002-ai-call-bedrock-vpc-endpoint-nova-pro.md)
 
-상태: 승인됨 (2026-10-22 — 사용자: MEMO_MAX_ENTRIES 10,000 · 기억 꺼낸 요청을 하루 상한에 셀지는 CAREER-27에서. 10/21 승인본 + spec 10/22 결정 1~3 반영: '열린 질문 8 답' 새로 · 파일 표 · 요청 흐름 · 로그 · 신뢰 경계 · 실패 시나리오 22~34. 사용자 승인이 필요한 값은 `MEMO_MAX_ENTRIES` 하나)
+상태: 승인됨 (2026-10-22 — 사용자: MEMO_MAX_ENTRIES 10,000 · 기억 꺼낸 요청을 하루 상한에 셀지는 CAREER-27에서. 10/21 승인본 + spec 10/22 결정 1~3 반영: '열린 질문 8 답' 새로 · 파일 표 · 요청 흐름 · 로그 · 신뢰 경계 · 실패 시나리오 22~34. 사용자 승인이 필요한 값은 `MEMO_MAX_ENTRIES` 하나) · 10/22 PR #11 리뷰 뒤 고침: '거절 뒤 남은 업로드' 새 절 · 실패 시나리오 3 · 35~37 · 신뢰 경계 2 · I1 trivy 기준(spec AC-14 (d) 새 문구). · 10/22 사용자 승인: `REJECT_DRAIN_BYTES` 2,000,000 · contracts §2·§8 고침
 
 ## 접근 방법
 `api/`를 `app/`·`e2e/`처럼 **독립 npm 패키지**(Node, ESM)로 만든다. 서버는 Node 기본 `node:http` 하나로 `POST /api/appraise`만 받고, `127.0.0.1`에 묶는다. 요청은 `쿼리 검사 → 본문 크기 → JPEG·위치 정보 검사 → 기억 확인(있으면 Bedrock 건너뜀) → Bedrock Converse(재시도·시간 제한) → 모델 출력 검사 → 기억에 넣기(감정·거절만) → 등급 표 → { mochi, line }` 한 줄기로만 흐르고, 어느 단계에서 끝나든 요청 1건에 로그 1줄을 남긴다. Bedrock 클라이언트는 밖에서 넣어 주므로(`send` 함수 하나) 테스트는 가짜 `send`로 호출 수·입력을 센다. 시험 세트는 `api/eval/`에 두고, 실행 명령이 같은 프로세스에서 **실제 서버를 빈 포트로 띄워 HTTP로** 부른다 — 프롬프트·출력 검사·등급 표를 복사하지 않고, 실행 명령이 AWS를 직접 부르지 않는다.
@@ -9,7 +9,7 @@
 | 파일 | 하는 일 | AC |
 |---|---|---|
 | `api/package.json` · `api/package-lock.json` | `"type": "module"`, 스크립트 `start: node src/server.js` · `test: vitest run` · `eval: node eval/run.js`. 의존성 `@aws-sdk/client-bedrock-runtime`, 개발 의존성 `vitest`(app과 같은 메이저 5) | — |
-| `api/src/config.js` | contracts §8 값 **전부**(모델 id·리전·크기·시간·재시도·출력 상한·온도·topK·30자·**기억 상한 `MEMO_MAX_ENTRIES`** — 10/22). 이 문자열 `apac.amazon.nova-pro-v1:0`이 `api/`에 나오는 유일한 곳 | 1·4·5·17 |
+| `api/src/config.js` | contracts §8 값 **전부**(모델 id·리전·크기·시간·재시도·출력 상한·온도·topK·30자·**기억 상한 `MEMO_MAX_ENTRIES`** — 10/22) + `REJECT_DRAIN_BYTES`(10/22 PR #11 뒤 — 원본은 이 plan '거절 뒤 남은 업로드'). 이 문자열 `apac.amazon.nova-pro-v1:0`이 `api/`에 나오는 유일한 곳 | 1·4·5·17 |
 | `api/src/memo.js` (10/22 새로) | `memoKey(photo, tags)` → `<SHA-256 hex 64자>\|<태그 id 표 순서, 쉼표>` (`node:crypto`) · `createMemo({ maxEntries })` → `{ enabled, get(key), remember(key, result), entries() }`. Map 하나, LRU, `maxEntries` 0이면 끔. 사진 바이트를 받지만 담지 않는다 | 17 |
 | `api/src/input.js` | 마음 가격 id·태그 id·이름(contracts/appraise.md §2·§3 옮김) + `checkQuery(searchParams)` → `{ myPrice, tags }` 또는 `InputError(reason)` | 2(a)~(d) |
 | `api/src/jpeg.js` | `checkJpeg(bytes)` → 통과 또는 `InputError(reason)`. 마커 걷기 · EXIF IFD0 `0x8825` · XMP GPS 글자 · SOF 가로·세로의 긴 변 ≤ 1024 (contracts §3) | 2(e)(g) + 픽셀 상한 |
@@ -140,7 +140,7 @@
   - data source가 provider 버전에 없으면 `aws bedrock get-inference-profile --inference-profile-identifier apac.amazon.nova-pro-v1:0 --region ap-northeast-2`(읽기 전용, 사용자가 돌림)로 뽑은 ARN을 `locals`에 적는다.
 - **엔드포인트 AZ 수 → 1개**: v1 EC2가 있는 서브넷 AZ 하나만(요금 1배). 버린 것: 두 AZ — 요금 2배, EC2가 한 AZ뿐이면 얻는 것 없음.
 - **apply 시점 → 배포 스토리 때**: PR은 지금 내고 머지하되 apply는 `api/`를 EC2에 배포하는 스토리 때 사용자가 한다 — 이번 스토리는 로컬만이라 엔드포인트를 아무도 안 쓰는데 시간 요금이 나간다. 버린 것: 머지 뒤 바로 apply.
-- **PR은 누가**: 앞 세션이 사용자와 그 저장소에서 낸다(이 저장소의 역할 구역 밖). 검사: 그 저장소의 `terraform fmt -check` · `validate` · trivy(HIGH·CRITICAL) · CI plan. 그 저장소 CI의 plan 역할에 data source용 `bedrock:GetInferenceProfile` 읽기 권한이 있는지 본다(없으면 plan이 실패).
+- **PR은 누가**: 앞 세션이 사용자와 그 저장소에서 낸다(이 저장소의 역할 구역 밖). 검사: 그 저장소의 `terraform fmt -check` · `validate` · trivy(HIGH·CRITICAL) · CI plan. **trivy 기준(10/22 PR #11 리뷰 뒤 사용자 결정 — spec AC-14 (d))**: 이번 PR이 바꾼 파일에서 나온 것 0건. 그 저장소에 원래 있던 2종 3곳(bootstrap S3 고객 관리 키 없음 2곳 · `infra/cdn.tf` CloudFront WAF 없음 1곳)은 앞 세션이 Jira에 따로 작업을 만들고 번호를 PR 본문에 적는다 — 저장소 전체 0건을 이 스토리 조건으로 두지 않는다. 그 저장소 CI의 plan 역할에 data source용 `bedrock:GetInferenceProfile` 읽기 권한이 있는지 본다(없으면 plan이 실패).
 
 ## 열린 질문 8 답 (10/22): 결과 기억의 세부
 전제(사용자 결정 1~3, 바꾸지 않음): 열쇠 = SHA-256(사진 바이트) + 표 순서 태그 · `myPrice` 안 넣음 · 서버 메모리 · 개수 상한(오래된 것부터 버림) · 재시작하면 잊음 · 사진 바이트 저장 안 함 · 실패 기억 안 함 · 디스크·DB 안 함 · 시험은 켬 1번(통과 기준) + 끔 1번(보고만).
@@ -163,6 +163,32 @@
 - **기억 켬 실행이 Bedrock 1번인지 세는 법**: 응답 헤더로 알리지 않는다(contracts 응답 모양 그대로, 브라우저에 기억 상태를 흘리지 않음). `eval/live.js`가 같은 프로세스 서버의 로그 줄에서 `memo`를 읽어 결과 행에 옮긴다 — 서버는 응답을 쓰기 **전에** 로그를 찍으므로 `fetch`가 끝났을 때 그 요청의 줄이 이미 있다(차례 호출이라 줄과 요청이 1:1).
 - **판정기의 흔들림 수**(AC-12 (d)②): 사진마다 `K − (가장 많이 나온 등급의 횟수)`. 첫 회차를 기준으로 세면 첫 회차 하나만 튄 경우 K−1로 부풀어서 버렸다.
 
+## 거절 뒤 남은 업로드 (10/22 PR #11 리뷰 뒤 — 사용자: 이 PR에서 고침)
+**문제**: 지금 `too_large`는 400을 `Connection: close`로 쓰고, Node는 응답을 다 쓰자마자 소켓을 닫는다(`req.resume()`을 불러도 닫는 것이 먼저다). 클라이언트는 아직 본문을 올리는 중이라 `EPIPE`/`ECONNRESET`을 받고 400을 못 읽는다 — reviewer macOS 26번 중 2번. CAREER-26 브라우저라면 400 `invalid_input`이 아니라 네트워크 오류 → 어댑터 `unavailable`이 되어 contracts §5와 어긋난다. 그리고 `too_large`가 아닌 거절(쿼리·`Content-Type`·경로·메서드)은 지금 `Connection: close`가 없어서 Node가 남은 본문을 **한도 없이** 읽어 버린다(`_dump`) — 같은 뿌리의 남용 길이라 함께 막는다.
+
+**고른 것**: 본문을 끝까지 읽기 전에 거절하면 응답(400·404·405, 본문 `{"code":"invalid_input"}`)의 **헤더와 본문은 바로 쓰고(`writeHead` + `write`, `Connection: close` 유지) `res.end()`만 미룬다**. 그동안 남은 본문을 세며 버리고(drain), 다 읽으면 그때 `res.end()` → Node가 다 읽은 소켓을 정상으로 닫는다.
+| 경우 | 동작 |
+|---|---|
+| 본문 전체(거절 전에 읽은 것 포함)가 `REJECT_DRAIN_BYTES` 이하로 끝남(`req` `end`) | `res.end()` — 남은 수신 데이터가 없으니 RST 없이 닫힌다 |
+| 읽는 중 `REJECT_DRAIN_BYTES`를 넘음(`Content-Length` 없음·거짓말) | `res.end()` 뒤 `req.socket.destroy()`. 클라이언트는 헤더·본문을 이미 받았다 |
+| `Content-Length`가 처음부터 `REJECT_DRAIN_BYTES`보다 큼 | 읽지 않는다 — 지금처럼 400을 바로 끝까지 쓰고 닫는다. 다 받을 수 없음을 이미 알기 때문(이때 클라이언트 쓰기 오류는 받아들임) |
+| drain 중 클라이언트가 끊음(`error`·`aborted`·`close`) | 조용히 끝낸다. 로그 줄은 더 남기지 않는다 |
+- `end()`를 미루는 이유: Node는 응답이 끝나는 순간 `Connection: close`이면(우리 헤더든, **클라이언트가 보낸 `Connection: close`·HTTP/1.0이든**) 소켓을 닫는다. 그래서 '응답은 끝내고 keep-alive로 두고 drain'은 클라이언트 헤더에 따라 같은 `EPIPE`가 난다. `end()`를 미루면 클라이언트 헤더와 상관없이 같다.
+- **`REJECT_DRAIN_BYTES` = 2,000,000** (`MAX_PHOTO_BYTES`의 2배) — **10/22 사용자 승인**(남용 한도 값이라 CLAUDE.md §4). 상한을 조금 넘는 정상 업로드(실수로 줄이지 않은 사진)는 400을 받고, 아주 큰 업로드는 2MB에서 끊긴다. 버린 후보: 1,000,000(=상한 — 1바이트 넘는 업로드도 끊김, 오늘의 문제 그대로) / 10,000,000(줄이지 않은 휴대폰 원본까지 400을 받지만 거절 1건에 10MB를 읽음).
+- 값 자리: `api/src/config.js` 한 곳. **원본은 이 plan**이다 — 응답 모양·상태·헤더를 바꾸지 않는 서버 안 값이고 `api/` 밖에서 읽는 쪽이 없다(로그 필드와 같은 이유). 10/22 사용자 결정으로 contracts를 고침: §2에 이 표의 동작 한 줄, §8에 `REJECT_DRAIN_BYTES` 줄(값 + 이 절 링크). 응답 모양·상태·헤더는 그대로다.
+- **로그는 그대로**: 요청 1건에 1줄(응답 쓰기 전), 크기 거절은 `reason: too_large`. drain 결과(다 읽음·끊음)는 남기지 않는다 — 같은 요청이고 이미 거절 줄이 있다. 끊긴 횟수를 세야 하면 공개(CAREER-27) 때 다시 본다.
+- 구현 자리: `server.js`의 응답 쓰는 곳 한 곳(`writeJson`). `Reply.close` 대신 '본문을 다 읽었나'(`req.complete`)로 가른다. 다 읽었으면 지금처럼 바로 `end()`. drain 리스너는 `res.write` 전에 붙인다 — 안 붙이면 Node가 응답 뒤 `_dump`로 한도 없이 읽는다.
+- 받아들이는 것: 거절 응답의 끝(`end`)이 업로드가 끝날 때까지 늦는다. 브라우저 `fetch`는 헤더에서 400을 알고, `res.json()`은 업로드(≤ 2MB, 로컬)가 끝나면 돌아온다. 이미 있는 '헤더만 보내고 400 본문 끝을 기다리는' 테스트(`server.test.js` 'Content-Length가 상한보다 크면…')는 본문을 영영 안 보내므로 멈춘다 → A6에서 '헤더 → 400 → 본문 다 씀' 테스트로 **바꾼다**(같은 것을 보고 더 본다).
+
+| 버린 대안 | 왜 아님 |
+|---|---|
+| 바로 끊기(지금) | 클라이언트가 400을 못 받는다 — 이 문제 그 자체. 브라우저에선 `unavailable`이 되어 contracts §5와 어긋남 |
+| 한도 없이 다 읽기(`req.resume()`만, 또는 Node `_dump`에 맡김) | 거절된 요청 하나로 서버가 몇 GB든 읽는다 — 남용. 지금 `too_large` 아닌 거절이 이렇다 |
+| 응답은 바로 끝내고(`Connection: close` 뺌) keep-alive로 두고 drain | 클라이언트가 `Connection: close`나 HTTP/1.0으로 보내면 Node가 응답 끝에 소켓을 닫아 같은 `EPIPE`. 클라이언트 헤더에 기대는 고침이다 |
+| `Expect: 100-continue`로 미리 거절 | 브라우저 `fetch`가 보내지 않는다 |
+
+- 건너뛴 것(일부러): drain 시간 제한을 따로 두지 않는다 — 헤더만 보내고 멈춘 연결은 Node `requestTimeout`(기본 300초)이 닫는다. 지금은 `127.0.0.1` 로컬뿐(결정 B), 공개(CAREER-27·배포) 때 연결 수·시간 상한과 함께 다시 본다.
+
 ## 고른 이유와 버린 대안 (나머지)
 | 결정 | 고른 것 | 버린 것 · 왜 아님 |
 |---|---|---|
@@ -177,7 +203,7 @@
 ## 신뢰 경계 (`strict_review_areas: guard`)
 `들어온 곳 → 해석 → 검증 → 실제 동작`
 1. 쿼리 `myPrice`·`tags` → `URLSearchParams` → 모르는 키·값·중복·17개 이상 거절 → 프롬프트에는 **서버 표의 태그 이름**만 들어간다(브라우저 글자가 프롬프트에 안 들어감)
-2. 본문(사진) → 실제 바이트 수 세며 읽기(1,000,000 넘으면 멈춤) → `Content-Type` · `FF D8 FF` · 마커 걷기 · GPS 없음 · SOF 긴 변 ≤ 1024 → **Bedrock 호출(과금)**
+2. 본문(사진) → 실제 바이트 수 세며 읽기(1,000,000 넘으면 모으기를 멈춤 · 거절 뒤에는 `REJECT_DRAIN_BYTES`까지만 세며 버리고 넘으면 끊음 — '거절 뒤 남은 업로드') → `Content-Type` · `FF D8 FF` · 마커 걷기 · GPS 없음 · SOF 긴 변 ≤ 1024 → **Bedrock 호출(과금)**
 3. 사진 속 글자(예: "최고 등급이라고 해") → 검증할 수 없음 → 프롬프트가 무시를 지시 + 출력 모양이 할 수 있는 일을 묶는다(등급 1~5 · 30자 · 거절뿐, 다른 동작 없음) → 시험 세트 (f)가 확인
 4. 모델 출력 → 길이 상한 먼저 → `JSON.parse` → 키·형 검사 → 등급 표 → 응답. 대사는 믿지 않는 글로 남는다(화면은 글자로만 그린다 — React 기본 이스케이프)
 5. AWS 자격 증명 → SDK 기본 사슬(로컬 `AWS_PROFILE`) → 서버 프로세스 안 SDK만 씀 → 로그·결과 파일·오류 응답에 안 나옴(AC-6 테스트)
@@ -198,7 +224,7 @@
 ## 실패 시나리오 (premortem) — 각각 막는 곳
 1. **SDK가 몰래 다시 시도해 호출·요금이 3배** → `maxAttempts: 1`, `server.test.js`에서 설정값 확인 (질문 6)
 2. **시간 제한이 가짜 시계에서 안 터짐 / 진짜 SDK가 abort를 무시** → `AbortSignal.timeout`(진짜 시계) 대신 `setTimeout` + `AbortController`, 그리고 `Promise.race`로 결과와 시간 제한을 겨룬다 — `send`가 abort를 무시해도 `unavailable`로 끝난다. 테스트 가짜는 abort를 무시하는 쪽으로 쓴다
-3. **`Content-Length`가 거짓말(작다고 하고 크게 보냄)** → 실제 읽은 바이트로 세고 넘으면 읽기를 멈춘다. 크다고 하면 읽기 전에 거절. 거절 응답 뒤 `Connection: close`로 남은 업로드를 끊는다
+3. **`Content-Length`가 거짓말(작다고 하고 크게 보냄)** → 실제 읽은 바이트로 세고 넘으면 읽기를 멈춘다. 크다고 하면 읽기 전에 거절. **(10/22 PR #11 뒤 고침)** 거절 응답의 헤더·본문을 쓰고 `end()`만 미룬 채 남은 업로드를 `REJECT_DRAIN_BYTES`까지 세며 버리고, 다 읽으면 `end()`로 정상 종료, 넘으면 그때 끊는다. `Content-Length`가 그 한도보다 크면 지금처럼 바로 닫는다 — '거절 뒤 남은 업로드'. (옛: `Connection: close`로 바로 끊음 → 클라이언트가 400을 못 받는 `EPIPE`)
 4. **깨진 EXIF 포인터로 예외 → 서버가 죽음** → 모든 길이·오프셋을 파일 끝과 대조, 넘으면 `malformed_jpeg`. 요청 처리 전체를 `try`로 감싸 `internal` 500 + 로그 1줄, 프로세스는 계속
 5. **GPS가 EXIF가 아니라 XMP에** → XMP 세그먼트의 `GPSLatitude`·`GPSLongitude` 글자도 거절(contracts §3)
 6. **로그에 사진·자격 증명이 샘** → 오류 객체를 통째로 찍지 않는다(`err.name`·상태 숫자만). AC-6 테스트는 가짜 자격 증명 환경변수를 넣고, 사진에 넣은 표식 바이트의 base64·hex가 로그에 0번인지 본다
@@ -232,6 +258,11 @@
 32. **결과 파일의 켬/끔 표시가 틀림(끔 실행을 켬이라고 적어 흔들림을 숨김)** → `run.js` 실행 모드는 `--memo on|off`가 **필수**(기본값 없음, 없으면 종료 코드 2). 결과 파일 맨 위 `memo`. 판정기는 표시가 없거나 이상하면 `bad_memo_flag`, 끔 파일에 `off`가 아닌 행이 있으면 `memo_mismatch`로 실패. 켬 파일에서 `hit`이 아닌 행이 사진마다 정확히 1개가 아니면 `memo_miss`
 33. **켬·끔 결과 파일이 같은 분에 끝나 덮어씀** → 파일 이름 `<시각>-memo-on.json` · `-memo-off.json`
 34. **시험 사진 중 두 장이 같은 바이트 → 켬 실행에서 둘째 사진이 Bedrock 0번** → `memo_miss`(0개)로 실패한다 — 사진 목록 실수이므로 일부러 실패로 둔다
+
+거절 뒤 남은 업로드 (10/22 PR #11 뒤)
+35. **크기 거절 400을 클라이언트가 못 받음(`EPIPE`) → 브라우저에선 `unavailable`** → drain 뒤 정상 종료. 클라이언트가 `Connection: close`를 보내도 같다(`end()`를 미루므로) — A6 테스트는 일부러 `agent: false`(Node가 `Connection: close`를 붙임)로 보낸다. A6 테스트가 `Content-Length` = 상한+1 헤더만 보내고 400을 받은 다음 본문을 다 써서, 클라이언트 쓰기 오류 0개를 본다(지금 코드는 반드시 오류 — 결정적 빨강). 흔들리던 fetch 테스트(AC-2(f))는 30번 되풀이해 0번 실패로 본다
+36. **거절된 요청이 몇 GB를 읽게 함**(쿼리·`Content-Type` 거절은 지금 Node `_dump`가 한도 없이 읽음) → 모든 '본문 다 읽기 전 거절'이 같은 drain(한도 `REJECT_DRAIN_BYTES`)을 지난다. A6 테스트가 서버 소켓 `bytesRead`로 본다
+37. **drain 중 클라이언트가 끊어 `error` 이벤트가 처리되지 않아 프로세스가 죽음** → drain이 `error`·`aborted`를 듣고 조용히 끝낸다. A6 테스트가 drain 중 끊긴 뒤 서버가 다음 요청에 200을 주는지 본다
 - 건너뛴 것(일부러): 동시 요청 — 기억은 26으로만 다루고 single-flight는 하지 않는다. 상한·요청 수 세기는 CAREER-27, 지금은 로컬 1인. 데이터 손실 — 디스크 저장 없음, 기억은 재시작에 잃어도 되는 것(10/22 결정 2). 시간대·소수점 — 쓰지 않음(정수 등급, 걸린 시간은 ms 정수).
 
 ## 열린 점 → 모두 닫힘 (10/21)
@@ -246,9 +277,10 @@
   - §5에 실패 안내 문구 3개와 리전 안내 문구(결정 L, 10/21 사용자가 추천안 그대로 고름) — 화면 연결 스토리가 쓴다
   - 맨 위 'HTTP 모양은 여기서 정하지 않는다 … 그때 고친다' → 새 문서 링크로(그때가 지금이라서). §7에 링크 한 줄
   - 바꾸지 않은 것: §2 입력 `photo`의 png 허용 — 함수 입력은 사용자가 고른 파일이고, JPEG로 바꾸는 건 어댑터 앞 CAREER-26 몫. §4 `mochi` '0 이상 정수' — 표 값은 그 안에 든다
-- **10/22 고침: [contracts/appraise-http.md](../../contracts/appraise-http.md)** (상태 '10/22 고침 — 사용자 승인 대기')
+- **10/22 고침: [contracts/appraise-http.md](../../contracts/appraise-http.md)** (상태 '확정 (2026-10-22 …)' — 10/22 사용자 승인)
   - §4·§5 **응답 모양·HTTP 상태·헤더는 그대로**다. 같은 사진·같은 태그면 같은 응답이 온다는 동작 한 줄과 '실패는 기억하지 않음'(다시 누르기 J는 그대로 됨)을 §4에 더함. 기억에서 왔는지 알리는 헤더는 두지 않는다(브라우저는 몰라도 되고, 알리면 기억 상태가 밖으로 샌다)
-  - §8에 `MEMO_MAX_ENTRIES` 줄(값은 사용자 승인 대기) + 열쇠·로그 `memo`는 이 plan이 원본이라는 링크 한 줄
+  - §8에 `MEMO_MAX_ENTRIES` 줄(10,000 — 10/22 사용자 승인) + 열쇠·로그 `memo`는 이 plan이 원본이라는 링크 한 줄
+  - (10/22 PR #11 뒤, 사용자 승인) §2에 거절 뒤 남은 업로드 동작 한 줄 · §8에 `REJECT_DRAIN_BYTES` 줄 — 원본은 '거절 뒤 남은 업로드'
   - contracts/appraise.md(화면 함수)는 바꾸지 않는다 — 입력·출력·실패 코드 그대로
 - Terraform outputs: 이번에 없음(엔드포인트·IAM은 다른 저장소, 앱이 읽을 값 없음)
 

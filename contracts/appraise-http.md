@@ -1,6 +1,6 @@
 # 감정 서버 입구 약속 — `POST /api/appraise`
 
-- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음)
+- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES` · 10/22 거절 뒤 남은 업로드(사용자 승인) — §2 동작 한 줄 · §8 `REJECT_DRAIN_BYTES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음)
 - 근거: [specs/CAREER-25-real-appraise/plan.md](../specs/CAREER-25-real-appraise/plan.md) · 결정 E~I (CAREER-25 spec '정해진 것')
 - 이 문서는 **브라우저(감정 어댑터) ↔ 서버(`api/`)** 사이 약속이다. 서버는 CAREER-25가, 사진을 보내는 쪽은 CAREER-26이, 어댑터는 화면 연결 스토리(결정 A)가 만든다. 화면 쪽 함수 모양은 [appraise.md](appraise.md)가 원본이고, 이 문서는 그 아래 HTTP 모양만 정한다.
 - CAREER-26 spec과 대조(10/21, 앞 세션이 읽음): AC-1(1024px로 줄여 보냄)은 §3-4와, AC-5(서버 입구로만 한 번)는 §1 같은 출처 `/api/appraise`와, AC-7(서버 거절을 `invalid_input`으로 봄)은 §5 400과 맞다. AC-9(a)(d)는 아래 §2 마지막 줄로 대응한다.
@@ -29,7 +29,8 @@ Content-Length: 183204
 | 본문 | 사진 바이트 그대로. base64·JSON·multipart가 아니다. 1바이트 이상, 최대 `MAX_PHOTO_BYTES` |
 | `MAX_PHOTO_BYTES` | **1,000,000 바이트** (십진 1MB) — 이 값과 **같으면 통과, 1바이트라도 넘으면 거절** |
 
-- 크기는 `Content-Length`를 믿지 않고 **실제로 읽은 바이트**로 센다. 읽는 중 상한을 넘으면 그 자리에서 읽기를 멈춘다(메모리에 다 올리지 않음). `Content-Length`가 상한보다 크면 본문을 읽지 않고 거절한다.
+- 크기는 `Content-Length`를 믿지 않고 **실제로 읽은 바이트**로 센다. 읽는 중 상한을 넘으면 그 자리에서 모으기를 멈춘다(메모리에 다 올리지 않음).
+- **본문을 다 읽기 전에 거절하면**(크기뿐 아니라 쿼리·`Content-Type`·경로·메서드 거절도 같음): 서버는 응답(400·404·405, 본문 `{"code":"invalid_input"}`)의 헤더와 본문을 먼저 쓰고, 남은 본문을 `REJECT_DRAIN_BYTES`(§8)까지 읽어 버린 뒤 응답을 끝낸다. 한도를 넘으면 연결을 끊는다(응답은 이미 보냈다). `Content-Length`가 처음부터 그 한도보다 크면 읽지 않고 응답을 끝내고 닫는다 — 이때 보내는 쪽은 쓰기 오류를 볼 수 있다. 응답 모양·상태는 그대로다.
 - 브라우저 쪽(CAREER-26)은 `fetch(url, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: jpegBlob })` 꼴로 보낸다. 쿼리는 `URLSearchParams`로 만든다.
 - 이 약속에는 '사진 칸'이 따로 없다(본문이 곧 사진). 그래서 **본문이 비었거나 `Content-Type`이 `image/jpeg`가 아니면 `invalid_input`**이다 — CAREER-26 AC-9(a)(d)('사진 칸이 없는 요청' 등)는 이것으로 대응한다.
 
@@ -114,6 +115,7 @@ Cache-Control: no-store
 | `TOP_K` | 1 (Nova `additionalModelRequestFields.inferenceConfig.topK`) — 10/22 사용자 승인: E3에서 온도 0만으로는 같은 사진 등급이 흔들림 | 같은 사진 같은 등급(결정 K) |
 | `LINE_MAX_CHARS` | 30 | §4 |
 | `MEMO_MAX_ENTRIES` | **10,000** (10/22 사용자 승인) (항목 하나 약 0.4KB → 약 4MB). 넘으면 가장 오래 안 쓴(LRU) 것부터 버림. **0이면 기억 끔**. 음수·소수·숫자 아님은 서버를 만들 때 오류 | §4 '같은 사진·같은 태그' · CAREER-25 AC-17 |
+| `REJECT_DRAIN_BYTES` | **2,000,000** (10/22 사용자 승인) — 거절 뒤 남은 본문을 읽어 버리는 한도, 넘으면 끊음. 값·이유의 원본은 [plan '거절 뒤 남은 업로드'](../specs/CAREER-25-real-appraise/plan.md) | §2 거절 뒤 남은 업로드 |
 
 - 기억 켜기/끄기는 `MEMO_MAX_ENTRIES` 하나로만 정한다(환경변수 없음). 테스트·시험 실행은 서버 인스턴스에 작은 상한·0을 따로 넣는다 — 방법과 열쇠 모양, 로그 필드 `memo`(값 `null`·`off`·`hit`·`miss`·`raced`), 열쇠 해시를 로그에 남기지 않는 것은 [plan '요청 한 건의 흐름'·'열린 질문 8 답'](../specs/CAREER-25-real-appraise/plan.md)이 원본이다
 

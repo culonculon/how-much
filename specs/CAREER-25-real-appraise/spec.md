@@ -1,6 +1,6 @@
 [CAREER-25](https://culonculon98.atlassian.net/browse/CAREER-25)
 
-상태: 승인됨 (2026-10-22) — 10/21 승인본에 10/22 결정 1~3을 반영함(AC-12 (d) 나눔 · AC-13 · AC-16 맞춤 · AC-17 추가 · 결정 · 안 할 것 · 비용 · 질문 8)
+상태: 승인됨 (2026-10-22) — 10/21 승인본에 10/22 결정 1~3을 반영함(AC-12 (d) 나눔 · AC-13 · AC-16 맞춤 · AC-17 추가 · 결정 · 안 할 것 · 비용 · 질문 8) · 10/22 AC-14 (d) 문구(PR #11 리뷰 뒤 사용자 결정)
 <!-- 사용자가 읽고 승인하면 "상태: 승인됨 (YYYY-MM-DD)"로 바꾼다. architect는 '승인됨'일 때만 시작한다. -->
 
 ## 문제
@@ -96,7 +96,7 @@
 - AC-14 Nova Pro로 가는 길이 Terraform에 있다 (`culonculon/aws-infra-portfolio`, 결정 D)
   - 주어진: `culonculon/aws-infra-portfolio`의 PR(이 스토리 PR 설명에 링크)과 그 PR의 CI 결과
   - 할 때: 그 PR의 plan 출력과 바뀐 `.tf`를 본다
-  - 그러면: (a) v1 EC2가 있는 VPC에 `com.amazonaws.ap-northeast-2.bedrock-runtime` Interface 엔드포인트가 만들어지고 private DNS가 켜져 있다 (b) 엔드포인트 보안 그룹은 443만, EC2 보안 그룹에서만 받는다 (c) EC2 IAM 정책의 Action은 사용자가 정한 목록(열린 질문 7)뿐이고 Resource에 `*`가 없다 (d) `terraform fmt -check` · `terraform validate` 통과, trivy HIGH·CRITICAL 0건. 누구도 세션에서 `terraform apply`를 돌리지 않는다
+  - 그러면: (a) v1 EC2가 있는 VPC에 `com.amazonaws.ap-northeast-2.bedrock-runtime` Interface 엔드포인트가 만들어지고 private DNS가 켜져 있다 (b) 엔드포인트 보안 그룹은 443만, EC2 보안 그룹에서만 받는다 (c) EC2 IAM 정책의 Action은 사용자가 정한 목록(열린 질문 7)뿐이고 Resource에 `*`가 없다 (d) `terraform fmt -check` · `terraform validate` 통과, 이번 변경으로 생긴 trivy HIGH·CRITICAL 0건(원래 있던 항목은 따로 Jira 작업). 누구도 세션에서 `terraform apply`를 돌리지 않는다
 - AC-15 ADR-0002가 들어간다
   - 주어진: 이 스토리의 PR
   - 할 때: `docs/adr/`를 본다
