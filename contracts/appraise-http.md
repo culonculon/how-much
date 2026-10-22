@@ -1,6 +1,6 @@
 # 감정 서버 입구 약속 — `POST /api/appraise`
 
-- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-21 — 사용자 승인, 사용자 답 1~13 반영)
+- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음)
 - 근거: [specs/CAREER-25-real-appraise/plan.md](../specs/CAREER-25-real-appraise/plan.md) · 결정 E~I (CAREER-25 spec '정해진 것')
 - 이 문서는 **브라우저(감정 어댑터) ↔ 서버(`api/`)** 사이 약속이다. 서버는 CAREER-25가, 사진을 보내는 쪽은 CAREER-26이, 어댑터는 화면 연결 스토리(결정 A)가 만든다. 화면 쪽 함수 모양은 [appraise.md](appraise.md)가 원본이고, 이 문서는 그 아래 HTTP 모양만 정한다.
 - CAREER-26 spec과 대조(10/21, 앞 세션이 읽음): AC-1(1024px로 줄여 보냄)은 §3-4와, AC-5(서버 입구로만 한 번)는 §1 같은 출처 `/api/appraise`와, AC-7(서버 거절을 `invalid_input`으로 봄)은 §5 400과 맞다. AC-9(a)(d)는 아래 §2 마지막 줄로 대응한다.
@@ -59,6 +59,7 @@ Cache-Control: no-store
 - `mochi`: §6 표의 값 중 하나(0 이상 정수)
 - `line`: 공백만이 아니고, 줄바꿈·제어 문자가 없고, **30자 이하** — 30자 = 코드 포인트 수 `[...line].length <= 30`
 - 등급(1~5)은 브라우저로 보내지 않는다. 서버 안에서 표로 `mochi`를 정하는 데만 쓴다(결정 E)
+- **같은 사진·같은 태그면 같은 응답이다** (10/22, CAREER-25 결정 1·2): 사진 바이트가 같고 태그 묶음이 같으면(순서 상관없음, `myPrice`는 상관없음) 서버가 기억한 응답(성공 본문 또는 422 `refused`)을 다시 준다. 응답 모양·상태·헤더는 기억에서 왔든 아니든 **똑같고**, 기억에서 왔음을 알리는 헤더는 없다. 실패(`invalid_input` · `unavailable`)는 기억하지 않으므로 다시 보내면 새로 처리한다(화면 결정 J '다시 누르기'는 그대로 뜻이 있다). 서버를 다시 켜면 잊는다. 열쇠·개수 상한·로그는 서버 안 약속 — [plan '열린 질문 8 답'](../specs/CAREER-25-real-appraise/plan.md)
 
 ## 5. 응답 — 실패
 본문은 언제나 `{"code":"<code>"}` 하나뿐이다(이유·스택·모델 출력을 담지 않는다 — 이유는 서버 로그에만).
@@ -112,6 +113,9 @@ Cache-Control: no-store
 | `TEMPERATURE` | 0 | 같은 사진 같은 등급(결정 K) |
 | `TOP_K` | 1 (Nova `additionalModelRequestFields.inferenceConfig.topK`) — 10/22 사용자 승인: E3에서 온도 0만으로는 같은 사진 등급이 흔들림 | 같은 사진 같은 등급(결정 K) |
 | `LINE_MAX_CHARS` | 30 | §4 |
+| `MEMO_MAX_ENTRIES` | **10,000** (10/22 사용자 승인) (항목 하나 약 0.4KB → 약 4MB). 넘으면 가장 오래 안 쓴(LRU) 것부터 버림. **0이면 기억 끔**. 음수·소수·숫자 아님은 서버를 만들 때 오류 | §4 '같은 사진·같은 태그' · CAREER-25 AC-17 |
+
+- 기억 켜기/끄기는 `MEMO_MAX_ENTRIES` 하나로만 정한다(환경변수 없음). 테스트·시험 실행은 서버 인스턴스에 작은 상한·0을 따로 넣는다 — 방법과 열쇠 모양, 로그 필드 `memo`(값 `null`·`off`·`hit`·`miss`·`raced`), 열쇠 해시를 로그에 남기지 않는 것은 [plan '요청 한 건의 흐름'·'열린 질문 8 답'](../specs/CAREER-25-real-appraise/plan.md)이 원본이다
 
 ## 9. 환경변수
 | 이름 | 누가 읽나 | 값 |

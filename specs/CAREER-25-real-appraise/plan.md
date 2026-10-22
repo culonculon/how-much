@@ -1,36 +1,40 @@
 [CAREER-25](https://culonculon98.atlassian.net/browse/CAREER-25) · spec: [spec.md](spec.md) · 작업: [tasks.md](tasks.md) · 약속: [contracts/appraise-http.md](../../contracts/appraise-http.md) · [contracts/appraise.md](../../contracts/appraise.md) · 결정: [ADR-0002](../../docs/adr/0002-ai-call-bedrock-vpc-endpoint-nova-pro.md)
 
-상태: 승인됨 (2026-10-21 — 사용자가 질문 1~13에 답함. 아래 '고를 것'은 모두 답으로 바뀌었다)
+상태: 승인됨 (2026-10-22 — 사용자: MEMO_MAX_ENTRIES 10,000 · 기억 꺼낸 요청을 하루 상한에 셀지는 CAREER-27에서. 10/21 승인본 + spec 10/22 결정 1~3 반영: '열린 질문 8 답' 새로 · 파일 표 · 요청 흐름 · 로그 · 신뢰 경계 · 실패 시나리오 22~34. 사용자 승인이 필요한 값은 `MEMO_MAX_ENTRIES` 하나)
 
 ## 접근 방법
-`api/`를 `app/`·`e2e/`처럼 **독립 npm 패키지**(Node, ESM)로 만든다. 서버는 Node 기본 `node:http` 하나로 `POST /api/appraise`만 받고, `127.0.0.1`에 묶는다. 요청은 `쿼리 검사 → 본문 크기 → JPEG·위치 정보 검사 → Bedrock Converse(재시도·시간 제한) → 모델 출력 검사 → 등급 표 → { mochi, line }` 한 줄기로만 흐르고, 어느 단계에서 끝나든 요청 1건에 로그 1줄을 남긴다. Bedrock 클라이언트는 밖에서 넣어 주므로(`send` 함수 하나) 테스트는 가짜 `send`로 호출 수·입력을 센다. 시험 세트는 `api/eval/`에 두고, 실행 명령이 같은 프로세스에서 **실제 서버를 빈 포트로 띄워 HTTP로** 부른다 — 프롬프트·출력 검사·등급 표를 복사하지 않고, 실행 명령이 AWS를 직접 부르지 않는다.
+`api/`를 `app/`·`e2e/`처럼 **독립 npm 패키지**(Node, ESM)로 만든다. 서버는 Node 기본 `node:http` 하나로 `POST /api/appraise`만 받고, `127.0.0.1`에 묶는다. 요청은 `쿼리 검사 → 본문 크기 → JPEG·위치 정보 검사 → 기억 확인(있으면 Bedrock 건너뜀) → Bedrock Converse(재시도·시간 제한) → 모델 출력 검사 → 기억에 넣기(감정·거절만) → 등급 표 → { mochi, line }` 한 줄기로만 흐르고, 어느 단계에서 끝나든 요청 1건에 로그 1줄을 남긴다. Bedrock 클라이언트는 밖에서 넣어 주므로(`send` 함수 하나) 테스트는 가짜 `send`로 호출 수·입력을 센다. 시험 세트는 `api/eval/`에 두고, 실행 명령이 같은 프로세스에서 **실제 서버를 빈 포트로 띄워 HTTP로** 부른다 — 프롬프트·출력 검사·등급 표를 복사하지 않고, 실행 명령이 AWS를 직접 부르지 않는다.
 
 ### 만들어지는 파일 (모두 `api/` — 함께 쓰는 구역, 앞 세션)
 | 파일 | 하는 일 | AC |
 |---|---|---|
 | `api/package.json` · `api/package-lock.json` | `"type": "module"`, 스크립트 `start: node src/server.js` · `test: vitest run` · `eval: node eval/run.js`. 의존성 `@aws-sdk/client-bedrock-runtime`, 개발 의존성 `vitest`(app과 같은 메이저 5) | — |
-| `api/src/config.js` | contracts §8 값 **전부**(모델 id·리전·크기·시간·재시도·출력 상한·온도·30자). 이 문자열 `apac.amazon.nova-pro-v1:0`이 `api/`에 나오는 유일한 곳 | 1·4·5 |
+| `api/src/config.js` | contracts §8 값 **전부**(모델 id·리전·크기·시간·재시도·출력 상한·온도·topK·30자·**기억 상한 `MEMO_MAX_ENTRIES`** — 10/22). 이 문자열 `apac.amazon.nova-pro-v1:0`이 `api/`에 나오는 유일한 곳 | 1·4·5·17 |
+| `api/src/memo.js` (10/22 새로) | `memoKey(photo, tags)` → `<SHA-256 hex 64자>\|<태그 id 표 순서, 쉼표>` (`node:crypto`) · `createMemo({ maxEntries })` → `{ enabled, get(key), remember(key, result), entries() }`. Map 하나, LRU, `maxEntries` 0이면 끔. 사진 바이트를 받지만 담지 않는다 | 17 |
 | `api/src/input.js` | 마음 가격 id·태그 id·이름(contracts/appraise.md §2·§3 옮김) + `checkQuery(searchParams)` → `{ myPrice, tags }` 또는 `InputError(reason)` | 2(a)~(d) |
 | `api/src/jpeg.js` | `checkJpeg(bytes)` → 통과 또는 `InputError(reason)`. 마커 걷기 · EXIF IFD0 `0x8825` · XMP GPS 글자 · SOF 가로·세로의 긴 변 ≤ 1024 (contracts §3) | 2(e)(g) + 픽셀 상한 |
 | `api/src/grades.js` | 등급 1~5 · 뜻 · `mochi` 표(contracts §6) — 표가 있는 유일한 곳. `mochiOf(grade)` · `gradeOf(mochi)` | 1 · 12 |
 | `api/src/prompt.js` | Converse 요청 만들기: 시스템 지시(등급 뜻은 `grades.js`에서, 태그 이름은 `input.js`에서) + 사진 바이트(`format: 'jpeg'`) + `inferenceConfig`(config 값) | 1 · 12 |
 | `api/src/output.js` | `countChars(s)`(코드 포인트) · `checkLine(line)` · `parseModelOutput(text, stopReason)` → `{ grade, line }` · `{ refused: true }` · `OutputError(reason)` (contracts §7) | 3 · 13 |
 | `api/src/bedrock.js` | `callWithRetry(send, command, { timeoutMs, maxRetries, backoffMs })` — 일시 오류 분류 · 지수 대기 · 전체 시간 제한 · 시도 수 반환 | 4 · 5 |
-| `api/src/server.js` | `createServer({ send, log })` · 경로·메서드 · 본문 읽기(상한) · 위 단계 이어 붙이기 · 응답 JSON · 로그 1줄. 직접 실행하면 `127.0.0.1:PORT`에 뜬다. 진짜 `BedrockRuntimeClient`(`maxAttempts: 1`, 리전 config)는 여기서만 만든다 | 1·2·6 |
+| `api/src/server.js` | `createServer({ send, log, memo })` · 경로·메서드 · 본문 읽기(상한) · 위 단계 이어 붙이기 · 응답 JSON · 로그 1줄. `memo`를 안 주면 **그 서버 인스턴스마다** `createMemo({ maxEntries: MEMO_MAX_ENTRIES })`를 새로 만든다(10/22). 직접 실행하면 `127.0.0.1:PORT`에 뜬다. 진짜 `BedrockRuntimeClient`(`maxAttempts: 1`, 리전 config)는 여기서만 만든다 | 1·2·6·17 |
 | `api/tests/helpers.js` | 합성 JPEG 만들기(GPS 있음/없음 · 다른 EXIF · 정확한 바이트 수 채우기) · 가짜 `send` · 로그 모으기 · 서버를 빈 포트로 띄우기 | — |
 | `api/tests/input.test.js` | AC-2 (a)~(d) + 쿼리 모서리 + **태그·마음 가격 id가 contracts/appraise.md 표와 같은지**(파일을 읽어 비교) | 2 |
 | `api/tests/jpeg.test.js` | AC-2 (e)(g) + GPS 없는 EXIF 통과 + 깨진 세그먼트 거절 | 2 |
 | `api/tests/output.test.js` | AC-3 (a)~(f) + 울타리 벗기기 + `max_tokens` + `refuse` | 3 |
 | `api/tests/bedrock.test.js` | AC-4 (a)~(e) + AC-5 (가짜 시계) | 4·5 |
-| `api/tests/server.test.js` | AC-1(등급 1~5) · AC-2 HTTP로 (a)~(g) + 크기 경계(f) · AC-6 로그 · contracts §4·§5 모양 · `127.0.0.1` 묶임 | 1·2·6 |
-| `api/tests/judge.test.js` | AC-13: `node eval/run.js --judge <파일>`을 자식 프로세스로 돌려 종료 코드·출력 확인 | 13 |
+| `api/tests/server.test.js` | AC-1(등급 1~5) · AC-2 HTTP로 (a)~(g) + 크기 경계(f) · AC-6 로그 · contracts §4·§5 모양 · `127.0.0.1` 묶임. **10/22: 공통 준비가 `memo: createMemo({ maxEntries: 0 })`(끔)을 넣는다** — 같은 사진을 되풀이해 부르는 AC-1~6 테스트가 기억과 섞이지 않게 | 1·2·6 |
+| `api/tests/memo.test.js` (10/22 새로) | `memoKey`·`createMemo` 단위(LRU · 상한 · 0=끔 · 잘못된 상한은 던짐 · 복사본 · 얼림) + HTTP로 AC-17 (a)~(h) + 동시 같은 열쇠(`raced`) | 17 |
+| `api/tests/judge.test.js` | AC-13: `node eval/run.js --judge <파일>`을 자식 프로세스로 돌려 종료 코드·출력 확인. 10/22: (g) `memo_miss` · (h) 끔 파일 흔들림 보고 · `bad_memo_flag` · `memo_mismatch` | 13 |
+| `api/tests/live.test.js` | 실행 모드: 같은 프로세스·빈 포트 · 결과 행 필드 · 멈춤. 10/22: 행에 `memo` · `--memo` 없으면 계획만 보이고 멈춤 · 켬 실행은 사진마다 Bedrock 1번 | 12 |
 | `api/eval/criteria.js` | 판정 목록(존댓말 끝말 · 사람 가리키는 말) · `ROUNDS`(K) | 12·13 |
-| `api/eval/judge.js` | `judge(results, cases)` → 걸린 것 목록(사진 · 회차 · 기준 · 값) | 12·13 |
-| `api/eval/run.js` | 기본: 서버를 같은 프로세스에 빈 포트로 띄워 사진마다 K번 차례로 부름 → `eval/results/<시각>.json` → 판정. `--judge <파일>`: 부르지 않고 판정만 | 12·13 |
+| `api/eval/judge.js` | `judge(results, cases)` → 걸린 것 목록(사진 · 회차 · 기준 · 값). 10/22: 파일의 `memo`(`on`·`off`)에 따라 (d)①/② · `driftCounts(results, cases)` → `[{ photo, count }]`(보고용) | 12·13 |
+| `api/eval/live.js` | `runLive({ send, cases, photosDir, rounds, log, onRow, memo })` — 서버를 같은 프로세스·빈 포트로 띄워 차례로 부름. 10/22: `memo`를 `createServer`로 넘기고, 요청마다 로그 줄의 `memo`를 결과 행에 옮긴다 | 12 |
+| `api/eval/run.js` | 기본: 실행 모드(`--memo on\|off` **필수**, 기본값 없음) → `eval/results/<시각>-memo-<on\|off>.json` → 판정. `--judge <파일>`: 부르지 않고 판정만, 끔 파일이면 `DRIFT` 줄 출력 | 12·13 |
 | `api/eval/cases.json` | 사진마다 `{ file, expect: "appraise"\|"refuse", kinds: [...], injectedGrade? }` | 11 |
 | `api/eval/photos/*.jpg` | 사진 8~12장 (사용자가 고름) | 11 |
-| `api/eval/fixtures/*.json` | 판정 모드용 결과 파일: 통과 1 + AC-13 (a)~(f) 6 | 13 |
-| `api/eval/results/*.json` | 진짜 실행 결과(커밋해 PR 증거로) | 12 |
+| `api/eval/fixtures/*.json` | 판정 모드용 결과 파일: 통과 1 + AC-13 (a)~(f) 6 + 거절 놓침 1. 10/22: 모두 `"memo": "on"`과 행 `memo`를 더하고, (g) `fail-memo-miss.json` · (h) `drift-memo-off.json` 새로 | 13 |
+| `api/eval/results/*.json` | 진짜 실행 결과(커밋해 PR 증거로). 10/22 앞 세 파일(`20261022-1033`·`1035`·`1037`)은 `memo` 표시가 없는 옛 증거라 새 판정기로는 `bad_memo_flag`가 난다 — 다시 판정하지 않는다 | 12 |
 
 - 나누지 않은 것: 로그는 `server.js` 안 `console.log(JSON.stringify(...))` 한 곳(파일을 따로 두지 않음). lint는 `api/`에 걸지 않는다(`e2e/`와 같음 — 범위 밖, 아래 '범위 밖').
 - `app/`·`infra/`·`e2e/`는 건드리지 않는다(AC-16).
@@ -42,17 +46,30 @@
 | 쿼리 | `invalid_input` · `bad_query_key` · `bad_my_price` · `bad_tag` · `dup_tag` · `too_many_tags` |
 | 헤더·크기 | `invalid_input` · `bad_content_type` · `empty_body` · `too_large` |
 | JPEG | `invalid_input` · `not_jpeg` · `malformed_jpeg`(SOF 없음·가로세로 0 포함) · `gps_present` · `too_many_pixels` |
+| **기억 확인** (10/22) | 끝나지 않는다. 열쇠 `memoKey(photo, tags)`(`tags`는 `checkQuery`가 이미 표 순서로 돌려준 것, `myPrice`는 안 씀) → 있으면 Bedrock·모델 출력 단계를 건너뛰고 기억한 `{ grade, line }`/`{ refused }`로 '등급 표'(또는 거절)로 간다 · `memo: "hit"`. 기억이 꺼졌으면 해시도 만들지 않는다 · `memo: "off"` |
 | Bedrock | `unavailable` · `bedrock_<오류 이름>`(예: `bedrock_ThrottlingException` — 재시도를 다 쓴 뒤) · `timeout` · `client_closed` |
 | 모델 출력 | `unavailable` · `output_too_long` · `max_tokens` · `not_json` · `bad_shape` · `bad_grade` · `bad_line` · `line_too_long` / `refused` · `model_refused` |
+| **기억에 넣기** (10/22) | 끝나지 않는다. `parseModelOutput`이 감정 또는 거절을 돌려준 **바로 뒤 한 곳**에서만 `memo.remember(key, parsed)`. 이미 같은 열쇠가 있으면(동시 요청이 먼저 끝남) 그 값을 돌려받아 응답한다 · `memo: "raced"`, 아니면 `memo: "miss"`. 위 어느 단계에서 끝나든(실패) 넣지 않는다 |
 | 그 밖 | `unavailable`(500) · `internal` — 처리하지 못한 예외. 프로세스는 죽지 않는다 |
 | 성공 | `ok` · `null` |
 
-로그 1줄(요청마다 정확히 1줄, stdout):
+로그 1줄(요청마다 정확히 1줄, stdout). 10/22 `memo` 필드를 더함:
 ```
-{"evt":"appraise","outcome":"ok","reason":null,"ms":1834,"attempts":1,"inputTokens":1520,"outputTokens":31,"grade":3}
+{"evt":"appraise","outcome":"ok","reason":null,"ms":1834,"attempts":1,"inputTokens":1520,"outputTokens":31,"grade":3,"memo":"miss"}
+{"evt":"appraise","outcome":"ok","reason":null,"ms":2,"attempts":0,"inputTokens":null,"outputTokens":null,"grade":3,"memo":"hit"}
+{"evt":"appraise","outcome":"refused","reason":"model_refused","ms":3,"attempts":0,"inputTokens":null,"outputTokens":null,"grade":null,"memo":"hit"}
 ```
+| `memo` | 뜻 | `attempts` |
+|---|---|---|
+| `null` | 기억 단계 전에 끝남(경로·쿼리·크기·JPEG의 `invalid_input`) | 0 |
+| `"off"` | 기억이 꺼진 서버(`maxEntries: 0`) | Bedrock 시도 수 |
+| `"hit"` | 기억에서 꺼냄 — Bedrock을 부르지 않음 | **0** |
+| `"miss"` | 기억에 없어 Bedrock을 부름. 성공·거절이면 넣었고, 실패면 안 넣음(`outcome`으로 가림) | 1 이상 |
+| `"raced"` | 기억에 없어 Bedrock을 불렀는데, 같은 열쇠의 다른 요청이 먼저 끝나 넣어 둠 → 그 값을 응답(실패 시나리오 26) | 1 이상 |
 - 사진 바이트·base64·쿼리 원문·모델 원문·오류 객체 통째·환경변수를 넣지 않는다. 오류는 `err.name`과 HTTP 상태 숫자만.
-- 토큰 수는 Converse 응답 `usage`에서. 응답을 못 받았으면 `null`.
+- **열쇠·해시는 로그에 한 글자도 넣지 않는다**(질문 8 답).
+- 토큰 수는 Converse 응답 `usage`에서. 응답을 못 받았거나 `hit`이면 `null`.
+- 로그 필드는 `api/` 안 약속이라 여기(plan)가 원본이다. spec AC-17 (g)는 'contracts에서'라 했지만, 로그를 읽는 쪽이 `api/` 밖에 없어(시험 실행 `eval/live.js`도 `api/` 안) contracts/appraise-http.md §8에는 이 표로 가는 링크 한 줄만 둔다.
 
 ## 열린 질문 1 답: 거절 모양 → **새 실패 코드 `refused` (10/21 사용자 확정)**
 - 모델은 `{"refuse": true}`를 내고(contracts §7), 서버는 422 `{"code":"refused"}`를 낸다. contracts/appraise.md §5에 `refused`를 더했다(확정).
@@ -75,6 +92,7 @@
 | 3 | 30 | 약 90원 | '모두 같음'이 우연히 맞기 쉽다 |
 | **5** | 50 | 약 150원 | 프롬프트를 몇 번 고쳐 다시 돌려도 1천 원 안쪽 |
 | 10 | 100 | 약 300원 | 흔들림을 더 잘 보지만 고칠 때마다 시간이 두 배 |
+- 10/22: 실행은 두 번이다 — 기억 켬(사진 10장 × 1 ≈ 10건, 나머지 회차는 기억에서) + 기억 끔(10장 × K = 50건) ≈ 60건 ≈ 180원/회. `--yes` 없이 돌리면 `run.js`가 켬/끔에 맞춘 예상 호출 수를 먼저 보여 준다.
 - 실행은 차례로(동시 아님) 부른다 — 요청 수 초과를 스스로 만들지 않는다. **`unavailable`·`invalid_input`이 한 번이라도 나오면 거기서 멈추고 종료 코드 1**(자격 증명·리전이 틀렸을 때 50번 다 쓰지 않음).
 
 ## 열린 질문 4 답: `api/` 테스트 — 누가 · 어디 · 무슨 명령
@@ -124,6 +142,27 @@
 - **apply 시점 → 배포 스토리 때**: PR은 지금 내고 머지하되 apply는 `api/`를 EC2에 배포하는 스토리 때 사용자가 한다 — 이번 스토리는 로컬만이라 엔드포인트를 아무도 안 쓰는데 시간 요금이 나간다. 버린 것: 머지 뒤 바로 apply.
 - **PR은 누가**: 앞 세션이 사용자와 그 저장소에서 낸다(이 저장소의 역할 구역 밖). 검사: 그 저장소의 `terraform fmt -check` · `validate` · trivy(HIGH·CRITICAL) · CI plan. 그 저장소 CI의 plan 역할에 data source용 `bedrock:GetInferenceProfile` 읽기 권한이 있는지 본다(없으면 plan이 실패).
 
+## 열린 질문 8 답 (10/22): 결과 기억의 세부
+전제(사용자 결정 1~3, 바꾸지 않음): 열쇠 = SHA-256(사진 바이트) + 표 순서 태그 · `myPrice` 안 넣음 · 서버 메모리 · 개수 상한(오래된 것부터 버림) · 재시작하면 잊음 · 사진 바이트 저장 안 함 · 실패 기억 안 함 · 디스크·DB 안 함 · 시험은 켬 1번(통과 기준) + 끔 1번(보고만).
+
+| 항목 | 추천 | 버린 대안 · 왜 아님 | 승인 |
+|---|---|---|---|
+| 개수 상한 값 `MEMO_MAX_ENTRIES` | **10,000** — 항목 하나 약 0.4KB(열쇠 최대 64 + 1 + 태그 16개 id ≈ 160자, 결과 `{ grade, line }` 30자, Map 칸) → 약 4MB | 1,000(약 0.4MB): CAREER-27 하루 상한이 하루 1,000건을 넘으면 하루 안에 같은 사진이 잊혀 다시 흔들린다 / 100,000(약 40MB): 작은 EC2에서 메모리를 눈에 띄게 쓰는데, 재시작이 어차피 다 잊어 오래 쥐는 이득이 작다 | **10/22 사용자 승인 — 10,000** |
+| 무엇을 '오래된 것'으로 | **LRU**(마지막으로 꺼낸 때) — `get`에서 `delete` 뒤 다시 `set` 한 줄. 버릴 때는 Map 첫 열쇠 | FIFO(넣은 때): 자주 다시 오는 사진(공유된 사진)이 새 사진 N장 뒤 잊혀 다시 감정되고, 그때 등급이 달라질 수 있다 — 기억의 목적(같은 사진 같은 값)과 어긋난다. AC-17 (d)는 둘 다 통과하므로 LRU만의 동작은 `memo.test.js` 단위 테스트로 따로 본다 | architect |
+| 켜기/끄기 설정 방법 | **상한 하나로**: `MEMO_MAX_ENTRIES`(config.js 한 곳)가 0이면 끔. 서버 인스턴스는 `createServer({ memo })`로 다른 기억을 받을 수 있다 — 테스트(상한 2·0)와 시험 실행(`--memo off` → `createMemo({ maxEntries: 0 })`)만 쓴다. 잘못된 상한(음수·소수·NaN·문자열)은 서버를 만들 때 던진다 | 환경변수(`MEMO=off`): 운영에서 몰래 꺼지면 비용·흔들림이 조용히 늘어난다 — `HOST`를 환경변수로 안 받는 것과 같은 이유 / 따로 `MEMO_ENABLED` 불린: 한 가지를 두 값으로 나타내 '켬 + 상한 0'처럼 어긋날 수 있다 | architect |
+| 로그 필드 이름 | **`memo`** — 값 `null`·`"off"`·`"hit"`·`"miss"`·`"raced"` (위 '로그 1줄' 표) | 불린 `cached`: '꺼짐'·'기억 단계 전에 끝남'·'동시 요청으로 두 번 부름'을 못 가른다 / 이름 `cache`: HTTP 캐시(`Cache-Control: no-store`)와 헷갈린다 | architect |
+| 열쇠 해시를 로그에 얼마나 | **안 남김** | 앞 8자: 같은 사진을 몇 번 보냈는지 로그끼리 이을 수 있게 되고, 사진을 가진 사람은 해시로 '이 사진이 왔었다'를 확인할 수 있다 — 지금 쓸 곳이 없다(hit/miss는 `memo`로 보임) / 전체 64자: 같은 이유가 더 강하다. CAREER-27에서 '같은 사진 되풀이'를 세야 하면 그때 다시 정한다 | architect |
+| 기억에서 꺼낸 요청을 CAREER-27 하루 상한에 셀지 | **추천만 — CAREER-27 스펙에서 정함.** 비용 상한은 Bedrock 호출 수(`attempts` 합)로 세면 `hit`은 저절로 0이다. 요청 수 제한(남용)은 `hit`을 포함한 모든 요청으로 센다. 이번 로그가 `memo`·`attempts`를 둘 다 남겨 어느 쪽이든 셀 수 있다 | 비용 상한에 `hit`도 셈: 돈이 안 든 요청으로 '퇴근'이 빨라진다 / 요청 수 제한에서 `hit` 뺌: 같은 사진만 무한히 보내는 부하를 못 막는다 | **CAREER-27에서 사용자 결정** |
+| 테스트에서 기억을 들여다보는 법 | **밖에서 넣고 본다**: `const memo = createMemo({ maxEntries: 2 }); createServer({ send, log, memo })` → `memo.entries()`(복사본 `[[열쇠, 결과], …]`)를 본다. `send`를 밖에서 넣는 것과 같은 꼴 | 모듈 전역 Map: 새 인스턴스가 잊지 않아 AC-17 (e)가 깨지고 테스트끼리 섞인다 / 테스트용 HTTP 경로(`GET /api/_memo`): 경로 하나 원칙(contracts §1)을 깨고 공개 때 새는 길이 된다 / `server.memo` 속성: 되지만 http.Server에 숨은 결합 | architect |
+
+더 정한 것(되돌리기 쉬움 — PR '결정' 칸, ADR 없음):
+- **열쇠 모양**: `<SHA-256 hex 64자>|<태그 id 표 순서, 쉼표로>` — 태그 0개면 `…|`로 끝난다. 해시는 `node:crypto` `createHash('sha256')`(의존성 0, 1MB에 수 ms). 태그 id에는 `|`·`,`가 없고 해시 길이가 고정이라 이어 붙여도 겹치지 않는다.
+- **모델 id·프롬프트 판은 열쇠에 넣지 않는다**: 기억이 메모리뿐이라 프롬프트·모델을 바꾸려면 서버를 다시 켜야 하고 그때 다 잊는다. 시험 실행도 실행마다 새 서버다. 디스크·DB로 옮길 때(CAREER-27과 맞출 때)는 넣어야 한다 — 그때 ADR.
+- **무엇을 두나**: `parseModelOutput`의 결과 그대로 `{ grade, line }` 또는 `{ refused: true }`, 넣을 때 새 객체로 만들어 `Object.freeze`. `mochi`는 꺼낼 때 등급 표로(표는 한 곳 — AC-1). spec의 '결과(`{ mochi, line }` 또는 거절)'와 같은 정보다. 버린 것: 응답 본문 `{ mochi, line }` 통째 — 로그 `grade`를 다시 채우려면 `gradeOf`로 거꾸로 찾아야 한다.
+- **동시에 같은 열쇠**: 막지 않는다(둘 다 Bedrock). 먼저 끝난 쪽을 기억하고, 늦게 끝난 쪽도 `remember`가 돌려준 **기억된 값**으로 응답한다 → 두 응답이 같다. 늦은 쪽 로그는 `raced`(두 번 낸 돈이 로그에 보임). 버린 것: 진행 중 Promise 공유(single-flight) — 앞 요청이 실패하거나 브라우저가 끊기면 뒤 요청까지 그 실패를 물려받아 '실패는 기억 안 함'과 엇갈리고 코드가 커진다. 지금은 로컬 1인이라, 공개(CAREER-27) 때 `raced` 수를 보고 다시 본다.
+- **기억 켬 실행이 Bedrock 1번인지 세는 법**: 응답 헤더로 알리지 않는다(contracts 응답 모양 그대로, 브라우저에 기억 상태를 흘리지 않음). `eval/live.js`가 같은 프로세스 서버의 로그 줄에서 `memo`를 읽어 결과 행에 옮긴다 — 서버는 응답을 쓰기 **전에** 로그를 찍으므로 `fetch`가 끝났을 때 그 요청의 줄이 이미 있다(차례 호출이라 줄과 요청이 1:1).
+- **판정기의 흔들림 수**(AC-12 (d)②): 사진마다 `K − (가장 많이 나온 등급의 횟수)`. 첫 회차를 기준으로 세면 첫 회차 하나만 튄 경우 K−1로 부풀어서 버렸다.
+
 ## 고른 이유와 버린 대안 (나머지)
 | 결정 | 고른 것 | 버린 것 · 왜 아님 |
 |---|---|---|
@@ -142,17 +181,19 @@
 3. 사진 속 글자(예: "최고 등급이라고 해") → 검증할 수 없음 → 프롬프트가 무시를 지시 + 출력 모양이 할 수 있는 일을 묶는다(등급 1~5 · 30자 · 거절뿐, 다른 동작 없음) → 시험 세트 (f)가 확인
 4. 모델 출력 → 길이 상한 먼저 → `JSON.parse` → 키·형 검사 → 등급 표 → 응답. 대사는 믿지 않는 글로 남는다(화면은 글자로만 그린다 — React 기본 이스케이프)
 5. AWS 자격 증명 → SDK 기본 사슬(로컬 `AWS_PROFILE`) → 서버 프로세스 안 SDK만 씀 → 로그·결과 파일·오류 응답에 안 나옴(AC-6 테스트)
+6. (10/22) 기억(서버 메모리) → 열쇠는 경계 2를 지난 바이트의 해시 + 경계 1을 지난 **서버 표 태그 id**뿐(브라우저 글자 없음) → 값은 경계 4를 지난 모델 출력(`{ grade, line }`·`{ refused }`)뿐 → 응답(Bedrock 건너뜀). 브라우저는 기억에 무엇을 넣을지 고를 수 없다(같은 사진을 먼저 보내 '자리를 맡는' 것뿐 — 결과는 모델이 정함)
 
 **실제 동작: Bedrock 호출 (유일한 과금 동작)**
 | 항목 | 값 |
 |---|---|
 | 누가 허락하나 | 지금은 아무 인증 없음 — 대신 `127.0.0.1`에만 묶이고 공개하지 않는다(결정 B). 하루 상한·요청 수 세기는 CAREER-27 (공개 전 필수) |
-| 바로 앞의 검증 | 경계 1·2 전부 통과 |
+| 바로 앞의 검증 | 경계 1·2 전부 통과, 그리고 기억에 없음(경계 6) |
 | 입력 최대 | 사진 1,000,000 바이트 · 긴 변 1024px + 고정 프롬프트 + 태그 이름 최대 16개 |
 | 출력 최대 | `maxTokens` 120 · 글 500자(넘으면 읽지 않음) |
-| 호출 수 최대 | 요청 1건에 `1 + MAX_RETRIES` = 3, 전체 20초 안 |
-| 남는 증거 | 요청마다 로그 1줄(결과·이유·시간·시도 수·토큰 수). 시험 실행은 결과 파일 |
-| 중간에 끊기면 | 저장하는 것이 없어 되돌릴 것이 없다. 브라우저가 끊으면(`req` `close`) 진행 중 Bedrock 호출을 중단하고 재시도하지 않는다(`client_closed`) — 이미 보낸 호출은 요금이 날 수 있다(받아들임) |
+| 호출 수 최대 | 요청 1건에 `1 + MAX_RETRIES` = 3, 전체 20초 안. 기억에서 꺼내면 0 (10/22) |
+| 남는 증거 | 요청마다 로그 1줄(결과·이유·시간·시도 수·토큰 수·`memo`). 시험 실행은 결과 파일(행마다 `memo`) |
+| 중간에 끊기면 | 디스크에 저장하는 것이 없어 되돌릴 것이 없다. 기억(메모리)에는 모델 출력 검사를 통과한 뒤에만 한 번에 넣으므로 반쯤 쓴 항목이 없다. 프로세스가 죽으면 기억은 다 사라진다(10/22 받아들임). 브라우저가 끊으면(`req` `close`) 진행 중 Bedrock 호출을 중단하고 재시도하지 않는다(`client_closed`, 기억에 안 넣음) — 이미 보낸 호출은 요금이 날 수 있다(받아들임) |
+| (10/22) 기억 최대 | `MEMO_MAX_ENTRIES`개(10,000 ≈ 4MB, 10/22 사용자 승인). 항목 크기도 묶여 있다 — 열쇠 ≤ 약 160자, 대사 ≤ 30자 |
 
 ## 실패 시나리오 (premortem) — 각각 막는 곳
 1. **SDK가 몰래 다시 시도해 호출·요금이 3배** → `maxAttempts: 1`, `server.test.js`에서 설정값 확인 (질문 6)
@@ -169,14 +210,29 @@
 12. **자격 증명·리전이 틀려 50번 다 실패하며 돈·시간 낭비** → 첫 `unavailable`·`invalid_input`에서 멈추고 종료 코드 1 (질문 3)
 13. **태그 목록이 화면과 서버에서 어긋남 → 맞는 선택도 `invalid_input`** → `input.test.js`가 contracts 표와 비교
 14. **서버와 판정이 30자를 다르게 셈** → 같은 `countChars`를 import
-15. **시험 세트 (d)가 가끔 흔들림** → 온도 0. 그래도 흔들리면 프롬프트(등급 뜻)를 고치고, 기준을 느슨하게 하지 않는다
+15. **시험 세트 (d)가 가끔 흔들림** → 온도 0 · topK 1 · "두 등급 사이면 낮은 쪽"(10/22). 10/22 E3 세 번에서 그래도 흔들려(같은 입력 토큰) 프롬프트·샘플링으로는 못 잡는다고 보고, 결정 1~3대로 **결과 기억**으로 막는다(22~34). 모델 자체 흔들림은 끔 실행이 세어 보고만 한다 — 기준을 느슨하게 한 것이 아니라 spec AC-12 (d)를 사용자가 나눈 것
 16. **사람이 찍힌 사진이 공개 저장소에 올라감** → AC-11(b) 사진은 사용자 본인이 동의한 사진(손만 보이게 등)이나 얼굴이 안 보이는 것으로. 저장소가 공개라면 사용자가 판단 (tasks E2)
-17. **결과 파일에 비밀값** → 결과 파일 필드는 사진 이름·회차·등급·`mochi`·`line`·거절 여부·`code`·`ms`뿐. 모델 id·요청 원문·헤더 없음
+17. **결과 파일에 비밀값** → 결과 파일 필드는 사진 이름·회차·등급·`mochi`·`line`·거절 여부·`code`·`ms`·(10/22) `memo`와 맨 위 `memo`(`on`·`off`)뿐 — 열쇠 해시 없음. 모델 id·요청 원문·헤더 없음
 18. **엔드포인트 놀림 요금** → apply 시점을 사용자가 고른다 (질문 7)
 19. **IAM 리전 목록이 프로필과 달라 `AccessDenied`** → data source로 읽음. 실제 확인은 배포 스토리(로컬은 엔드포인트·EC2 역할을 안 쓴다)
 20. **화면 연결 때 Vite 프록시를 못 넣음** → `vite.config.js`는 훅 보호 목록(vitest·playwright 설정 파일)에 없어 frontend-dev가 고칠 수 있다. 다만 vitest 설정이 같은 파일에 있어 사람이 보고 승인한다 — 연결 스토리 몫
 21. **픽셀이 아주 큰 1MB JPEG가 이미지 토큰(=비용)을 키움** → SOF 긴 변 > 1024면 `too_many_pixels`. SOF가 여러 개면 SOS 전 첫 것만 보고, SOF가 없거나 0이면 `malformed_jpeg`(막는 쪽)
-- 건너뛴 것(일부러): 동시 요청·중복 요청 — 상한·요청 수 세기는 CAREER-27, 지금은 로컬 1인. 데이터 손실 — 저장 없음. 시간대·소수점 — 쓰지 않음(정수 등급, 걸린 시간은 ms 정수).
+
+결과 기억 (10/22)
+22. **기억을 모듈 전역에 둠 → 새 서버 인스턴스가 잊지 않아 AC-17 (e)가 깨지고 테스트끼리 섞임** → `createServer`가 부를 때마다 새 기억(기본 인자). 전역 상태 없음
+23. **이미 있는 테스트가 기억 때문에 깨짐** — `server.test.js`는 같은 사진을 등급 1~5로 다섯 번 부르고, `live.test.js`의 두 사진은 같은 `makeJpeg()` 바이트라 열쇠가 같다 → `server.test.js` 공통 준비는 기억 **끔**을 명시하고, `live.test.js`는 테스트마다 켬/끔을 명시하고 켬 테스트는 사진마다 다른 바이트(`width`를 다르게)를 쓴다 (tasks A5 · E3)
+24. **실패가 기억됨**(넣기를 `finally`나 응답 쓰기 쪽에 둠) → 넣기는 `parseModelOutput`이 감정·거절을 돌려준 바로 뒤 한 곳. AC-17 (c) 테스트가 `unavailable`(출력 깨짐·AccessDenied) 뒤와 `invalid_input` 뒤를 본다
+25. **열쇠에 `myPrice`가 섞이거나 태그 순서가 남음 → 같은 사진인데 다시 부름(흔들림)** → 열쇠는 `checkQuery`가 돌려준 표 순서 `tags`만. AC-17 (a)가 `myPrice`만 바꾼 것·태그 순서만 바꾼 것을 본다
+26. **같은 열쇠 두 요청이 동시에 → Bedrock 2번, 등급이 달라 두 사람이 다른 값을 봄** → 먼저 끝난 쪽을 기억하고 늦은 쪽도 기억된 값으로 응답(`remember`가 이미 있는 값을 돌려줌), 로그 `raced`. 두 번 낸 돈은 막지 않는다(로컬 1인 · 질문 8 답). `memo.test.js`가 두 가짜 응답을 일부러 늦게 풀어 본다
+27. **메모리가 끝없이 늘어남** → 넣을 때 상한을 넘으면 가장 오래 안 쓴 것 하나를 버림. 항목 크기도 묶임(해시 고정 길이 · 태그는 표 id 최대 16개 · 대사 30자). 상한이 잘못된 값이면 서버를 만들 때 던진다(조용히 '상한 없음'이 되지 않게)
+28. **기억에서 꺼낸 객체를 뒤 코드가 고쳐 다음 응답이 바뀜** → 넣을 때 새 객체 + `Object.freeze`, `entries()`는 복사본
+29. **해시 충돌로 남의 결과가 나감** → 무시한다. SHA-256 우연 충돌은 항목 10⁴개에서 약 10⁻⁶⁹이고, 일부러 같은 해시를 만드는 방법(2역상)은 알려진 것이 없다. 충돌해도 나가는 것은 등급과 30자 대사 하나 — 사진·개인 정보가 아니다
+30. **사진 속 지시가 한 번 먹히면 기억되어 되풀이됨** → 결과는 모델이 정하니 시험 (f)가 막는다. spec대로 (a)(b)(c)(e)(f)는 **두 실행 모두**에서 본다 — 켬 실행은 사진마다 실제 표본이 1개뿐이라, K번 표본은 끔 실행이 맡는다
+31. **기억이 프롬프트를 고친 뒤에도 옛 결과를 냄** → 기억은 메모리뿐이고 시험 실행은 실행마다 새 서버. 운영 서버도 프롬프트·모델을 바꾸려면 다시 켜야 한다(질문 8 답 '열쇠에 넣지 않음')
+32. **결과 파일의 켬/끔 표시가 틀림(끔 실행을 켬이라고 적어 흔들림을 숨김)** → `run.js` 실행 모드는 `--memo on|off`가 **필수**(기본값 없음, 없으면 종료 코드 2). 결과 파일 맨 위 `memo`. 판정기는 표시가 없거나 이상하면 `bad_memo_flag`, 끔 파일에 `off`가 아닌 행이 있으면 `memo_mismatch`로 실패. 켬 파일에서 `hit`이 아닌 행이 사진마다 정확히 1개가 아니면 `memo_miss`
+33. **켬·끔 결과 파일이 같은 분에 끝나 덮어씀** → 파일 이름 `<시각>-memo-on.json` · `-memo-off.json`
+34. **시험 사진 중 두 장이 같은 바이트 → 켬 실행에서 둘째 사진이 Bedrock 0번** → `memo_miss`(0개)로 실패한다 — 사진 목록 실수이므로 일부러 실패로 둔다
+- 건너뛴 것(일부러): 동시 요청 — 기억은 26으로만 다루고 single-flight는 하지 않는다. 상한·요청 수 세기는 CAREER-27, 지금은 로컬 1인. 데이터 손실 — 디스크 저장 없음, 기억은 재시작에 잃어도 되는 것(10/22 결정 2). 시간대·소수점 — 쓰지 않음(정수 등급, 걸린 시간은 ms 정수).
 
 ## 열린 점 → 모두 닫힘 (10/21)
 1. **CAREER-26 spec 대조** — 앞 세션이 대신 읽었다. AC-1(1024px)·AC-5(같은 출처 `/api/appraise` 한 번)·AC-7(`invalid_input` 400)과 맞고, AC-9(a)(d)는 '빈 본문·`Content-Type` 아님 → `invalid_input`'으로 대응(contracts §2). AC-12의 `api/` 테스트 명령은 질문 4의 `checks.app.api`
@@ -190,10 +246,14 @@
   - §5에 실패 안내 문구 3개와 리전 안내 문구(결정 L, 10/21 사용자가 추천안 그대로 고름) — 화면 연결 스토리가 쓴다
   - 맨 위 'HTTP 모양은 여기서 정하지 않는다 … 그때 고친다' → 새 문서 링크로(그때가 지금이라서). §7에 링크 한 줄
   - 바꾸지 않은 것: §2 입력 `photo`의 png 허용 — 함수 입력은 사용자가 고른 파일이고, JPEG로 바꾸는 건 어댑터 앞 CAREER-26 몫. §4 `mochi` '0 이상 정수' — 표 값은 그 안에 든다
+- **10/22 고침: [contracts/appraise-http.md](../../contracts/appraise-http.md)** (상태 '10/22 고침 — 사용자 승인 대기')
+  - §4·§5 **응답 모양·HTTP 상태·헤더는 그대로**다. 같은 사진·같은 태그면 같은 응답이 온다는 동작 한 줄과 '실패는 기억하지 않음'(다시 누르기 J는 그대로 됨)을 §4에 더함. 기억에서 왔는지 알리는 헤더는 두지 않는다(브라우저는 몰라도 되고, 알리면 기억 상태가 밖으로 샌다)
+  - §8에 `MEMO_MAX_ENTRIES` 줄(값은 사용자 승인 대기) + 열쇠·로그 `memo`는 이 plan이 원본이라는 링크 한 줄
+  - contracts/appraise.md(화면 함수)는 바꾸지 않는다 — 입력·출력·실패 코드 그대로
 - Terraform outputs: 이번에 없음(엔드포인트·IAM은 다른 저장소, 앱이 읽을 값 없음)
 
 ## ADR
-**[ADR-0002](../../docs/adr/0002-ai-call-bedrock-vpc-endpoint-nova-pro.md)** (확정 10/21) — AI 호출 구조 B + Nova Pro, 결정 B·D. 나머지(서버 틀·EXIF 파서·Converse·테스트 도구)는 되돌리기 쉬워 PR '결정' 칸에 적는다. HTTP 입구 모양은 contracts 문서가 원본이다.
+**[ADR-0002](../../docs/adr/0002-ai-call-bedrock-vpc-endpoint-nova-pro.md)** (확정 10/21) — AI 호출 구조 B + Nova Pro, 결정 B·D. 나머지(서버 틀·EXIF 파서·Converse·테스트 도구, 10/22 결과 기억 — 메모리뿐이라 끄거나 지우기 쉬움)는 되돌리기 쉬워 PR '결정' 칸에 적는다. 기억을 디스크·DB로 옮길 때(CAREER-27)는 열쇠 모양이 남는 데이터가 되므로 그때 ADR을 쓴다. HTTP 입구 모양은 contracts 문서가 원본이다.
 
 ## 범위 밖 (spec '안 할 것' 그대로 + 이번에 생긴 것)
 - `api/` lint (ESLint 설정은 만든 뒤 훅이 고치기를 막아 따로 한 번에 정할 일)
