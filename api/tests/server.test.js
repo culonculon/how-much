@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vit
 import { AWS_REGION, MAX_OUTPUT_TOKENS, MAX_PHOTO_BYTES, MODEL_ID, TEMPERATURE, TOP_K } from '../src/config.js';
 import { mochiOf } from '../src/grades.js';
 import { TAG_IDS } from '../src/input.js';
+import { createMemo } from '../src/memo.js';
 import { createServer, makeBedrockClient, startServer } from '../src/server.js';
 import {
   collectLog,
@@ -26,7 +27,8 @@ let server;
 let base;
 
 beforeAll(async () => {
-  server = createServer({ send: (...args) => send(...args), log });
+  // AC-1~6은 기억과 따로 본다(같은 사진을 여러 번 보냄) — 기억은 memo.test.js(AC-17)
+  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }) });
   base = await listen(server);
 });
 afterAll(() => new Promise((resolve) => server.close(resolve)));
