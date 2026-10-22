@@ -1,5 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { AWS_REGION, MAX_OUTPUT_TOKENS, MAX_PHOTO_BYTES, MODEL_ID, TEMPERATURE, TOP_K } from '../src/config.js';
+import {
+  AWS_REGION,
+  MAX_OUTPUT_TOKENS,
+  MAX_PHOTO_BYTES,
+  MODEL_ID,
+  REJECT_DRAIN_BYTES,
+  TEMPERATURE,
+  TOP_K,
+} from '../src/config.js';
 import { mochiOf } from '../src/grades.js';
 import { TAG_IDS } from '../src/input.js';
 import { createMemo } from '../src/memo.js';
@@ -11,8 +19,8 @@ import {
   makeJpeg,
   PHOTO_MARK,
   PNG_BYTES,
-  rawPost,
   TEXT_BYTES,
+  uploadAfterResponse,
 } from './helpers.js';
 
 const FAKE_KEY_ID = 'AKIAHOWMUCHFAKEKEY01';
@@ -133,17 +141,6 @@ describe('AC-2 브라우저가 보낸 값을 믿지 않는다 (HTTP)', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  test('Content-Length가 상한보다 크면 본문을 읽기 전에 400', async () => {
-    const before = lines.length;
-    const r = await rawPost(`${base}/api/appraise?myPrice=ten`, {
-      headers: { 'content-type': 'image/jpeg', 'content-length': String(MAX_PHOTO_BYTES + 1) },
-    });
-    expect(r.status).toBe(400);
-    expect(JSON.parse(r.text)).toEqual(INVALID);
-    expect(send).not.toHaveBeenCalled();
-    expect(lastLogLine(before).reason).toBe('too_large');
-  });
-
   test('GET → 405, 다른 경로 → 404, 본문은 둘 다 invalid_input', async () => {
     const get = await call({ method: 'GET', body: null });
     expect(get.status).toBe(405);
@@ -242,6 +239,115 @@ describe('AC-6 로그에 사진·비밀값이 없다', () => {
     }
     for (const p of photos) {
       if (p.length > 0) expect(all).not.toContain(Buffer.from(p).toString('base64'));
+    }
+  });
+});
+
+describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 · A6)', () => {
+  const SLACK = 100_000; // 한 번 읽는 덩어리 64KiB + 헤더·chunk 틀 여유
+
+  async function own() {
+    const lines = [];
+    let send = vi.fn(async () => converseReply(JSON.stringify({ grade: 2, line: '쓸 만하구먼' })));
+    const sockets = [];
+    const s = createServer({ send: (...a) => send(...a), log: (l) => lines.push(l), memo: createMemo({ maxEntries: 0 }) });
+    s.on('connection', (sock) => sockets.push(sock));
+    const base = await listen(s);
+    return {
+      base,
+      lines,
+      sockets,
+      get send() {
+        return send;
+      },
+      close: () => new Promise((r) => s.close(r)),
+      bytesRead: async () => {
+        await Promise.all(sockets.map((k) => (k.closed ? null : new Promise((r) => k.once('close', r)))));
+        return sockets.reduce((n, k) => n + k.bytesRead, 0);
+      },
+    };
+  }
+
+  test.each([
+    ['Connection: close', false],
+    ['keep-alive', true],
+  ])('(1) 상한 + 1바이트를 끝까지 올려도 400 invalid_input을 받는다 — %s', async (_, keepAlive) => {
+    const o = await own();
+    try {
+      const body = makeJpeg({ totalBytes: MAX_PHOTO_BYTES + 1 });
+      photos.push(body);
+      const r = await uploadAfterResponse(`${o.base}/api/appraise?myPrice=ten`, {
+        headers: { 'content-type': 'image/jpeg', 'content-length': String(body.length) },
+        body,
+        keepAlive,
+      });
+      expect(r.status).toBe(400);
+      expect(JSON.parse(r.text)).toEqual(INVALID);
+      expect(r.errors).toEqual([]);
+      expect(r.finished).toBe(true); // 본문을 끝까지 올렸다(서버가 먼저 끊지 않음)
+      expect(o.send).not.toHaveBeenCalled();
+      expect(o.lines).toHaveLength(1);
+      expect(JSON.parse(o.lines[0]).reason).toBe('too_large');
+    } finally {
+      await o.close();
+    }
+  });
+
+  test('(2) 다른 거절(쿼리)도 남은 본문은 한도까지만 읽는다 — chunked 3,000,000바이트', async () => {
+    const o = await own();
+    try {
+      const body = Buffer.alloc(3_000_000, 0x5a);
+      const r = await uploadAfterResponse(`${o.base}/api/appraise?myPrice=five`, {
+        headers: { 'content-type': 'image/jpeg' },
+        body,
+        keepAlive: true,
+      });
+      expect(r.status).toBe(400);
+      expect(await o.bytesRead()).toBeLessThan(REJECT_DRAIN_BYTES + SLACK);
+      expect(o.lines).toHaveLength(1);
+      expect(JSON.parse(o.lines[0]).reason).toBe('bad_my_price');
+    } finally {
+      await o.close();
+    }
+  });
+
+  test('(3) Content-Length가 한도보다 크면 400을 주고 끊는다', async () => {
+    const o = await own();
+    try {
+      const body = Buffer.alloc(3_000_000, 0x5a);
+      const r = await uploadAfterResponse(`${o.base}/api/appraise?myPrice=ten`, {
+        headers: { 'content-type': 'image/jpeg', 'content-length': String(body.length) },
+        body,
+      });
+      expect(r.status).toBe(400);
+      expect(JSON.parse(r.text)).toEqual(INVALID);
+      expect(await o.bytesRead()).toBeLessThan(REJECT_DRAIN_BYTES + SLACK);
+      expect(o.lines).toHaveLength(1);
+      expect(JSON.parse(o.lines[0]).reason).toBe('too_large');
+    } finally {
+      await o.close();
+    }
+  });
+
+  test('(4) 버리며 읽는 중에 끊겨도 서버는 다음 요청을 받고 로그는 1줄', async () => {
+    const o = await own();
+    try {
+      const body = makeJpeg({ totalBytes: MAX_PHOTO_BYTES + 1 });
+      await uploadAfterResponse(`${o.base}/api/appraise?myPrice=ten`, {
+        headers: { 'content-type': 'image/jpeg', 'content-length': String(body.length) },
+        body,
+        destroyAfter: 500_000,
+      });
+      const res = await fetch(`${o.base}/api/appraise?myPrice=ten`, {
+        method: 'POST',
+        headers: { 'content-type': 'image/jpeg' },
+        body: makeJpeg(),
+      });
+      expect(res.status).toBe(200);
+      expect(o.send).toHaveBeenCalledTimes(1);
+      expect(o.lines.map((l) => JSON.parse(l).reason)).toEqual(['too_large', null]);
+    } finally {
+      await o.close();
     }
   });
 });

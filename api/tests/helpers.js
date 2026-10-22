@@ -111,3 +111,57 @@ export function rawPost(url, { headers = {}, body } = {}) {
     else req.end(body);
   });
 }
+
+// A6: 헤더만 먼저 보내고, 응답이 온 뒤에 본문을 마저 올린다(거절 뒤 남은 업로드 — plan '거절 뒤 남은 업로드').
+// 클라이언트 오류는 던지지 않고 errors에 모은다. finished = 본문을 끝까지 다 올렸는지(req 'finish'). keepAlive가 거짓이면 Node가 Connection: close를 붙인다.
+export function uploadAfterResponse(url, { headers = {}, body, keepAlive = false, destroyAfter } = {}) {
+  return new Promise((resolve) => {
+    const errors = [];
+    let finished = false;
+    const agent = keepAlive ? new http.Agent({ keepAlive: true }) : false;
+    const req = http.request(url, { method: 'POST', headers, agent });
+    let status = null;
+    const chunks = [];
+    let reqClosed = false;
+    let resDone = false;
+    const finish = () => {
+      if (reqClosed && resDone) {
+        if (agent) agent.destroy();
+        resolve({ status, text: Buffer.concat(chunks).toString('utf8'), errors, finished });
+      }
+    };
+    req.on('error', (e) => errors.push(e.code ?? e.message));
+    req.on('finish', () => {
+      finished = true;
+    });
+    req.on('close', () => {
+      reqClosed = true;
+      if (status === null) resDone = true; // 응답 없이 끊김
+      finish();
+    });
+    req.on('response', async (res) => {
+      status = res.statusCode;
+      res.on('data', (c) => chunks.push(c));
+      const done = () => {
+        resDone = true;
+        finish();
+      };
+      res.on('end', done);
+      res.on('close', done);
+      res.on('error', (e) => errors.push(e.code ?? e.message));
+      // 응답을 받은 뒤 본문을 64KiB씩 쓴다
+      const step = 64 * 1024;
+      for (let off = 0; off < body.length; off += step) {
+        if (destroyAfter !== undefined && off >= destroyAfter) {
+          req.destroy();
+          return;
+        }
+        if (req.destroyed) return;
+        const ok = req.write(body.subarray(off, off + step));
+        if (!ok) await new Promise((r) => req.once('drain', r).once('close', r));
+      }
+      if (!req.destroyed) req.end();
+    });
+    req.flushHeaders();
+  });
+}
