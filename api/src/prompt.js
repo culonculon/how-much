@@ -1,6 +1,6 @@
 // Converse 요청 만들기 — plan '열린 질문 1·2 답'. 등급 뜻은 grades.js, 태그 이름은 input.js에서 읽는다(복사 금지).
 // 모델에 myPrice를 보내지 않는다. 태그는 대사 말맛용이고 등급에 반영하지 않는다.
-import { LINE_MAX_CHARS, MAX_OUTPUT_TOKENS, MODEL_ID, TEMPERATURE } from './config.js';
+import { LINE_MAX_CHARS, MAX_OUTPUT_TOKENS, MODEL_ID, TEMPERATURE, TOP_K } from './config.js';
 import { GRADES } from './grades.js';
 import { TAGS } from './input.js';
 
@@ -35,5 +35,7 @@ export function buildConverseInput({ photo, tags }) {
       },
     ],
     inferenceConfig: { maxTokens: MAX_OUTPUT_TOKENS, temperature: TEMPERATURE },
+    // Nova 전용 값은 additionalModelRequestFields로(Converse 공통 inferenceConfig에 topK가 없음)
+    additionalModelRequestFields: { inferenceConfig: { topK: TOP_K } },
   };
 }

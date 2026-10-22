@@ -110,6 +110,7 @@ Cache-Control: no-store
 | `MAX_OUTPUT_TOKENS` | 120 | §7 |
 | `MAX_OUTPUT_CHARS` | 500 | §7 · AC-3(f) |
 | `TEMPERATURE` | 0 | 같은 사진 같은 등급(결정 K) |
+| `TOP_K` | 1 (Nova `additionalModelRequestFields.inferenceConfig.topK`) — 10/22 사용자 승인: E3에서 온도 0만으로는 같은 사진 등급이 흔들림 | 같은 사진 같은 등급(결정 K) |
 | `LINE_MAX_CHARS` | 30 | §4 |
 
 ## 9. 환경변수

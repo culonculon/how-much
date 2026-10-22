@@ -11,4 +11,5 @@ export const RETRY_BACKOFF_MS = Object.freeze([1000, 2000]);
 export const MAX_OUTPUT_TOKENS = 120;
 export const MAX_OUTPUT_CHARS = 500;
 export const TEMPERATURE = 0;
+export const TOP_K = 1; // 가장 가능성 높은 토큰만(탐욕) — 온도 0만으로는 같은 사진 등급이 흔들림(10/22 E3, 사용자 승인)
 export const LINE_MAX_CHARS = 30;
