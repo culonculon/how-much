@@ -5,10 +5,11 @@ import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { callWithRetry, UpstreamError } from './bedrock.js';
-import { AWS_REGION, DEFAULT_PORT, HOST, MAX_PHOTO_BYTES } from './config.js';
+import { AWS_REGION, DEFAULT_PORT, HOST, MAX_PHOTO_BYTES, MEMO_MAX_ENTRIES } from './config.js';
 import { mochiOf } from './grades.js';
 import { checkQuery, InputError } from './input.js';
 import { checkJpeg } from './jpeg.js';
+import { createMemo, memoKey } from './memo.js';
 import { OutputError, parseModelOutput } from './output.js';
 import { buildConverseInput } from './prompt.js';
 
@@ -51,7 +52,7 @@ function readBody(req) {
   });
 }
 
-async function appraise(req, res, entry, send) {
+async function appraise(req, res, entry, send, memo) {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname !== PATH) throw invalid('bad_path', 404);
   if (req.method !== 'POST') throw invalid('bad_method', 405);
@@ -67,6 +68,25 @@ async function appraise(req, res, entry, send) {
   if (photo.length === 0) throw invalid('empty_body');
   checkJpeg(photo);
 
+  // 같은 사진·같은 태그면 기억한 결과(AC-17) — JPEG 검사 뒤, Bedrock 앞
+  let key = null;
+  let parsed;
+  if (memo.enabled) {
+    key = memoKey(photo, tags);
+    parsed = memo.get(key);
+    entry.memo = parsed ? 'hit' : 'miss';
+  } else {
+    entry.memo = 'off';
+  }
+
+  if (!parsed) parsed = await askModel(req, res, entry, send, photo, tags, memo, key);
+
+  if (parsed.refused) throw new Reply(422, 'refused', 'model_refused');
+  entry.grade = parsed.grade;
+  return { status: 200, body: { mochi: mochiOf(parsed.grade), line: parsed.line } };
+}
+
+async function askModel(req, res, entry, send, photo, tags, memo, key) {
   // 브라우저가 끊으면 Bedrock 호출도 멈춘다
   const clientGone = new AbortController();
   res.on('close', () => {
@@ -83,9 +103,14 @@ async function appraise(req, res, entry, send) {
   const text = output?.message?.content?.find((c) => typeof c.text === 'string')?.text;
 
   const parsed = parseModelOutput(text, stopReason);
-  if (parsed.refused) throw new Reply(422, 'refused', 'model_refused');
-  entry.grade = parsed.grade;
-  return { status: 200, body: { mochi: mochiOf(parsed.grade), line: parsed.line } };
+  if (!memo.enabled) return parsed;
+  // 기억에 넣는 곳은 여기 하나뿐 — 감정·거절만(실패는 위에서 던져 여기 오지 않음)
+  const earlier = memo.get(key);
+  if (earlier) {
+    entry.memo = 'raced'; // 같은 열쇠 동시 요청이 먼저 기억됨 → 그 값으로 응답(두 응답이 같게)
+    return earlier;
+  }
+  return memo.remember(key, parsed);
 }
 
 function toReply(err) {
@@ -106,7 +131,11 @@ function writeJson(res, status, body, close) {
   res.end(JSON.stringify(body));
 }
 
-export function createServer({ send, log = (line) => console.log(line) } = {}) {
+export function createServer({
+  send,
+  log = (line) => console.log(line),
+  memo = createMemo({ maxEntries: MEMO_MAX_ENTRIES }), // 서버 인스턴스마다 새로(전역 상태 없음)
+} = {}) {
   return http.createServer(async (req, res) => {
     const started = performance.now();
     const entry = {
@@ -118,12 +147,13 @@ export function createServer({ send, log = (line) => console.log(line) } = {}) {
       inputTokens: null,
       outputTokens: null,
       grade: null,
+      memo: null, // null · off · hit · miss · raced (열쇠 해시는 남기지 않음)
     };
     let status;
     let body;
     let close = false;
     try {
-      ({ status, body } = await appraise(req, res, entry, send));
+      ({ status, body } = await appraise(req, res, entry, send, memo));
     } catch (err) {
       const reply = toReply(err);
       if (err instanceof UpstreamError) entry.attempts = err.attempts;

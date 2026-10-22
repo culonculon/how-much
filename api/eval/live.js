@@ -12,8 +12,8 @@ const emptyRow = (photo, round, ms) => ({
   photo, round, grade: null, mochi: null, line: null, refused: false, code: null, ms,
 });
 
-export async function runLive({ send, cases, photosDir, rounds, log = () => {}, onRow = () => {} }) {
-  const server = createServer({ send, log });
+export async function runLive({ send, cases, photosDir, rounds, memo, log = () => {}, onRow = () => {} }) {
+  const server = createServer({ send, log, memo });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}/api/appraise?${QUERY}`;
   const rows = [];

@@ -13,3 +13,4 @@ export const MAX_OUTPUT_CHARS = 500;
 export const TEMPERATURE = 0;
 export const TOP_K = 1; // 가장 가능성 높은 토큰만(탐욕) — 온도 0만으로는 같은 사진 등급이 흔들림(10/22 E3, 사용자 승인)
 export const LINE_MAX_CHARS = 30;
+export const MEMO_MAX_ENTRIES = 10_000; // 같은 사진·태그 결과 기억 개수(LRU, 약 4MB). 0이면 끔 — contracts §8 (10/22 사용자 승인)
