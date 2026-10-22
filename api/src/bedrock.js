@@ -38,19 +38,23 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export async function callWithRetry(
   send,
   command,
-  { timeoutMs = TIMEOUT_MS, maxRetries = MAX_RETRIES, backoffMs = RETRY_BACKOFF_MS } = {},
+  { timeoutMs = TIMEOUT_MS, maxRetries = MAX_RETRIES, backoffMs = RETRY_BACKOFF_MS, signal } = {},
 ) {
   const controller = new AbortController();
   let attempts = 0;
-  let timer;
-  // send가 abort를 무시해도 이 약속이 먼저 끝나 timeout이 된다
+  // 시간 제한이나 브라우저 끊김이 오면 이 약속이 먼저 끝난다 — send가 abort를 무시해도
+  let stopWith;
   const deadline = new Promise((_, reject) => {
-    timer = setTimeout(() => {
+    stopWith = (reason) => {
       controller.abort();
-      reject(new UpstreamError('timeout', attempts));
-    }, timeoutMs);
+      reject(new UpstreamError(reason, attempts));
+    };
   });
   deadline.catch(() => {}); // 경주 밖에서 터져도 처리되지 않은 거절이 되지 않게
+  const timer = setTimeout(() => stopWith('timeout'), timeoutMs);
+  const onClientGone = () => stopWith('client_closed');
+  if (signal?.aborted) onClientGone();
+  else signal?.addEventListener('abort', onClientGone, { once: true });
 
   try {
     for (;;) {
@@ -59,7 +63,7 @@ export async function callWithRetry(
         const response = await Promise.race([send(command, { abortSignal: controller.signal }), deadline]);
         return { response, attempts };
       } catch (err) {
-        if (err instanceof UpstreamError) throw err; // 시간 제한
+        if (err instanceof UpstreamError) throw err; // 시간 제한 · 브라우저 끊김
         if (!isRetryable(err) || attempts > maxRetries) {
           throw new UpstreamError(reasonOf(err), attempts);
         }
@@ -69,5 +73,6 @@ export async function callWithRetry(
     }
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', onClientGone);
   }
 }
