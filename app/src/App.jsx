@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { appraise } from './appraise.js'
-import { PRICES, TAG_GROUPS } from './options.js'
+import { ERROR_TEXT, PRICES, TAG_GROUPS } from './options.js'
 
 const ALL_TAG_IDS = TAG_GROUPS.flatMap((g) => g.tags.map((t) => t.id))
 const MASCOT = { idle: '대기', thinking: '🔍 갸웃', done: '🔨 도장' }
@@ -22,12 +22,14 @@ export default function App() {
   const [tags, setTags] = useState([])
   const [status, setStatus] = useState('idle')
   const [result, setResult] = useState(null)
+  const [error, setError] = useState(null)
 
   // Free the blob URL when it is replaced or the component goes away.
   useEffect(() => () => previewUrl && URL.revokeObjectURL(previewUrl), [previewUrl])
 
   function pickFile(e) {
     const file = e.target.files[0]
+    setError(null)
     const ok = file && ['image/jpeg', 'image/png'].includes(file.type)
     setFileError(Boolean(file) && !ok)
     setPhoto(ok ? file : null)
@@ -39,10 +41,15 @@ export default function App() {
   }
 
   async function submit() {
+    setError(null)
     setStatus('thinking')
-    const r = await appraise({ photo, myPrice, tags: ALL_TAG_IDS.filter((id) => tags.includes(id)) })
-    setResult(r)
-    setStatus('done')
+    try {
+      setResult(await appraise({ photo, myPrice, tags: ALL_TAG_IDS.filter((id) => tags.includes(id)) }))
+      setStatus('done')
+    } catch (e) {
+      setError(e.code in ERROR_TEXT ? e.code : 'unavailable')
+      setStatus('idle')
+    }
   }
 
   return (
@@ -54,6 +61,7 @@ export default function App() {
         사진 고르기 <input type="file" accept="image/png,image/jpeg" onChange={pickFile} />
       </label>
       {fileError && <p role="alert">사진을 다시 골라 주세요 (jpg·png)</p>}
+      {error && <p role="alert" data-testid="appraise-error">{ERROR_TEXT[error]}</p>}
       {previewUrl && <img src={previewUrl} alt="고른 사진 미리보기" style={{ display: 'block', maxWidth: 240 }} />}
 
       <div role="group" aria-label="마음 가격">

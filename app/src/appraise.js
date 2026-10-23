@@ -1,7 +1,37 @@
-// Fake appraiser. Contract: contracts/appraise.md §6. Never reads input.photo, never touches the network.
-export const FAKE_DELAY_MS = 800
+// Contracts: contracts/appraise.md §4~§6, appraise-http.md §2·§5. The only place that talks to the network.
+import { preparePhoto } from './photo.js'
 
-export async function appraise() {
-  await new Promise((resolve) => setTimeout(resolve, FAKE_DELAY_MS))
-  return { mochi: 3, line: '흠… 사연이 묻어 있구먼.' }
+const CODES = ['invalid_input', 'refused', 'unavailable', 'daily_limit']
+const fail = (code) => Object.assign(new Error(code), { code })
+
+export async function appraise({ photo, myPrice, tags }) {
+  let body
+  try {
+    body = await preparePhoto(photo)
+  } catch {
+    throw fail('invalid_input')
+  }
+  const query = new URLSearchParams([['myPrice', myPrice], ...tags.map((t) => ['tags', t])])
+  let res
+  try {
+    res = await fetch(`/api/appraise?${query}`, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body })
+  } catch {
+    throw fail('unavailable')
+  }
+  let data = null
+  try {
+    data = await res.json()
+  } catch {
+    // not JSON -> unavailable below
+  }
+  const ok =
+    res.ok &&
+    data &&
+    Object.keys(data).length === 2 &&
+    Number.isInteger(data.mochi) &&
+    data.mochi >= 0 &&
+    typeof data.line === 'string' &&
+    data.line.trim() !== ''
+  if (ok) return { mochi: data.mochi, line: data.line }
+  throw fail(CODES.includes(data?.code) ? data.code : 'unavailable')
 }

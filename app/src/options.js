@@ -48,3 +48,10 @@ export const TAG_GROUPS = [
     ],
   },
 ]
+
+// Source of truth: contracts/appraise.md §5. daily_limit and unknown codes use the unavailable text until CAREER-27.
+export const ERROR_TEXT = {
+  invalid_input: '사진이나 선택을 다시 골라 주세요.',
+  refused: '이 사진은 감정하지 않아요. 물건 사진으로 다시 골라 주세요.',
+  unavailable: "감정이 잘 안 됐어요. 잠시 뒤 '감정 받기'를 다시 눌러 주세요.",
+}
