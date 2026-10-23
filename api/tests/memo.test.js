@@ -3,6 +3,7 @@ import { mochiOf } from '../src/grades.js';
 import { createMemo, memoKey } from '../src/memo.js';
 import { createServer } from '../src/server.js';
 import { collectLog, converseReply, listen, makeJpeg, PHOTO_MARK } from './helpers.js';
+import { tempDailyLimit } from './temp-daily-limit.js';
 
 // AC-17 같은 사진 · 같은 태그면 기억한 결과를 돌려준다 (spec 10/22 결정 1·2, plan '열린 질문 8 답')
 
@@ -10,13 +11,18 @@ const TAGS_QUERY = 'tags=how-1&tags=now-2';
 const reply = (grade, line = `등급 ${grade}이구먼`) => converseReply(JSON.stringify({ grade, line }));
 
 const servers = [];
+const temps = []; // CAREER-27: 테스트마다 따로 쓰는 하루 셈
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((s) => new Promise((resolve) => s.close(resolve))));
+  temps.splice(0).forEach((t) => t.cleanup());
 });
 
 async function start({ send, memo, withMemoArg = true } = {}) {
   const { lines, log } = collectLog();
-  const server = withMemoArg ? createServer({ send, log, memo }) : createServer({ send, log });
+  const daily = tempDailyLimit();
+  temps.push(daily);
+  const { dailyLimit } = daily;
+  const server = withMemoArg ? createServer({ send, log, memo, dailyLimit }) : createServer({ send, log, dailyLimit });
   servers.push(server);
   const base = await listen(server);
   return { base, lines, entries: () => lines.map((l) => JSON.parse(l)) };

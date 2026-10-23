@@ -12,7 +12,7 @@ const emptyRow = (photo, round, ms) => ({
   photo, round, grade: null, mochi: null, line: null, refused: false, code: null, ms, memo: null,
 });
 
-export async function runLive({ send, cases, photosDir, rounds, memo, log = () => {}, onRow = () => {} }) {
+export async function runLive({ send, cases, photosDir, rounds, memo, dailyLimit, log = () => {}, onRow = () => {} }) {
   // 서버는 응답을 쓰기 전에 로그 1줄을 찍는다 → fetch가 끝났을 때 그 요청의 memo를 이미 쥐고 있다(차례 호출이라 1:1)
   let lastMemo = null;
   const tap = (line) => {
@@ -23,7 +23,7 @@ export async function runLive({ send, cases, photosDir, rounds, memo, log = () =
     }
     log(line);
   };
-  const server = createServer({ send, log: tap, memo });
+  const server = createServer({ send, log: tap, memo, dailyLimit });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}/api/appraise?${QUERY}`;
   const rows = [];

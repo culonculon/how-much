@@ -38,7 +38,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export async function callWithRetry(
   send,
   command,
-  { timeoutMs = TIMEOUT_MS, maxRetries = MAX_RETRIES, backoffMs = RETRY_BACKOFF_MS, signal } = {},
+  { timeoutMs = TIMEOUT_MS, maxRetries = MAX_RETRIES, backoffMs = RETRY_BACKOFF_MS, signal, beforeAttempt } = {},
 ) {
   const controller = new AbortController();
   let attempts = 0;
@@ -58,6 +58,14 @@ export async function callWithRetry(
 
   try {
     for (;;) {
+      // 하루 셈 문(CAREER-27): 시도마다 send 바로 앞. 던지면 그 오류 그대로 + 지금까지 보낸 수
+      if (beforeAttempt) {
+        try {
+          beforeAttempt();
+        } catch (err) {
+          throw Object.assign(err, { attempts });
+        }
+      }
       attempts += 1;
       try {
         const response = await Promise.race([send(command, { abortSignal: controller.signal }), deadline]);

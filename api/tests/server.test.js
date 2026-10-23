@@ -22,6 +22,7 @@ import {
   TEXT_BYTES,
   uploadAfterResponse,
 } from './helpers.js';
+import { tempDailyLimit } from './temp-daily-limit.js';
 
 const FAKE_KEY_ID = 'AKIAHOWMUCHFAKEKEY01';
 const FAKE_SECRET = 'howmuch-fake-secret-value';
@@ -29,6 +30,8 @@ process.env.AWS_ACCESS_KEY_ID = FAKE_KEY_ID;
 process.env.AWS_SECRET_ACCESS_KEY = FAKE_SECRET;
 
 const { lines, log } = collectLog();
+const daily = tempDailyLimit(); // CAREER-27: 진짜 셈 파일을 건드리지 않는다
+afterAll(() => daily.cleanup());
 const photos = []; // AC-6: 보낸 사진 전부
 let send; // 테스트마다 바꾸는 가짜 Bedrock
 let server;
@@ -36,7 +39,7 @@ let base;
 
 beforeAll(async () => {
   // AC-1~6은 기억과 따로 본다(같은 사진을 여러 번 보냄) — 기억은 memo.test.js(AC-17)
-  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }) });
+  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit });
   base = await listen(server);
 });
 afterAll(() => new Promise((resolve) => server.close(resolve)));
@@ -220,7 +223,7 @@ describe('진짜 클라이언트 설정 · 묶임', () => {
   });
 
   test('startServer는 127.0.0.1에만 묶인다', async () => {
-    const s = await startServer({ port: 0, send, log: () => {} });
+    const s = await startServer({ port: 0, send, log: () => {}, dailyLimit: daily.dailyLimit });
     try {
       expect(s.address().address).toBe('127.0.0.1');
     } finally {
@@ -250,7 +253,7 @@ describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 
     const lines = [];
     let send = vi.fn(async () => converseReply(JSON.stringify({ grade: 2, line: '쓸 만하구먼' })));
     const sockets = [];
-    const s = createServer({ send: (...a) => send(...a), log: (l) => lines.push(l), memo: createMemo({ maxEntries: 0 }) });
+    const s = createServer({ send: (...a) => send(...a), log: (l) => lines.push(l), memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit });
     s.on('connection', (sock) => sockets.push(sock));
     const base = await listen(s);
     return {
