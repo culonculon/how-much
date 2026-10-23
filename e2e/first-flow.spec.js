@@ -12,8 +12,18 @@ const png = {
 const txt = { name: 'note.txt', mimeType: 'text/plain', buffer: Buffer.from('hi') }
 const FREE_TEXT = 'textarea, input:not([type=file]), [contenteditable]:not([contenteditable=false])'
 
-test('first flow end to end (AC-1,3,4,5,6,7,8,10)', async ({ page }) => {
+test('first flow end to end (AC-1,3,4,5,6,7,8, CAREER-26 AC-5)', async ({ page }) => {
   const requests = []
+  // 서버 입구는 가로채 성공 응답을 준다 (CAREER-26)
+  await page.route(
+    (url) => url.pathname === '/api/appraise',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: '{"mochi":10,"line":"흠, 손때가 제법 묻었구먼"}',
+      }),
+  )
   // goto 전에 건다: 첫 문서 요청부터 모은다
   page.context().on('request', (r) => requests.push({ url: r.url(), body: r.postDataBuffer() }))
 
@@ -64,13 +74,15 @@ test('first flow end to end (AC-1,3,4,5,6,7,8,10)', async ({ page }) => {
   await expect(page.getByTestId('mascot-line')).toHaveText(/\S/)
   await expect(page.locator(FREE_TEXT)).toHaveCount(0) // AC-5 다시
 
-  // AC-10: 로컬 밖으로 나간 요청 0개, 본문 있는 요청 0개
+  // AC-5(결정 M, CAREER-22 AC-10을 대신함): 로컬 밖으로 나간 요청 0개, 본문 있는 요청은 서버 입구 하나뿐
   const origin = 'http://127.0.0.1:5199/'
   const outside = requests
     .map((r) => r.url)
     .filter((u) => !u.startsWith(origin) && !u.startsWith('blob:') && !u.startsWith('data:'))
   expect(outside).toEqual([])
-  expect(requests.filter((r) => r.body !== null).map((r) => r.url)).toEqual([])
+  expect(
+    requests.filter((r) => r.body !== null).map((r) => new URL(r.url).pathname),
+  ).toEqual(['/api/appraise'])
 })
 
 test('rejects non-image file (AC-2)', async ({ page }) => {
