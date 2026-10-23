@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { appraise } from './appraise.js'
-import { ERROR_TEXT, PRICES, TAG_GROUPS } from './options.js'
+import { ERROR_TEXT, PRICES, REGION_NOTICE, TAG_GROUPS } from './options.js'
 
 const ALL_TAG_IDS = TAG_GROUPS.flatMap((g) => g.tags.map((t) => t.id))
 const MASCOT = { idle: '대기', thinking: '🔍 갸웃', done: '🔨 도장' }
@@ -85,7 +85,8 @@ export default function App() {
         ))}
       </div>
 
-      <button type="button" disabled={!photo || !myPrice || status !== 'idle'} onClick={submit}>
+      <p id="region-notice">{REGION_NOTICE}</p>
+      <button type="button" aria-describedby="region-notice" disabled={!photo || !myPrice || status !== 'idle'} onClick={submit}>
         감정 받기
       </button>
 
