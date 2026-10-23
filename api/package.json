@@ -1,0 +1,1 @@
+{"name":"api","private":true,"type":"module","scripts":{"start":"node src/server.js","test":"vitest run","eval":"node eval/run.js"},"dependencies":{"@aws-sdk/client-bedrock-runtime":"^3.1155.0"},"devDependencies":{"vitest":"^5.0.5"}}

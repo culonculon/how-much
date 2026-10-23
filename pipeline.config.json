@@ -100,7 +100,8 @@
       "lint": "npm --prefix app run lint",
       "test": "npm --prefix app test",
       "e2e": "cd e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test",
-      "build": "npm --prefix app run build"
+      "build": "npm --prefix app run build",
+      "api": "npm --prefix api ci && npm --prefix api test"
     },
     "infra": {
       "fmt": "terraform fmt -check -recursive infra",
@@ -117,7 +118,8 @@
       "ui",
       "app_config",
       "unit_test",
-      "e2e"
+      "e2e",
+      "guard"
     ],
     "infra": [
       "infra"

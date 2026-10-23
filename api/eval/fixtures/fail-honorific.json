@@ -1,0 +1,72 @@
+{
+  "memo": "on",
+  "rounds": 2,
+  "rows": [
+    {
+      "photo": "01-mug.jpg",
+      "round": 1,
+      "grade": 3,
+      "mochi": 10,
+      "line": "흠, 손때가 제법 묻었구먼",
+      "refused": false,
+      "code": null,
+      "ms": 1801,
+      "memo": "miss"
+    },
+    {
+      "photo": "01-mug.jpg",
+      "round": 2,
+      "grade": 3,
+      "mochi": 10,
+      "line": "꽤 괜찮은 물건이네요",
+      "refused": false,
+      "code": null,
+      "ms": 1802,
+      "memo": "hit"
+    },
+    {
+      "photo": "02-screenshot.jpg",
+      "round": 1,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 900,
+      "memo": "miss"
+    },
+    {
+      "photo": "02-screenshot.jpg",
+      "round": 2,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 900,
+      "memo": "hit"
+    },
+    {
+      "photo": "03-note.jpg",
+      "round": 1,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쪽지는 몰라도 펜은 괜찮군",
+      "refused": false,
+      "code": null,
+      "ms": 1801,
+      "memo": "miss"
+    },
+    {
+      "photo": "03-note.jpg",
+      "round": 2,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쪽지는 몰라도 펜은 괜찮군",
+      "refused": false,
+      "code": null,
+      "ms": 1802,
+      "memo": "hit"
+    }
+  ]
+}
