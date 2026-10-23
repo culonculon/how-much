@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: '.',
   forbidOnly: true,
   retries: 0,
+  globalSetup: './guard-8787.js',
   reporter: 'list',
   use: {
     baseURL: 'http://127.0.0.1:5199',

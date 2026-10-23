@@ -55,3 +55,6 @@ export const ERROR_TEXT = {
   refused: '이 사진은 감정하지 않아요. 물건 사진으로 다시 골라 주세요.',
   unavailable: "감정이 잘 안 됐어요. 잠시 뒤 '감정 받기'를 다시 눌러 주세요.",
 }
+
+// Source of truth: contracts/appraise.md §5.
+export const REGION_NOTICE = '사진은 감정하는 동안 서울 밖 아시아 리전에서 처리될 수 있어요.'
