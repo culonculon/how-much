@@ -1,4 +1,6 @@
 // 서버 설정 값 — 원본: contracts/appraise-http.md §8. 값을 바꾸려면 그 문서부터 고친다.
+import { fileURLToPath } from 'node:url';
+
 export const MODEL_ID = 'apac.amazon.nova-pro-v1:0';
 export const AWS_REGION = 'ap-northeast-2';
 export const HOST = '127.0.0.1'; // 공개하지 않음(결정 B). 환경변수로 바꾸지 않는다.
@@ -15,3 +17,6 @@ export const TEMPERATURE = 0;
 export const TOP_K = 1; // 가장 가능성 높은 토큰만(탐욕) — 온도 0만으로는 같은 사진 등급이 흔들림(10/22 E3, 사용자 승인)
 export const LINE_MAX_CHARS = 30;
 export const MEMO_MAX_ENTRIES = 10_000; // 같은 사진·태그 결과 기억 개수(LRU, 약 4MB). 0이면 끔 — contracts §8 (10/22 사용자 승인)
+export const DAILY_CALL_LIMIT = 300; // 하루 Bedrock 시도 수 상한(재시도 포함). 0이면 급히 막기. 환경변수 없음 — contracts §8 (10/23 사용자 결정 U2·D3)
+export const DAY_UTC_OFFSET_HOURS = 9; // '하루'는 서울 00:00에 바뀐다(10/23 U3)
+export const USAGE_FILE = fileURLToPath(new URL('../var/usage.json', import.meta.url)); // 하루 셈 파일(api/ 기준, 커밋하지 않음) — ADR-0004

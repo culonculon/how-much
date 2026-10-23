@@ -8,6 +8,7 @@ import { MAX_PHOTO_BYTES } from '../src/config.js';
 import { createMemo } from '../src/memo.js';
 import { createServer } from '../src/server.js';
 import { collectLog, converseReply, listen, makeJpeg, PNG_BYTES, TEXT_BYTES, withGpsExif } from './helpers.js';
+import { tempDailyLimit } from './temp-daily-limit.js';
 
 const F1 = new Uint8Array(readFileSync(new URL('./fixtures/f1-prepared.jpg', import.meta.url)));
 const { lines, log } = collectLog();
@@ -15,22 +16,26 @@ const sent = []; // AC-11(b): 이 파일이 보낸 사진 전부
 const ENV_KEYS = ['TMPDIR', 'TMP', 'TEMP'];
 const oldEnv = {};
 let tmp;
+let daily;
 let send;
 let server;
 let base;
 
 beforeAll(async () => {
+  // CAREER-27: 하루 셈은 TMPDIR을 바꾸기 전에 만든다 — AC-11(a) '임시 폴더가 비었나'가 셈 파일로 깨지지 않게
+  daily = tempDailyLimit();
   tmp = mkdtempSync(join(tmpdir(), 'c26-'));
   for (const k of ENV_KEYS) {
     oldEnv[k] = process.env[k];
     process.env[k] = tmp;
   }
-  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }) });
+  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit });
   base = await listen(server);
 });
 
 afterAll(async () => {
   await new Promise((resolve) => server.close(resolve));
+  daily.cleanup();
   // AC-11(a): 서버가 임시 폴더에 아무것도 남기지 않는다
   const left = readdirSync(tmp);
   rmSync(tmp, { recursive: true, force: true });

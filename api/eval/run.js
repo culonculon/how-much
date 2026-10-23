@@ -63,7 +63,8 @@ async function liveMode() {
   }
 
   const { makeBedrockClient } = await import('../src/server.js');
-  const { MEMO_MAX_ENTRIES } = await import('../src/config.js');
+  const { DAILY_CALL_LIMIT, MEMO_MAX_ENTRIES, USAGE_FILE } = await import('../src/config.js');
+  const { createDailyLimit } = await import('../src/daily-limit.js');
   const { createMemo } = await import('../src/memo.js');
   const { runLive } = await import('./live.js');
   const client = makeBedrockClient();
@@ -80,6 +81,8 @@ async function liveMode() {
     photosDir: option('--photos') ?? 'eval/photos',
     rounds,
     memo: createMemo({ maxEntries: memoMode === 'on' ? MEMO_MAX_ENTRIES : 0 }),
+    // 시험 실행의 진짜 호출도 하루 상한에 센다 — dev 서버와 같은 셈 파일(CAREER-27 D5)
+    dailyLimit: createDailyLimit({ file: USAGE_FILE, limit: DAILY_CALL_LIMIT }),
     log,
     onRow: (r) => console.log(`${r.photo} #${r.round} ${r.refused ? '거절' : r.code ?? `등급 ${r.grade} · ${r.line}`} [${r.memo}] (${r.ms}ms)`),
   });

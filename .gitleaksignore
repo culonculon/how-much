@@ -1,3 +1,5 @@
 # 가짜 AWS 키(AKIAHOWMUCHFAKEKEY01) — AC-6 테스트가 로그에 자격 증명이 새지 않는지 보려고 일부러 넣은 값(plan 실패 시나리오 6). 진짜 키 아님. CAREER-25 10/22
 6ea0f7843babb0040e3cd6999a3cfd1b00b55cb3:api/tests/server.test.js:aws-access-token:17
 214ff0a2cc5a51a165a7dfa319e0073af45dd8d9:specs/CAREER-25-real-appraise/tasks.md:aws-access-token:102
+# 같은 가짜 키가 CAREER-27 G1 테스트(0c6b0ea)에 한 번 들어갔다가 다음 커밋에서 지워짐 — 진짜 키 아님. 커밋 기록에 남아 있어서 지문만 둔다. CAREER-27 10/23
+0c6b0ea510ee4767c3e9bca9ce24aa86e7d4797e:api/tests/daily-limit.test.js:aws-access-token:14

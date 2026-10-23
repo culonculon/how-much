@@ -5,7 +5,17 @@ import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { callWithRetry, UpstreamError } from './bedrock.js';
-import { AWS_REGION, DEFAULT_PORT, HOST, MAX_PHOTO_BYTES, MEMO_MAX_ENTRIES, REJECT_DRAIN_BYTES } from './config.js';
+import {
+  AWS_REGION,
+  DAILY_CALL_LIMIT,
+  DEFAULT_PORT,
+  HOST,
+  MAX_PHOTO_BYTES,
+  MEMO_MAX_ENTRIES,
+  REJECT_DRAIN_BYTES,
+  USAGE_FILE,
+} from './config.js';
+import { createDailyLimit, DailyLimitError, UsageStoreError } from './daily-limit.js';
 import { mochiOf } from './grades.js';
 import { checkQuery, InputError } from './input.js';
 import { checkJpeg } from './jpeg.js';
@@ -52,7 +62,7 @@ function readBody(req) {
   });
 }
 
-async function appraise(req, res, entry, send, memo) {
+async function appraise(req, res, entry, send, memo, dailyLimit) {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname !== PATH) throw invalid('bad_path', 404);
   if (req.method !== 'POST') throw invalid('bad_method', 405);
@@ -79,14 +89,14 @@ async function appraise(req, res, entry, send, memo) {
     entry.memo = 'off';
   }
 
-  if (!parsed) parsed = await askModel(req, res, entry, send, photo, tags, memo, key);
+  if (!parsed) parsed = await askModel(req, res, entry, send, photo, tags, memo, key, dailyLimit);
 
   if (parsed.refused) throw new Reply(422, 'refused', 'model_refused');
   entry.grade = parsed.grade;
   return { status: 200, body: { mochi: mochiOf(parsed.grade), line: parsed.line } };
 }
 
-async function askModel(req, res, entry, send, photo, tags, memo, key) {
+async function askModel(req, res, entry, send, photo, tags, memo, key, dailyLimit) {
   // 브라우저가 끊으면 Bedrock 호출도 멈춘다
   const clientGone = new AbortController();
   res.on('close', () => {
@@ -94,7 +104,13 @@ async function askModel(req, res, entry, send, photo, tags, memo, key) {
   });
 
   const command = new ConverseCommand(buildConverseInput({ photo, tags }));
-  const { response, attempts } = await callWithRetry(send, command, { signal: clientGone.signal });
+  // 하루 셈 문: 시도마다 셈을 1 올려 파일에 다 쓴 뒤에만 보낸다(CAREER-27, ADR-0004)
+  const beforeAttempt = () => {
+    const r = dailyLimit.take();
+    entry.day = r.day;
+    entry.dayUsed = r.used;
+  };
+  const { response, attempts } = await callWithRetry(send, command, { signal: clientGone.signal, beforeAttempt });
   entry.attempts = attempts;
 
   const { output, stopReason, usage } = response; // 모양이 아예 다르면 여기서 internal
@@ -118,6 +134,8 @@ function toReply(err) {
   if (err instanceof InputError) return invalid(err.reason);
   if (err instanceof OutputError) return new Reply(503, 'unavailable', err.reason);
   if (err instanceof UpstreamError) return new Reply(503, 'unavailable', err.reason);
+  if (err instanceof DailyLimitError) return new Reply(429, 'daily_limit', err.reason);
+  if (err instanceof UsageStoreError) return new Reply(503, 'unavailable', err.reason);
   return new Reply(500, 'unavailable', 'internal');
 }
 
@@ -171,7 +189,9 @@ export function createServer({
   send,
   log = (line) => console.log(line),
   memo = createMemo({ maxEntries: MEMO_MAX_ENTRIES }), // 서버 인스턴스마다 새로(전역 상태 없음)
+  dailyLimit, // 하루 셈 — 기본값 없음: 상한을 거치지 않는 호출 길을 만들지 않는다(CAREER-27 D4)
 } = {}) {
+  if (typeof dailyLimit?.take !== 'function') throw new TypeError('dailyLimit이 필요하다');
   return http.createServer(async (req, res) => {
     const started = performance.now();
     let readBytes = 0; // 이 요청에서 읽은 본문 바이트(거절 뒤 버림 한도에 함께 셈)
@@ -188,14 +208,20 @@ export function createServer({
       outputTokens: null,
       grade: null,
       memo: null, // null · off · hit · miss · raced (열쇠 해시는 남기지 않음)
+      day: null, // 하루 셈 날짜(셈을 거친 요청만)
+      dayUsed: null, // 그 시점 그날 셈
     };
     let status;
     let body;
     try {
-      ({ status, body } = await appraise(req, res, entry, send, memo));
+      ({ status, body } = await appraise(req, res, entry, send, memo, dailyLimit));
     } catch (err) {
       const reply = toReply(err);
-      if (err instanceof UpstreamError) entry.attempts = err.attempts;
+      if (typeof err?.attempts === 'number') entry.attempts = err.attempts;
+      if (err instanceof DailyLimitError) {
+        entry.day = err.day;
+        entry.dayUsed = err.used;
+      }
       ({ status } = reply);
       body = { code: reply.code };
       entry.outcome = reply.code;
@@ -212,13 +238,18 @@ export function createServer({
 }
 
 // 직접 실행 경로: 127.0.0.1에만 묶는다(환경변수로 바꾸지 않음)
-export function startServer({ port = Number(process.env.PORT ?? DEFAULT_PORT), send, log } = {}) {
+export function startServer({
+  port = Number(process.env.PORT ?? DEFAULT_PORT),
+  send,
+  log,
+  dailyLimit = createDailyLimit({ file: USAGE_FILE, limit: DAILY_CALL_LIMIT }),
+} = {}) {
   let realSend = send;
   if (!realSend) {
     const client = makeBedrockClient();
     realSend = (command, options) => client.send(command, options);
   }
-  const server = createServer({ send: realSend, log });
+  const server = createServer({ send: realSend, log, dailyLimit });
   return new Promise((resolve) => server.listen(port, HOST, () => resolve(server)));
 }
 

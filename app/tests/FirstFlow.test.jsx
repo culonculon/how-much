@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { cwd } from 'node:process'
 import { StrictMode } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from '../src/App.jsx'
 import { appraise } from '../src/appraise.js'
+import { OFF_DUTY_TEXT } from '../src/options.js'
 
 vi.mock('../src/appraise.js', () => ({ appraise: vi.fn(), FAKE_DELAY_MS: 800 }))
 
@@ -250,7 +254,6 @@ test('AC-7 invalid_input ends thinking, shows the notice, and allows a second tr
 test.each([
   ['unavailable', 'unavailable'],
   ['refused', 'refused'],
-  ['daily_limit', 'unavailable'],
   [undefined, 'unavailable'],
 ])('AC-7 failure code %s shows the %s notice and idles the mascot', async (code, text) => {
   appraise.mockRejectedValueOnce(reject(code))
@@ -261,4 +264,55 @@ test.each([
   expect((await screen.findByTestId('appraise-error')).textContent).toBe(ERROR_TEXT[text])
   expect(mascot().textContent).toContain('대기')
   expect(screen.queryByRole('region', { name: '감정 결과' })).toBeNull()
+})
+
+// CAREER-27 AC-9: daily_limit은 오류가 아니라 퇴근 상태다
+async function reachOffDuty() {
+  appraise.mockRejectedValueOnce(reject('daily_limit'))
+  renderApp()
+  pickFile(png())
+  pickPrice('🍡 10개')
+  fireEvent.click(submit())
+  await screen.findByTestId('off-duty')
+}
+
+test('CAREER-27 AC-9 daily_limit shows off-duty mascot, no error, no card, and retry thinks again', async () => {
+  await reachOffDuty()
+  expect(mascot().textContent).toContain('🚶 퇴근')
+  expect(within(mascot()).getByTestId('off-duty').textContent).toBe(OFF_DUTY_TEXT)
+  expect(screen.queryByTestId('appraise-error')).toBeNull()
+  expect(screen.queryByRole('region', { name: '감정 결과' })).toBeNull()
+  expect(submit().disabled).toBe(false)
+
+  appraise.mockReturnValue(new Promise(() => {}))
+  fireEvent.click(submit())
+  expect(mascot().textContent).toContain('갸웃')
+  expect(screen.queryByTestId('off-duty')).toBeNull()
+  expect(appraise).toHaveBeenCalledTimes(2)
+})
+
+test('CAREER-27 AC-9 picking another photo keeps the off-duty state', async () => {
+  await reachOffDuty()
+  pickFile(jpg())
+  expect(mascot().textContent).toContain('🚶 퇴근')
+  expect(screen.getByTestId('off-duty')).toBeTruthy()
+  expect(submit().disabled).toBe(false)
+})
+
+test('CAREER-27 AC-9 a successful retry after off-duty shows the card and the stamp', async () => {
+  await reachOffDuty()
+  appraise.mockResolvedValueOnce({ mochi: 10, line: '흠' })
+  fireEvent.click(submit())
+  await screen.findByRole('region', { name: '감정 결과' })
+  expect(mascot().textContent).toContain('도장')
+  expect(screen.queryByTestId('off-duty')).toBeNull()
+})
+
+// CAREER-27 AC-9: 화면 글자 = contracts/appraise.md §5 daily_limit 줄의 첫 따옴표 글자
+test('CAREER-27 AC-9 off-duty text matches contracts/appraise.md', () => {
+  const doc = readFileSync(resolve(cwd(), '../contracts/appraise.md'), 'utf8')
+  const line = doc.split('\n').find((l) => l.startsWith('| `daily_limit`'))
+  expect(line).toBeTruthy()
+  expect(OFF_DUTY_TEXT).toBeTruthy()
+  expect(line.match(/"([^"]+)"/)[1]).toBe(OFF_DUTY_TEXT)
 })

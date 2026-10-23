@@ -1,6 +1,6 @@
 # 감정 함수 약속 — `appraise`
 
-- Refs: CAREER-22 · CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-21 — 사용자 승인, 태그 이름 채움 · CAREER-25 고침: §5 `refused` 추가와 화면 문구, 같은 날 승인) · **10/23 CAREER-26 고침 (사용자 승인) — §2 `photo` 줄 · §5 화면 처리 · §6 바꿈**. §1 자리 · §2 입력 모양 · §3 · §4 · §5 코드 넷과 문구는 바뀌지 않음
+- Refs: CAREER-22 · CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-21 — 사용자 승인, 태그 이름 채움 · CAREER-25 고침: §5 `refused` 추가와 화면 문구, 같은 날 승인) · **10/23 CAREER-26 고침 (사용자 승인) — §2 `photo` 줄 · §5 화면 처리 · §6 바꿈**. §1 자리 · §2 입력 모양 · §3 · §4 · §5 코드 넷과 문구는 바뀌지 않음 · **10/23 CAREER-27 고침 (사용자 승인 — CAREER-27 plan D1·D6)**: §5 `daily_limit` 줄의 화면·문구 · '화면 처리'의 `daily_limit` 부분. 함수 모양·코드 넷은 바뀌지 않음
 - 근거: [specs/CAREER-22-first-flow/plan.md](../specs/CAREER-22-first-flow/plan.md) '열린 질문 7' · [specs/CAREER-25-real-appraise/plan.md](../specs/CAREER-25-real-appraise/plan.md) '열린 질문 1 답' · [specs/CAREER-26-photo-upload/plan.md](../specs/CAREER-26-photo-upload/plan.md) · [ADR-0003](../docs/adr/0003-photo-redraw-in-browser-adapter.md)
 - 이 문서는 **화면 ↔ 감정 자리** 사이 약속이다. CAREER-22에서는 가짜 함수가 이 자리에 있었고, CAREER-26부터 사진을 다시 그려 `POST /api/appraise`로 보내는 어댑터가 있다(§6). 진짜 서버에 닿게 하는 일(Vite 프록시 등)은 화면 연결 스토리다. 바꿔 끼워도 화면 쪽은 고치지 않아야 한다.
 - HTTP 요청 모양(경로·사진 보내는 법·크기 상한·응답·실패 모양)은 [appraise-http.md](appraise-http.md)에 있다(CAREER-25에서 따로 뗌 — 이 문서는 화면 쪽 함수 모양만).
@@ -66,7 +66,7 @@ Promise<{ mochi: number, line: string }>
 
 | `code` | 뜻 | 화면 (그 스토리에서 만든다) · 문구(10/21 사용자 결정 L) |
 |---|---|---|
-| `daily_limit` | 하루 상한에 걸림 | 아저씨 '퇴근' 상태 (CLAUDE.md §9) |
+| `daily_limit` | 하루 상한에 걸림 | 아저씨 '퇴근' 상태 `🚶 퇴근` (CLAUDE.md §9) · 문구 "아저씨 오늘 퇴근했어요. 밤 12시에 다시 출근해요." (CAREER-27 plan D1 후보 B — 10/23 사용자 승인) |
 | `invalid_input` | 서버가 입력을 거절(형식·크기·픽셀·모르는 태그 id) | "사진이나 선택을 다시 골라 주세요." |
 | `unavailable` | 그 밖의 오류(네트워크·서버·AI 출력 형식 깨짐) | "감정이 잘 안 됐어요. 잠시 뒤 '감정 받기'를 다시 눌러 주세요." |
 | `refused` | 아저씨가 이 사진의 감정을 거절함 (CAREER-25에서 더함) | "이 사진은 감정하지 않아요. 물건 사진으로 다시 골라 주세요." (결과 카드·공유 없음) |
@@ -74,7 +74,8 @@ Promise<{ mochi: number, line: string }>
 - 리전 안내(감정 버튼 근처, 화면을 진짜 서버에 연결할 때 — ADR-0002): "사진은 감정하는 동안 서울 밖 아시아 리전에서 처리될 수 있어요."
 - `refused`를 더한 이유(CAREER-25 plan '열린 질문 1 답'): 진짜 모델은 감정을 거절할 수 있는데 지금 모양으로는 가릴 수 없다. `mochi: 0` + 거절 대사로 하면 거절한 사진이 결과 카드(공유 대상)로 나가고, 성공에 표시 키를 더하면 §4 '다른 키는 없다'가 깨진다. 실패 코드 하나 더하기가 성공 모양을 그대로 두는 가장 작은 변경이다.
 
-- **화면 처리 (CAREER-26, plan S1 · S2 — 10/23 사용자 승인)**: 거부되면 아저씨 '갸웃'을 끝내고(`대기`) 위 표의 문구를 `role="alert"` `data-testid="appraise-error"`로 보인다. 코드가 표에 없으면 `unavailable` 문구. `daily_limit`은 '퇴근'이 생기기 전(CAREER-27)까지 `unavailable` 문구. 사진·선택은 그대로 두어 '감정 받기'를 다시 누를 수 있다(결정 J). 다른 사진을 고르거나 다시 누르면 문구를 지운다.
+- **화면 처리 (CAREER-26, plan S1 · S2 — 10/23 사용자 승인)**: 거부되면 아저씨 '갸웃'을 끝내고(`대기`) 위 표의 문구를 `role="alert"` `data-testid="appraise-error"`로 보인다. 코드가 표에 없으면 `unavailable` 문구. 사진·선택은 그대로 두어 '감정 받기'를 다시 누를 수 있다(결정 J). 다른 사진을 고르거나 다시 누르면 문구를 지운다.
+- **`daily_limit` 화면 처리 (CAREER-27 — 10/23 사용자 승인, plan '화면 (AC-9)')**: 위 실패 문구(`appraise-error`)를 보이지 **않고**, 아저씨 칸(`role="status"` `aria-label="감정사 아저씨"`)을 `🚶 퇴근`으로 바꾸고 **그 칸 안에** 위 표의 퇴근 문구를 `data-testid="off-duty"`로 보인다. 결과 카드는 없다. 사진·선택은 그대로 두고 '감정 받기'를 다시 누를 수 있다(결정 J · spec U8 (b)) — 누르면 '갸웃'이 되고 퇴근 문구는 사라진다. 다른 사진을 골라도 퇴근은 그대로다(서버 상한은 사진과 상관없음). 브라우저는 횟수를 세거나 막지 않는다(U8 (c)).
 - **브라우저 쪽 실패**: 사진을 읽거나 다시 그리지 못하면(§6 단계 1·4·5) 어댑터는 **보내지 않고** `invalid_input`으로 거부한다 — 화면 문구는 위 `invalid_input` 줄 그대로(CAREER-26 AC-6).
 
 ## 6. 보내는 법 (CAREER-26. 원본: ADR-0003 · CAREER-26 plan '보내는 흐름')

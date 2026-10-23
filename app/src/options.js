@@ -49,7 +49,7 @@ export const TAG_GROUPS = [
   },
 ]
 
-// Source of truth: contracts/appraise.md §5. daily_limit and unknown codes use the unavailable text until CAREER-27.
+// Source of truth: contracts/appraise.md §5. daily_limit is not an error — see OFF_DUTY_TEXT.
 export const ERROR_TEXT = {
   invalid_input: '사진이나 선택을 다시 골라 주세요.',
   refused: '이 사진은 감정하지 않아요. 물건 사진으로 다시 골라 주세요.',
@@ -58,3 +58,6 @@ export const ERROR_TEXT = {
 
 // Source of truth: contracts/appraise.md §5.
 export const REGION_NOTICE = '사진은 감정하는 동안 서울 밖 아시아 리전에서 처리될 수 있어요.'
+
+// Source of truth: contracts/appraise.md §5 daily_limit row.
+export const OFF_DUTY_TEXT = '아저씨 오늘 퇴근했어요. 밤 12시에 다시 출근해요.'
