@@ -207,6 +207,7 @@ describe('CAREER-27 하루 상한 (HTTP)', () => {
 
   test(
     'CAREER-27 AC-2 재시도도 센다 — 상한 2에서 Throttling 뒤 세 번째 시도는 보내지 않고 daily_limit',
+    { timeout: 10_000 }, // 진짜 재시도 대기 1초 + 2초
     async () => {
       const t = temp({ limit: 2 });
       const send = vi.fn(async () => {
@@ -225,7 +226,6 @@ describe('CAREER-27 하루 상한 (HTTP)', () => {
       expect(t.read().used).toBe(2);
       recorded.push({ name: 'AC-2', entries: s.entries(), requests: 2, limitAttempts: [2, 0], sendTotal: 2 });
     },
-    { timeout: 10_000 },
   );
 
   test('CAREER-27 AC-3 동시 10건, 상한 2 → Bedrock 정확히 2번 (A4 2)', async () => {
