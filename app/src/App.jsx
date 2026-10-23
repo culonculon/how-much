@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { appraise } from './appraise.js'
-import { ERROR_TEXT, PRICES, REGION_NOTICE, TAG_GROUPS } from './options.js'
+import { ERROR_TEXT, OFF_DUTY_TEXT, PRICES, REGION_NOTICE, TAG_GROUPS } from './options.js'
 
 const ALL_TAG_IDS = TAG_GROUPS.flatMap((g) => g.tags.map((t) => t.id))
-const MASCOT = { idle: '대기', thinking: '🔍 갸웃', done: '🔨 도장' }
+const MASCOT = { idle: '대기', thinking: '🔍 갸웃', done: '🔨 도장', off: '🚶 퇴근' }
 
 const pressed = (on) => ({
   padding: '6px 12px',
@@ -47,15 +47,20 @@ export default function App() {
       setResult(await appraise({ photo, myPrice, tags: ALL_TAG_IDS.filter((id) => tags.includes(id)) }))
       setStatus('done')
     } catch (e) {
-      setError(e.code in ERROR_TEXT ? e.code : 'unavailable')
-      setStatus('idle')
+      if (e.code === 'daily_limit') {
+        setError(null)
+        setStatus('off')
+      } else {
+        setError(e.code in ERROR_TEXT ? e.code : 'unavailable')
+        setStatus('idle')
+      }
     }
   }
 
   return (
     <main>
       <h1>how-much</h1>
-      <div role="status" aria-label="감정사 아저씨">{MASCOT[status]}</div>
+      <div role="status" aria-label="감정사 아저씨">{MASCOT[status]}{status === 'off' && <p data-testid="off-duty">{OFF_DUTY_TEXT}</p>}</div>
 
       <label>
         사진 고르기 <input type="file" accept="image/png,image/jpeg" onChange={pickFile} />
@@ -86,7 +91,7 @@ export default function App() {
       </div>
 
       <p id="region-notice">{REGION_NOTICE}</p>
-      <button type="button" aria-describedby="region-notice" disabled={!photo || !myPrice || status !== 'idle'} onClick={submit}>
+      <button type="button" aria-describedby="region-notice" disabled={!photo || !myPrice || !['idle', 'off'].includes(status)} onClick={submit}>
         감정 받기
       </button>
 
