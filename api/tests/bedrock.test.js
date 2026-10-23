@@ -97,3 +97,45 @@ describe('AC-5 서버가 무한정 기다리지 않는다', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 });
+
+// CAREER-27: 하루 셈 문 — 시도마다 send 바로 앞에서 부른다(plan '요청 한 건의 흐름')
+describe('CAREER-27 beforeAttempt', () => {
+  test('CAREER-27 AC-2 Throttling → 성공: beforeAttempt 2번, 매번 send보다 먼저', async () => {
+    const order = [];
+    const send = vi.fn().mockImplementation(() => {
+      order.push('send');
+      return send.mock.calls.length === 1 ? Promise.reject(awsError('ThrottlingException', 429)) : Promise.resolve({ output: 'ok' });
+    });
+    const beforeAttempt = vi.fn(() => order.push('take'));
+    const t = track(callWithRetry(send, COMMAND, { beforeAttempt }));
+    await vi.runAllTimersAsync();
+    expect(t.error).toBeUndefined();
+    expect(beforeAttempt).toHaveBeenCalledTimes(2);
+    expect(order).toEqual(['take', 'send', 'take', 'send']);
+  });
+
+  test('CAREER-27 AC-2 두 번째 beforeAttempt가 던지면 그 오류가 그대로, attempts 1, send 1', async () => {
+    const stop = new Error('stop');
+    const send = vi.fn().mockImplementation(() => Promise.reject(awsError('ThrottlingException', 429)));
+    const beforeAttempt = vi
+      .fn()
+      .mockImplementationOnce(() => {})
+      .mockImplementationOnce(() => {
+        throw stop;
+      });
+    const t = track(callWithRetry(send, COMMAND, { beforeAttempt }));
+    await vi.runAllTimersAsync();
+    expect(t.error).toBe(stop);
+    expect(t.error.attempts).toBe(1);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  test('CAREER-27 재시도 대기 중 시간 제한 → beforeAttempt 1번뿐(세지도 보내지도 않음)', async () => {
+    const send = vi.fn().mockImplementation(() => Promise.reject(awsError('ThrottlingException', 429)));
+    const beforeAttempt = vi.fn();
+    const t = track(callWithRetry(send, COMMAND, { timeoutMs: RETRY_BACKOFF_MS[0] / 2, beforeAttempt }));
+    await vi.runAllTimersAsync();
+    expect(t.error.reason).toBe('timeout');
+    expect(beforeAttempt).toHaveBeenCalledTimes(1);
+  });
+});
