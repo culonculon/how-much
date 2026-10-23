@@ -165,3 +165,13 @@ export function uploadAfterResponse(url, { headers = {}, body, keepAlive = false
     req.flushHeaders();
   });
 }
+
+// CAREER-26 AC-13: 브라우저가 만든 JPEG의 SOI 바로 뒤에 GPS 포인터가 든 EXIF를 끼운다(나머지는 그대로)
+export function withGpsExif(bytes) {
+  const exif = exifApp1({ gps: true });
+  const out = new Uint8Array(2 + exif.length + bytes.length - 2);
+  out.set([0xff, 0xd8], 0);
+  out.set(exif, 2);
+  out.set(bytes.subarray(2), 2 + exif.length);
+  return out;
+}
