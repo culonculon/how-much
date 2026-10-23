@@ -11,7 +11,6 @@ import { collectLog, converseReply, listen, makeJpeg, PHOTO_MARK, PNG_BYTES } fr
 import { tempDailyLimit } from './temp-daily-limit.js';
 
 const FAKE_SECRET = 'howmuch-fake-secret-c27-value';
-process.env.AWS_ACCESS_KEY_ID = 'AKIAHOWMUCHFAKEKEY01';
 process.env.AWS_SECRET_ACCESS_KEY = FAKE_SECRET;
 
 const NOON = Date.parse('2026-11-08T12:00:00+09:00');
