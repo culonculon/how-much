@@ -218,3 +218,47 @@ test('AC-8 never-sell price shows as 안 팔아 on the card', async () => {
   expect(card.getByTestId('my-price').textContent).toBe('안 팔아')
   expect(card.getByTestId('appraised-price').textContent).toBe('모찌 0개')
 })
+
+// contracts/appraise.md §5 문구 (CAREER-26)
+const ERROR_TEXT = {
+  invalid_input: '사진이나 선택을 다시 골라 주세요.',
+  refused: '이 사진은 감정하지 않아요. 물건 사진으로 다시 골라 주세요.',
+  unavailable: "감정이 잘 안 됐어요. 잠시 뒤 '감정 받기'를 다시 눌러 주세요.",
+}
+const reject = (code) => Object.assign(new Error('x'), code ? { code } : {})
+
+// AC-7: 거절되면 갸웃이 끝나고 안내가 보이며, 다른 사진으로 다시 누를 수 있다
+test('AC-7 invalid_input ends thinking, shows the notice, and allows a second try', async () => {
+  appraise.mockRejectedValueOnce(reject('invalid_input'))
+  renderApp()
+  pickFile(png())
+  pickPrice('🍡 10개')
+  fireEvent.click(submit())
+  const notice = await screen.findByTestId('appraise-error')
+  expect(notice.textContent).toBe(ERROR_TEXT.invalid_input)
+  expect(mascot().textContent).toContain('대기')
+  expect(submit().disabled).toBe(false)
+
+  pickFile(jpg())
+  expect(screen.queryByTestId('appraise-error')).toBeNull()
+  appraise.mockReturnValue(new Promise(() => {}))
+  fireEvent.click(submit())
+  expect(appraise).toHaveBeenCalledTimes(2)
+})
+
+// AC-7 (plan S1 D): 모든 실패에서 갸웃이 끝나고 §5 문구가 보인다
+test.each([
+  ['unavailable', 'unavailable'],
+  ['refused', 'refused'],
+  ['daily_limit', 'unavailable'],
+  [undefined, 'unavailable'],
+])('AC-7 failure code %s shows the %s notice and idles the mascot', async (code, text) => {
+  appraise.mockRejectedValueOnce(reject(code))
+  renderApp()
+  pickFile(png())
+  pickPrice('🍡 10개')
+  fireEvent.click(submit())
+  expect((await screen.findByTestId('appraise-error')).textContent).toBe(ERROR_TEXT[text])
+  expect(mascot().textContent).toContain('대기')
+  expect(screen.queryByRole('region', { name: '감정 결과' })).toBeNull()
+})
