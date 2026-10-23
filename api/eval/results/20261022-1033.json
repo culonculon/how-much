@@ -1,0 +1,505 @@
+{
+  "rounds": 5,
+  "rows": [
+    {
+      "photo": "01-flower.jpg",
+      "round": 1,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 꽃이지만 예쁘게 피었구나.",
+      "refused": false,
+      "code": null,
+      "ms": 1029
+    },
+    {
+      "photo": "01-flower.jpg",
+      "round": 2,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 꽃이지만 예쁘니 괜찮은 것 같구나.",
+      "refused": false,
+      "code": null,
+      "ms": 938
+    },
+    {
+      "photo": "01-flower.jpg",
+      "round": 3,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 꽃이지만 예쁘게 피었구나.",
+      "refused": false,
+      "code": null,
+      "ms": 1283
+    },
+    {
+      "photo": "01-flower.jpg",
+      "round": 4,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 꽃이지만 예쁘니 괜찮은 것 같구나.",
+      "refused": false,
+      "code": null,
+      "ms": 977
+    },
+    {
+      "photo": "01-flower.jpg",
+      "round": 5,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 꽃이지만 예쁘니 괜찮겠다.",
+      "refused": false,
+      "code": null,
+      "ms": 1057
+    },
+    {
+      "photo": "02-person-mug.jpg",
+      "round": 1,
+      "grade": 1,
+      "mochi": 1,
+      "line": "커피 한 잔 값이지, 흔한 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 921
+    },
+    {
+      "photo": "02-person-mug.jpg",
+      "round": 2,
+      "grade": 1,
+      "mochi": 1,
+      "line": "커피 한 잔이지, 흔한 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 830
+    },
+    {
+      "photo": "02-person-mug.jpg",
+      "round": 3,
+      "grade": 1,
+      "mochi": 1,
+      "line": "커피 한 잔이지, 흔한 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 856
+    },
+    {
+      "photo": "02-person-mug.jpg",
+      "round": 4,
+      "grade": 1,
+      "mochi": 1,
+      "line": "커피 한 잔이지, 흔한 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 873
+    },
+    {
+      "photo": "02-person-mug.jpg",
+      "round": 5,
+      "grade": 1,
+      "mochi": 1,
+      "line": "커피 한 잔이지, 흔한 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 823
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 1,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸만한 느낌이 나는 멋진 그릇이군.",
+      "refused": false,
+      "code": null,
+      "ms": 971
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 2,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸만한 플라스틱 목욕 컵이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 912
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 3,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸만한 플라스틱 목욕 컵이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 943
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 4,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸만한 플라스틱 목욕 컵이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 881
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 5,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸만한 플라스틱 목욕 컵이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 959
+    },
+    {
+      "photo": "04-mountains.jpg",
+      "round": 1,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 744
+    },
+    {
+      "photo": "04-mountains.jpg",
+      "round": 2,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 726
+    },
+    {
+      "photo": "04-mountains.jpg",
+      "round": 3,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 690
+    },
+    {
+      "photo": "04-mountains.jpg",
+      "round": 4,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 708
+    },
+    {
+      "photo": "04-mountains.jpg",
+      "round": 5,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 752
+    },
+    {
+      "photo": "05-sky.jpg",
+      "round": 1,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 677
+    },
+    {
+      "photo": "05-sky.jpg",
+      "round": 2,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 656
+    },
+    {
+      "photo": "05-sky.jpg",
+      "round": 3,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 561
+    },
+    {
+      "photo": "05-sky.jpg",
+      "round": 4,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 638
+    },
+    {
+      "photo": "05-sky.jpg",
+      "round": 5,
+      "grade": null,
+      "mochi": null,
+      "line": null,
+      "refused": true,
+      "code": "refused",
+      "ms": 723
+    },
+    {
+      "photo": "06-polaroid.jpg",
+      "round": 1,
+      "grade": 4,
+      "mochi": 30,
+      "line": "폴라로이드 카메라는 구하기 힘들어 귀하네.",
+      "refused": false,
+      "code": null,
+      "ms": 805
+    },
+    {
+      "photo": "06-polaroid.jpg",
+      "round": 2,
+      "grade": 4,
+      "mochi": 30,
+      "line": "폴라로이드 카메라는 요즘 구하기 힘들구나.",
+      "refused": false,
+      "code": null,
+      "ms": 731
+    },
+    {
+      "photo": "06-polaroid.jpg",
+      "round": 3,
+      "grade": 4,
+      "mochi": 30,
+      "line": "폴라로이드 카메라는 요즘 구하기 힘들구나.",
+      "refused": false,
+      "code": null,
+      "ms": 715
+    },
+    {
+      "photo": "06-polaroid.jpg",
+      "round": 4,
+      "grade": 4,
+      "mochi": 30,
+      "line": "폴라로이드 카메라는 요즘 구하기 힘들구나.",
+      "refused": false,
+      "code": null,
+      "ms": 648
+    },
+    {
+      "photo": "06-polaroid.jpg",
+      "round": 5,
+      "grade": 4,
+      "mochi": 30,
+      "line": "폴라로이드 카메라는 요즘 구하기 힘들구나.",
+      "refused": false,
+      "code": null,
+      "ms": 882
+    },
+    {
+      "photo": "07-watch.jpg",
+      "round": 1,
+      "grade": 4,
+      "mochi": 30,
+      "line": "옛날 시계고로 구하기 힘들구나.",
+      "refused": false,
+      "code": null,
+      "ms": 944
+    },
+    {
+      "photo": "07-watch.jpg",
+      "round": 2,
+      "grade": 4,
+      "mochi": 30,
+      "line": "구하기 힘든 시계 같으니 소중히 해라.",
+      "refused": false,
+      "code": null,
+      "ms": 855
+    },
+    {
+      "photo": "07-watch.jpg",
+      "round": 3,
+      "grade": 4,
+      "mochi": 30,
+      "line": "구하기 힘든 시계 같으니 소중히 해라.",
+      "refused": false,
+      "code": null,
+      "ms": 888
+    },
+    {
+      "photo": "07-watch.jpg",
+      "round": 4,
+      "grade": 4,
+      "mochi": 30,
+      "line": "구하기 힘든 시계 같으니 소중히 해라.",
+      "refused": false,
+      "code": null,
+      "ms": 911
+    },
+    {
+      "photo": "07-watch.jpg",
+      "round": 5,
+      "grade": 4,
+      "mochi": 30,
+      "line": "구하기 힘든 시계 같으니 소중히 해라.",
+      "refused": false,
+      "code": null,
+      "ms": 854
+    },
+    {
+      "photo": "08-toy-car.jpg",
+      "round": 1,
+      "grade": 3,
+      "mochi": 10,
+      "line": "옛날 장난감 자동차 같은데 괜찮은 물건이다.",
+      "refused": false,
+      "code": null,
+      "ms": 980
+    },
+    {
+      "photo": "08-toy-car.jpg",
+      "round": 2,
+      "grade": 3,
+      "mochi": 10,
+      "line": "괜찮은 상태로 남은 장난감 자동차구나.",
+      "refused": false,
+      "code": null,
+      "ms": 894
+    },
+    {
+      "photo": "08-toy-car.jpg",
+      "round": 3,
+      "grade": 3,
+      "mochi": 10,
+      "line": "옛날 장난감 자동차 같은데 괜찮은 물건이군.",
+      "refused": false,
+      "code": null,
+      "ms": 1429
+    },
+    {
+      "photo": "08-toy-car.jpg",
+      "round": 4,
+      "grade": 3,
+      "mochi": 10,
+      "line": "옛날 장난감 자동차 같은데 괜찮은 물건이군.",
+      "refused": false,
+      "code": null,
+      "ms": 1073
+    },
+    {
+      "photo": "08-toy-car.jpg",
+      "round": 5,
+      "grade": 3,
+      "mochi": 10,
+      "line": "괜찮은 상태로 남은 장난감 자동차구나.",
+      "refused": false,
+      "code": null,
+      "ms": 920
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 1,
+      "grade": 3,
+      "mochi": 10,
+      "line": "낡은 감이 독특한 곰 인형이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 715
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 2,
+      "grade": 4,
+      "mochi": 30,
+      "line": "낡은 곳이 있지만 귀한 테디베어군.",
+      "refused": false,
+      "code": null,
+      "ms": 717
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 3,
+      "grade": 4,
+      "mochi": 30,
+      "line": "낡은 곳이 있지만 귀한 테디베어군.",
+      "refused": false,
+      "code": null,
+      "ms": 721
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 4,
+      "grade": 3,
+      "mochi": 10,
+      "line": "낡은 테디베어지만 괜찮은 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 712
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 5,
+      "grade": 4,
+      "mochi": 30,
+      "line": "낡은 곳이 있지만 귀한 테디베어군.",
+      "refused": false,
+      "code": null,
+      "ms": 615
+    },
+    {
+      "photo": "10-plain-mug.jpg",
+      "round": 1,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 머그컵이지만 쓸만하구나.",
+      "refused": false,
+      "code": null,
+      "ms": 983
+    },
+    {
+      "photo": "10-plain-mug.jpg",
+      "round": 2,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 머그컵이지만 쓸 만하구나.",
+      "refused": false,
+      "code": null,
+      "ms": 961
+    },
+    {
+      "photo": "10-plain-mug.jpg",
+      "round": 3,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 머그컵이지만 쓸 만하구나.",
+      "refused": false,
+      "code": null,
+      "ms": 922
+    },
+    {
+      "photo": "10-plain-mug.jpg",
+      "round": 4,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 머그컵이지만 쓸 만하구나.",
+      "refused": false,
+      "code": null,
+      "ms": 942
+    },
+    {
+      "photo": "10-plain-mug.jpg",
+      "round": 5,
+      "grade": 1,
+      "mochi": 1,
+      "line": "흔한 머그컵이지만 쓸 만하구나.",
+      "refused": false,
+      "code": null,
+      "ms": 937
+    }
+  ]
+}
