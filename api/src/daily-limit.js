@@ -80,8 +80,8 @@ export function createDailyLimit({ file, limit, now = Date.now }) {
     const next = { day, used: used + 1 };
     const tmp = `${file}.tmp`;
     try {
-      mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(tmp, `${JSON.stringify(next)}\n`, { flush: true });
+      mkdirSync(dirname(file), { recursive: true, mode: 0o700 }); // 새로 만들 때만 — 다른 사용자가 고쳐 상한을 새로 만들 수 없게(ADR-0005)
+      writeFileSync(tmp, `${JSON.stringify(next)}\n`, { flush: true, mode: 0o600 });
       renameSync(tmp, file); // 같은 폴더 안 이름 바꾸기 — 읽는 쪽은 옛 파일이나 새 파일만 본다
     } catch {
       throw new UsageStoreError('usage_store_write');

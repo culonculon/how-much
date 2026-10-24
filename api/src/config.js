@@ -1,5 +1,6 @@
 // 서버 설정 값 — 원본: contracts/appraise-http.md §8. 값을 바꾸려면 그 문서부터 고친다.
-import { fileURLToPath } from 'node:url';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 export const MODEL_ID = 'apac.amazon.nova-pro-v1:0';
 export const AWS_REGION = 'ap-northeast-2';
@@ -24,4 +25,5 @@ export const PERSON_MINUTE_LIMIT = 5; // 같은 사람 최근 1분(미끄러지�
 export const PERSON_WINDOW_MS = 60_000;
 export const PERSON_DAY_LIMIT = 50; // 같은 사람 그날(서울) 요청 수 상한 — contracts §8 (10/24 U2)
 export const PERSON_MAX_ENTRIES = 10_000; // 기억하는 사람 수(LRU, 약 3MB) — contracts §8 (10/24 D4)
-export const USAGE_FILE = fileURLToPath(new URL('../var/usage.json', import.meta.url)); // 하루 셈 파일(api/ 기준, 커밋하지 않음) — ADR-0004
+// 하루 셈 파일 — 코드 폴더 밖: 배포로 폴더를 바꿔도 셈이 이어진다(ADR-0005, 10/24 사용자 결정 D3). 환경변수 없음(HOME은 OS 값)
+export const USAGE_FILE = join(homedir(), '.local', 'state', 'how-much', 'usage.json');
