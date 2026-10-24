@@ -260,8 +260,18 @@ export function createServer({
   });
 }
 
+// 시작 점검 실패(CAREER-31 AC-7). 메시지·경로·프로필 이름은 담지 않는다 — 원래 오류의 이름만(plan A4 답)
+export class StartupError extends Error {
+  constructor(reason, causeName) {
+    super(reason);
+    this.name = 'StartupError';
+    this.reason = reason; // no_credentials
+    this.causeName = causeName;
+  }
+}
+
 // 직접 실행 경로: 127.0.0.1에만 묶는다(환경변수로 바꾸지 않음)
-export function startServer({
+export async function startServer({
   port = Number(process.env.PORT ?? DEFAULT_PORT),
   send,
   log,
@@ -276,6 +286,12 @@ export function startServer({
   let realSend = send;
   if (!realSend) {
     const client = makeBedrockClient();
+    // listen 전에 SDK가 쓰는 바로 그 사슬을 한 번 푼다 — Bedrock·STS는 부르지 않는다(CAREER-31 AC-7)
+    try {
+      await client.config.credentials();
+    } catch (err) {
+      throw new StartupError('no_credentials', typeof err?.name === 'string' ? err.name : 'Unknown');
+    }
     realSend = (command, options) => client.send(command, options);
   }
   const server = createServer({ send: realSend, log, dailyLimit, personLimit });
@@ -283,7 +299,13 @@ export function startServer({
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const server = await startServer();
-  const { address, port } = server.address();
-  console.log(JSON.stringify({ evt: 'listening', address, port }));
+  try {
+    const server = await startServer();
+    const { address, port } = server.address();
+    console.log(JSON.stringify({ evt: 'listening', address, port }));
+  } catch (err) {
+    if (!(err instanceof StartupError)) throw err;
+    console.log(JSON.stringify({ evt: 'startup_failed', reason: err.reason, error: err.causeName }));
+    process.exitCode = 1; // process.exit은 파이프로 나가는 stdout을 덜 쓰고 끝낼 수 있어 쓰지 않는다
+  }
 }
