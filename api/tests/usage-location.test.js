@@ -1,12 +1,14 @@
 // CAREER-31 셈 파일 자리 — 코드 폴더 밖(~/.local/state/how-much/usage.json)이라 배포로 코드 폴더를 바꿔도 하루 셈이 이어진다.
 // 원본: specs/CAREER-31-prepublic-guard/plan.md 'A1 답' · ADR-0005 · contracts/appraise-http.md §8 USAGE_FILE
 // HOME을 임시 폴더로 바꿔 진짜 셈 자리를 건드리지 않는다(plan 실패 시나리오 14).
-// 두 '배포'는 src를 서로 다른 폴더에 복사해 따로 import한다 — 모듈이 따로 읽혀 USAGE_FILE도 따로 계산된다.
+// 두 '배포'는 src를 서로 다른 폴더에 복사해 config.js를 따로 import한다 — 모듈이 따로 읽혀 USAGE_FILE도 따로 계산된다.
+// 하루 셈 코드는 원래 daily-limit.js를 쓴다: 복사본의 오류 클래스는 서버가 아는 클래스와 달라 instanceof가 빗나간다(10/24 G4에서 찾음, 사용자 승인).
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+import { createDailyLimit } from '../src/daily-limit.js';
 import { createMemo } from '../src/memo.js';
 import { createServer } from '../src/server.js';
 import { collectLog, converseReply, listen, makeJpeg } from './helpers.js';
@@ -31,10 +33,7 @@ function release() {
 }
 
 async function load(rel) {
-  return {
-    C: await import(pathToFileURL(join(rel, 'api/src/config.js')).href),
-    L: await import(pathToFileURL(join(rel, 'api/src/daily-limit.js')).href),
-  };
+  return { C: await import(pathToFileURL(join(rel, 'api/src/config.js')).href) };
 }
 
 async function serve(dailyLimit) {
@@ -88,11 +87,11 @@ describe('CAREER-31 AC-6 셈 파일 자리', () => {
   });
 
   test('CAREER-31 AC-6 (2) 코드 폴더를 바꿔 넣어도 하루 셈이 이어진다', async () => {
-    const a = await serve(A.L.createDailyLimit({ file: A.C.USAGE_FILE, limit: 2, now }));
+    const a = await serve(createDailyLimit({ file: A.C.USAGE_FILE, limit: 2, now }));
     expect((await a.post(photo(1))).status).toBe(200);
     await a.close();
 
-    const b = await serve(B.L.createDailyLimit({ file: B.C.USAGE_FILE, limit: 2, now }));
+    const b = await serve(createDailyLimit({ file: B.C.USAGE_FILE, limit: 2, now }));
     expect((await b.post(photo(2))).status).toBe(200);
     const third = await b.post(photo(3));
     expect(third.status).toBe(429);
@@ -115,7 +114,7 @@ describe('CAREER-31 AC-6 셈 파일 자리', () => {
     process.env.HOME = fileHome;
     try {
       const X = await load(release());
-      const s = await serve(X.L.createDailyLimit({ file: X.C.USAGE_FILE, limit: 2, now }));
+      const s = await serve(createDailyLimit({ file: X.C.USAGE_FILE, limit: 2, now }));
       const r = await s.post(photo(4));
       expect(r.status).toBe(503);
       expect(r.text).toBe('{"code":"unavailable"}');
