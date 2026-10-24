@@ -65,6 +65,7 @@ test.each([
   [400, 'invalid_input'],
   [422, 'refused'],
   [429, 'daily_limit'],
+  [429, 'person_limit'],
   [503, 'unavailable'],
 ])('AC-7 status %i with code %s rejects with that code', async (status, code) => {
   fetchMock.mockResolvedValue(json(JSON.stringify({ code }), status))
