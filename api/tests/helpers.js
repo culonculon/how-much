@@ -158,7 +158,18 @@ export function uploadAfterResponse(url, { headers = {}, body, keepAlive = false
         }
         if (req.destroyed) return;
         const ok = req.write(body.subarray(off, off + step));
-        if (!ok) await new Promise((r) => req.once('drain', r).once('close', r));
+        if (!ok) {
+          // drain·close 중 먼저 온 쪽에서 둘 다 뗀다 — 남기면 drain마다 close 리스너가 쌓인다(CAREER-31 AC-9)
+          await new Promise((r) => {
+            const done = () => {
+              req.off('drain', done);
+              req.off('close', done);
+              r();
+            };
+            req.on('drain', done);
+            req.on('close', done);
+          });
+        }
       }
       if (!req.destroyed) req.end();
     });

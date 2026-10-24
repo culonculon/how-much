@@ -253,8 +253,13 @@ export function createServer({
     entry.ms = Math.round(performance.now() - started);
     try {
       log(JSON.stringify(entry));
-    } catch {
-      // 로그가 실패해도 응답은 보낸다
+    } catch (err) {
+      // 로그가 실패해도 응답은 보낸다. 조용히 삼키지 않고 오류 이름만 표준 오류에 남긴다(CAREER-31 AC-10)
+      try {
+        process.stderr.write(`${JSON.stringify({ evt: 'log_failed', error: typeof err?.name === 'string' ? err.name : 'Unknown' })}\n`);
+      } catch {
+        // 남길 곳이 없다 — 받아들임
+      }
     }
     writeJson(req, res, status, body, () => readBytes);
   });
