@@ -4,6 +4,7 @@ import { createMemo, memoKey } from '../src/memo.js';
 import { createServer } from '../src/server.js';
 import { collectLog, converseReply, listen, makeJpeg, PHOTO_MARK } from './helpers.js';
 import { tempDailyLimit } from './temp-daily-limit.js';
+import { testPersonLimit } from './test-person-limit.js';
 
 // AC-17 같은 사진 · 같은 태그면 기억한 결과를 돌려준다 (spec 10/22 결정 1·2, plan '열린 질문 8 답')
 
@@ -22,7 +23,7 @@ async function start({ send, memo, withMemoArg = true } = {}) {
   const daily = tempDailyLimit();
   temps.push(daily);
   const { dailyLimit } = daily;
-  const server = withMemoArg ? createServer({ send, log, memo, dailyLimit }) : createServer({ send, log, dailyLimit });
+  const server = withMemoArg ? createServer({ send, log, memo, dailyLimit, personLimit: testPersonLimit() }) : createServer({ send, log, dailyLimit, personLimit: testPersonLimit() });
   servers.push(server);
   const base = await listen(server);
   return { base, lines, entries: () => lines.map((l) => JSON.parse(l)) };

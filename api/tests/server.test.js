@@ -23,6 +23,7 @@ import {
   uploadAfterResponse,
 } from './helpers.js';
 import { tempDailyLimit } from './temp-daily-limit.js';
+import { testPersonLimit } from './test-person-limit.js';
 
 const FAKE_KEY_ID = 'AKIAHOWMUCHFAKEKEY01';
 const FAKE_SECRET = 'howmuch-fake-secret-value';
@@ -39,7 +40,7 @@ let base;
 
 beforeAll(async () => {
   // AC-1~6은 기억과 따로 본다(같은 사진을 여러 번 보냄) — 기억은 memo.test.js(AC-17)
-  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit });
+  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit, personLimit: testPersonLimit() });
   base = await listen(server);
 });
 afterAll(() => new Promise((resolve) => server.close(resolve)));
@@ -253,7 +254,7 @@ describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 
     const lines = [];
     let send = vi.fn(async () => converseReply(JSON.stringify({ grade: 2, line: '쓸 만하구먼' })));
     const sockets = [];
-    const s = createServer({ send: (...a) => send(...a), log: (l) => lines.push(l), memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit });
+    const s = createServer({ send: (...a) => send(...a), log: (l) => lines.push(l), memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit, personLimit: testPersonLimit() });
     s.on('connection', (sock) => sockets.push(sock));
     const base = await listen(s);
     return {

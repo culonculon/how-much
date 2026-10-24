@@ -12,6 +12,11 @@ import {
   HOST,
   MAX_PHOTO_BYTES,
   MEMO_MAX_ENTRIES,
+  PERSON_DAY_LIMIT,
+  PERSON_HEADER,
+  PERSON_MAX_ENTRIES,
+  PERSON_MINUTE_LIMIT,
+  PERSON_WINDOW_MS,
   REJECT_DRAIN_BYTES,
   USAGE_FILE,
 } from './config.js';
@@ -21,6 +26,7 @@ import { checkQuery, InputError } from './input.js';
 import { checkJpeg } from './jpeg.js';
 import { createMemo, memoKey } from './memo.js';
 import { OutputError, parseModelOutput } from './output.js';
+import { createPersonLimit, PersonLimitError, personOf } from './person-limit.js';
 import { buildConverseInput } from './prompt.js';
 
 const PATH = '/api/appraise';
@@ -62,10 +68,17 @@ function readBody(req) {
   });
 }
 
-async function appraise(req, res, entry, send, memo, dailyLimit) {
+async function appraise(req, res, entry, send, memo, dailyLimit, personLimit) {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname !== PATH) throw invalid('bad_path', 404);
   if (req.method !== 'POST') throw invalid('bad_method', 405);
+
+  // 사람별 문(CAREER-31): 본문을 읽기 전, 경로·메서드를 지난 요청마다 1번 센다(기억 hit·입력 거절 포함)
+  const person = personOf(req.headers[PERSON_HEADER]);
+  entry.who = person.who;
+  const used = personLimit.take(person.key);
+  entry.personMinute = used.minuteUsed;
+  entry.personDay = used.dayUsed;
 
   const { tags } = checkQuery(url.searchParams);
 
@@ -134,6 +147,7 @@ function toReply(err) {
   if (err instanceof InputError) return invalid(err.reason);
   if (err instanceof OutputError) return new Reply(503, 'unavailable', err.reason);
   if (err instanceof UpstreamError) return new Reply(503, 'unavailable', err.reason);
+  if (err instanceof PersonLimitError) return new Reply(429, 'person_limit', err.reason);
   if (err instanceof DailyLimitError) return new Reply(429, 'daily_limit', err.reason);
   if (err instanceof UsageStoreError) return new Reply(503, 'unavailable', err.reason);
   return new Reply(500, 'unavailable', 'internal');
@@ -190,8 +204,10 @@ export function createServer({
   log = (line) => console.log(line),
   memo = createMemo({ maxEntries: MEMO_MAX_ENTRIES }), // 서버 인스턴스마다 새로(전역 상태 없음)
   dailyLimit, // 하루 셈 — 기본값 없음: 상한을 거치지 않는 호출 길을 만들지 않는다(CAREER-27 D4)
+  personLimit, // 사람별 셈 — 기본값 없음(같은 이유, CAREER-31 D6)
 } = {}) {
   if (typeof dailyLimit?.take !== 'function') throw new TypeError('dailyLimit이 필요하다');
+  if (typeof personLimit?.take !== 'function') throw new TypeError('personLimit이 필요하다');
   return http.createServer(async (req, res) => {
     const started = performance.now();
     let readBytes = 0; // 이 요청에서 읽은 본문 바이트(거절 뒤 버림 한도에 함께 셈)
@@ -210,14 +226,21 @@ export function createServer({
       memo: null, // null · off · hit · miss · raced (열쇠 해시는 남기지 않음)
       day: null, // 하루 셈 날짜(셈을 거친 요청만)
       dayUsed: null, // 그 시점 그날 셈
+      who: null, // 사람 열쇠를 만든 방법(ip4 · ip6 · none · bad) — 주소·해시는 남기지 않는다(plan A2 답)
+      personMinute: null, // 그 사람 최근 1분 요청 수
+      personDay: null, // 그 사람 그날 요청 수
     };
     let status;
     let body;
     try {
-      ({ status, body } = await appraise(req, res, entry, send, memo, dailyLimit));
+      ({ status, body } = await appraise(req, res, entry, send, memo, dailyLimit, personLimit));
     } catch (err) {
       const reply = toReply(err);
       if (typeof err?.attempts === 'number') entry.attempts = err.attempts;
+      if (err instanceof PersonLimitError) {
+        entry.personMinute = err.minuteUsed;
+        entry.personDay = err.dayUsed;
+      }
       if (err instanceof DailyLimitError) {
         entry.day = err.day;
         entry.dayUsed = err.used;
@@ -243,13 +266,19 @@ export function startServer({
   send,
   log,
   dailyLimit = createDailyLimit({ file: USAGE_FILE, limit: DAILY_CALL_LIMIT }),
+  personLimit = createPersonLimit({
+    minuteLimit: PERSON_MINUTE_LIMIT,
+    windowMs: PERSON_WINDOW_MS,
+    dayLimit: PERSON_DAY_LIMIT,
+    maxEntries: PERSON_MAX_ENTRIES,
+  }),
 } = {}) {
   let realSend = send;
   if (!realSend) {
     const client = makeBedrockClient();
     realSend = (command, options) => client.send(command, options);
   }
-  const server = createServer({ send: realSend, log, dailyLimit });
+  const server = createServer({ send: realSend, log, dailyLimit, personLimit });
   return new Promise((resolve) => server.listen(port, HOST, () => resolve(server)));
 }
 
