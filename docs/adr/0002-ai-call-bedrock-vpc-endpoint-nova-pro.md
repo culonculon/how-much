@@ -1,9 +1,9 @@
 # ADR-0002: AI 호출 구조 — 프라이빗 EC2 → bedrock-runtime VPC 엔드포인트 → Nova Pro
 
 - 날짜: 2026-10-21
-- 상태: 확정 (2026-10-21 — 사용자 승인. 버린 이유는 사용자 설계 메모 기준)
+- 상태: 확정 (2026-10-21 — 사용자 승인. 버린 이유는 사용자 설계 메모 기준) · **(CAREER-31 고침 — 2026-10-24 사용자 승인)** '위험과 대비'의 '엔드포인트 놀림 요금' 줄
 - 정한 사람: 사용자 (구조 B · 모델 · 결정 B·D) / architect가 글로 옮김
-- Refs: CAREER-25
+- Refs: CAREER-25 · CAREER-31(엔드포인트 놀림 요금 줄 고침)
 
 ## 상황
 감정 아저씨가 진짜 AI로 값을 매기려면 서버가 AI를 불러야 하고, 호출 1건마다 돈이 든다(CLAUDE.md §9: AI 호출은 `api/`를 거치고 비용 상한은 서버에서 센다). 후보는 A Lambda · B Bedrock + VPC 엔드포인트 · C NAT 인스턴스였다(CLAUDE.md §11). v1 포트폴리오에 이미 프라이빗 서브넷의 EC2가 있고, 그 VPC·EC2는 how-much `infra/`가 아니라 `culonculon/aws-infra-portfolio` 저장소에 있다. 한 번 정하면 네트워크·IAM·배포 경로·비용 상한(CAREER-27)의 자리가 모두 이 위에 올라가서 되돌리기 어렵다.
@@ -46,7 +46,7 @@
 - 공개 전 과금 사고: 비용 상한(CAREER-27) 전에는 배포·공개하지 않는다(결정 B). 로컬 서버는 `127.0.0.1`에만 묶는다
 - 넓은 자격 증명: 시험 세트는 사용자 컴퓨터의 terraform-admin 자격 증명으로 손으로 돌린다(결정 C, CLAUDE.md §6의 이 시험 한정 예외). 시험 실행 명령은 로컬 서버에 HTTP로만 요청하고, 결과 파일·로그에 자격 증명을 남기지 않는다
 - 저장소가 갈라져 생기는 어긋남: `culonculon/aws-infra-portfolio` PR 링크를 CAREER-25 PR 설명에 적고(AC-14), 배포 스토리에서 EC2 역할·보안 그룹 이름을 contracts에 옮긴다
-- 엔드포인트 놀림 요금: PR은 지금 내고 머지하되 apply는 `api/`를 EC2에 배포하는 스토리 때 사용자가 한다(10/21 사용자 결정)
+- 엔드포인트 놀림 요금: **(CAREER-31 고침 — 2026-10-24 사용자 승인 · CAREER-31 plan D8)** `culonculon/aws-infra-portfolio`는 main에 머지하면 `deploy.yml`이 바로 apply한다 — 그 저장소에서는 **머지 = apply = 요금 시작**이다(CAREER-31 spec 가정 1). 그래서 엔드포인트 PR은 `api/`를 EC2에 배포하는 스토리(CAREER-30)에서 **배포 직전에 머지**한다. (옛 글: "PR은 지금 내고 머지하되 apply는 배포 스토리 때 사용자가 한다(10/21 사용자 결정)" — 그 저장소의 CI와 맞지 않아 고침. 10/24 사용자 확인: 엔드포인트 PR #2는 아직 머지 안 됨(OPEN · draft) — 요금은 아직 나가지 않았다)
 - 프로필이 보내는 리전 목록이 바뀌면 IAM이 막아 `AccessDenied` → `unavailable`로 크게 실패한다. 목록은 Terraform data source로 읽어 다음 plan에 드러나게 한다
 
 <!-- 틀 출처: ECC skills/architecture-decision-records (MIT, Affaan Mustafa) — Michael Nygard 형식을 옮김 -->
