@@ -166,6 +166,70 @@ export function uploadAfterResponse(url, { headers = {}, body, keepAlive = false
   });
 }
 
+// CAREER-31 AC-8: Content-Length 없이(chunked) total바이트를 응답을 기다리지 않고 올린다(앞 3바이트 FF D8 FF, 나머지 0x5a).
+// complete = 응답 'end'가 끊김보다 먼저 왔나. 요청 쪽 오류(EPIPE 등)는 모으기만 한다 — AC-8은 응답을 다 받는지만 본다.
+export function streamChunked(url, { headers = {}, total, chunk = 64 * 1024 } = {}) {
+  return new Promise((resolve) => {
+    const errors = [];
+    const chunks = [];
+    let status = null;
+    let complete = false;
+    let reqClosed = false;
+    let resDone = false;
+    const finish = () => {
+      if (reqClosed && resDone) resolve({ status, text: Buffer.concat(chunks).toString('utf8'), complete, errors });
+    };
+    const req = http.request(url, { method: 'POST', headers, agent: false });
+    req.on('error', (e) => errors.push(e.code ?? e.message));
+    req.on('close', () => {
+      reqClosed = true;
+      if (status === null) resDone = true; // 응답 없이 끊김
+      finish();
+    });
+    req.on('response', (res) => {
+      status = res.statusCode;
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        complete = true;
+        resDone = true;
+        finish();
+      });
+      const cut = () => {
+        resDone = true;
+        finish();
+      };
+      res.on('aborted', cut);
+      res.on('error', (e) => {
+        errors.push(e.code ?? e.message);
+        cut();
+      });
+      res.on('close', cut);
+    });
+    (async () => {
+      const body = Buffer.alloc(total, 0x5a);
+      body[0] = 0xff;
+      body[1] = 0xd8;
+      body[2] = 0xff;
+      for (let off = 0; off < total; off += chunk) {
+        if (req.destroyed) return;
+        const ok = req.write(body.subarray(off, off + chunk));
+        if (!ok) {
+          await new Promise((r) => {
+            const done = () => {
+              req.off('drain', done);
+              req.off('close', done);
+              r();
+            };
+            req.on('drain', done);
+            req.on('close', done);
+          });
+        }
+      }
+      if (!req.destroyed) req.end();
+    })();
+  });
+}
+
 // CAREER-26 AC-13: 브라우저가 만든 JPEG의 SOI 바로 뒤에 GPS 포인터가 든 EXIF를 끼운다(나머지는 그대로)
 export function withGpsExif(bytes) {
   const exif = exifApp1({ gps: true });
