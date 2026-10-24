@@ -141,7 +141,7 @@
   - 돕는 함수 `run(env)`: `spawn(process.execPath, ['src/server.js'], { cwd: apiDir, env })` → stdout·stderr를 모으고, stdout에 `"evt":"listening"` 줄이 오면 `SIGTERM`. `{ code, signal, out, err }`를 돌려줌.
   - 공통 `env`: **새 객체** `{ PATH: process.env.PATH, HOME: <빈 임시 폴더>, AWS_CONFIG_FILE: join(home, 'none-config'), AWS_SHARED_CREDENTIALS_FILE: join(home, 'none-creds'), AWS_EC2_METADATA_DISABLED: 'true', PORT: '0' }` — 부모 `process.env`의 `AWS_*`를 물려받지 않는다.
   - (a) 없음: `code !== 0`(그리고 `null` 아님 — 스스로 끝남) · stdout에 `listening` 줄 없음 · `startup_failed` 줄 정확히 1개, `JSON.parse` 결과가 `{ evt: 'startup_failed', reason: 'no_credentials', error: <문자열> }`이고 키가 이 셋뿐 · 출력 전체에 임시 `HOME` 경로 글자 0번.
-  - (b) 있음: 공통 `env` + `AWS_ACCESS_KEY_ID: 'AKIAHOWMUCHFAKEKEY02'` · `AWS_SECRET_ACCESS_KEY: 'howmuch-fake-secret-c31'` → `listening` 줄이 오고 `address === '127.0.0.1'` · 우리가 `SIGTERM`으로 끝냄 · 출력 전체에 두 가짜 값 0번 · 임시 `HOME` 아래에 아무것도 안 생김(`readdirSync(home)`이 `[]` — 시작이 셈 파일을 만들지 않음).
+  - (b) 있음: 공통 `env` + `AWS_ACCESS_KEY_ID: 'HOWMUCHFAKEKEYID02'` · `AWS_SECRET_ACCESS_KEY: 'howmuch-fake-secret-c31'` → `listening` 줄이 오고 `address === '127.0.0.1'` · 우리가 `SIGTERM`으로 끝냄 · 출력 전체에 두 가짜 값 0번 · 임시 `HOME` 아래에 아무것도 안 생김(`readdirSync(home)`이 `[]` — 시작이 셈 파일을 만들지 않음).
   - (c) Bedrock 0번: 두 경우 모두 요청을 보내지 않으므로 Bedrock 호출이 없다 — (a)는 포트가 없고 (b)는 `listening` 직후 끈다. 테스트 주석에 이 이유를 적는다.
 - 단계
   1. 파일을 쓴다.
