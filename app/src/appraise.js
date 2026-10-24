@@ -1,7 +1,7 @@
 // Contracts: contracts/appraise.md §4~§6, appraise-http.md §2·§5. The only place that talks to the network.
 import { preparePhoto } from './photo.js'
 
-const CODES = ['invalid_input', 'refused', 'unavailable', 'daily_limit']
+const CODES = ['invalid_input', 'refused', 'unavailable', 'daily_limit', 'person_limit']
 const fail = (code) => Object.assign(new Error(code), { code })
 
 export async function appraise({ photo, myPrice, tags }) {
