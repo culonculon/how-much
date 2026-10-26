@@ -1,6 +1,6 @@
 [CAREER-31](https://culonculon98.atlassian.net/browse/CAREER-31) · spec: [spec.md](spec.md) · plan: [plan.md](plan.md) · 약속: [contracts/appraise-http.md](../../contracts/appraise-http.md) §5·§8·§10 · [contracts/appraise.md](../../contracts/appraise.md) §5 · 결정: [ADR-0005](../../docs/adr/0005-usage-file-outside-code-folder.md) · [ADR-0006](../../docs/adr/0006-per-person-limit-in-server-memory.md)
 
-상태: 승인됨 (2026-10-24 — 사용자 승인, plan D1~D9 '정해진 것') · (2026-10-26 — 사용자 승인, plan D10~D12: G8 단계 1 안 A)
+상태: 승인됨 (2026-10-24 — 사용자 승인, plan D1~D9 '정해진 것') · (2026-10-26 — 사용자 승인, plan D10~D12: G8 단계 1 안 A) · (2026-10-26 — 사용자 승인, plan D13 '가' · D14 넓히지 않음: G8 단계 1의 1a·2·3·5 고침)
 
 - 브랜치: `CAREER-31-prepublic-guard` 하나. 순서: **U1 → (G1 ∥ T1) → G2 → G3 → G4 → G5 → G6 → G7 → G8 · F1 (T1 뒤) → P1 (G8·F1 뒤)**
   - G1~G8은 모두 `api/`(guard, `human_only`)라 **앞 세션(사용자와 함께)**이 차례로 커밋한다. `server.js`·이미 있는 테스트를 여러 작업이 고쳐서 G끼리는 [P]가 아니다. 짝마다 테스트 커밋(홀수)이 구현 커밋(짝수)보다 먼저다 — reviewer가 커밋 순서로 본다.
@@ -182,7 +182,7 @@
 - 검사 명령: `{ npm --prefix api test 2>&1 | tee /tmp/c31-g7.log; echo "exit=${PIPESTATUS[0]}"; } ; grep -c MaxListenersExceededWarning /tmp/c31-g7.log; git status --porcelain api` (`bash -c '…'`로)
 - 끝난 상태: `exit` 0 아님 · 실패가 위 셋뿐 · 경고 수 1 이상 · `git status` 빈 줄.
 
-## G8 — CAREER-25 리뷰 ①②③ 고침 (초록) · 순서 9 (G7 뒤) — 단계 1 승인됨 (10/26 사용자, plan D10 안 A · D11 1,000 · D12)
+## G8 — CAREER-25 리뷰 ①②③ 고침 (초록) · 순서 9 (G7 뒤) — 단계 1 승인됨 (10/26 사용자, plan D10 안 A · D11 1,000 · D12) · 단계 1.1a 이후 승인됨 (10/26 사용자, plan D13 '가' · D14 넓히지 않음)
 - 담당: **앞 세션(사용자와 함께)**
 - 파일: `api/src/server.js` · `api/src/config.js`(`REJECT_LINGER_MS`) · `api/tests/server.test.js`('AC-2(f)' (5) 더함만) · (AC-9 원인에 따라) `api/src/bedrock.js` 또는 원인이 된 테스트 헬퍼
 - AC: AC-8 · AC-9 · AC-10 (G7 통과)
@@ -190,13 +190,20 @@
 - 단계
   1. AC-8 — plan 'A5 답' **안 A** (10/26 다시 씀). AC-9·AC-10은 `7e93b26`에서 끝남.
      0. 시작 조건: plan D10 = A, D11 값이 정해짐, architect가 contracts §2·§8을 D12대로 고치고 승인됨. 하나라도 아니면 **멈춘다**. D10 = C이면 이 단계를 건너뛰고(코드 고치지 않음), spec AC-8과 G7 AC-8 테스트는 사용자가 spec을 승인한 뒤 다시 정한다.
-     1. 지키는 테스트 먼저: `config.js`에 `export const REJECT_LINGER_MS = <D11 값>;`을 넣고 주석에 '한도를 넘은 거절 연결을 끊기 전 붙잡는 시간 — 그동안 읽지 않음. 원본: specs/CAREER-31-prepublic-guard/plan.md A5 답'을 적는다(테스트가 import하므로 이 커밋에 넣는다 — CAREER-25 A6 단계 1과 같은 이유). `server.test.js`의 'AC-2(f)' describe에 `(5) Content-Length 없이 한도를 넘게 올리고 응답을 읽지 않는 상대도 REJECT_LINGER_MS 안에 끊는다`를 더한다: `own()` → `net.connect(port)`로 `POST /api/appraise?myPrice=ten HTTP/1.1` · `Host` · `Content-Type: image/jpeg` · `Transfer-Encoding: chunked` 헤더를 보낸 뒤, `pause()`로 응답은 읽지 않고 64KiB짜리 chunk(`<hex 길이>\r\n…\r\n`)를 모두 3,000,000바이트 쓴다(쓰기 오류는 모으기만) → 연결 시각부터 `o.sockets[0]`의 `close`까지 `< REJECT_LINGER_MS + 3_000` · `await o.bytesRead() < REJECT_DRAIN_BYTES + SLACK` · 로그 1줄 `too_large` · `send` 0. `{ timeout: 15_000 }`. 돌려서 **초록**인지 본다(지금 코드는 바로 끊으므로). 커밋 `CAREER-31: reject linger bound guard test`.
-     2. 구현 `writeJson`(그 밖의 갈래는 그대로): `const chunked = req.headers['content-length'] === undefined;` → 버리기 길의 `writeHead` 헤더를 `chunked ? { ...JSON_HEADERS, Connection: 'close', 'Content-Length': Buffer.byteLength(text) } : { ...JSON_HEADERS, Connection: 'close' }`로 바꾼다. `onData`의 한도 넘음 갈래는 `stop(); req.pause(); const t = setTimeout(() => req.socket.destroy(), REJECT_LINGER_MS); req.socket.once('close', () => clearTimeout(t));`로 바꾸고, **`res.end()`는 부르지 않는다**. 주석: `// res.end()를 부르면 Node가 곧바로 닫아 RST가 응답을 지울 수 있다 — 응답은 이미 Content-Length로 끝났다 (CAREER-31 plan A5 답)`. `onEnd`는 그대로. `node:stream` `finished`는 쓰지 않는다.
-     3. 확인: `npm --prefix api test -- server.test.js` → 'AC-2(f)' (1)~(5)와 'CAREER-31 AC-8'이 모두 통과해야 한다. (1)~(4) 중 하나라도 깨지면 테스트를 고치지 않고 **멈춘다**. AC-8 테스트에 걸린 시간을 vitest 출력에서 적어 둔다. 45초를 넘으면 시간 제한 60초에 가까우므로 **멈춘다**.
+     1. 지키는 테스트 먼저: `config.js`에 `export const REJECT_LINGER_MS = <D11 값>;`을 넣고 주석에 '한도를 넘은 거절 연결을 끊기 전 붙잡는 시간 — 그동안 읽지 않음. 원본: specs/CAREER-31-prepublic-guard/plan.md A5 답'을 적는다(테스트가 import하므로 이 커밋에 넣는다 — CAREER-25 A6 단계 1과 같은 이유). `server.test.js`의 'AC-2(f)' describe에 `(5) Content-Length 없이 한도를 넘게 올리고 응답을 읽지 않는 상대도 REJECT_LINGER_MS 안에 끊는다`를 더한다: `own()` → `net.connect(port)`로 `POST /api/appraise?myPrice=ten HTTP/1.1` · `Host` · `Content-Type: image/jpeg` · `Transfer-Encoding: chunked` 헤더를 보낸 뒤, `pause()`로 응답은 읽지 않고 64KiB짜리 chunk(`<hex 길이>\r\n…\r\n`)를 모두 3,000,000바이트 쓴다(쓰기 오류는 모으기만) → 연결 시각부터 `o.sockets[0]`의 `close`까지 `< REJECT_LINGER_MS + 3_000` · `await o.bytesRead() < REJECT_DRAIN_BYTES + SLACK` · 로그 1줄 `too_large` · `send` 0. `{ timeout: 15_000 }`. 돌려서 **초록**인지 본다(지금 코드는 바로 끊으므로). 커밋 `CAREER-31: reject linger bound guard test`. — ✔ 커밋됨(10/26 앞 세션)
+     1a. (10/26 — plan D13 '가' 승인됨) **여분 상한 고치기 — 테스트 커밋, 구현보다 먼저.** 시작 전 작업 트리에 구현이 없어야 한다(`git status --porcelain api` 빈 줄 — stash는 아직 꺼내지 않음).
+        - 원본: plan 'A5 답 · 안 A 넣어 본 결과'
+        - `api/tests/server.test.js` 'AC-2(f)' describe: `SLACK` 줄 아래 `const PAUSE_SLACK = 4 * 64 * 1024; // 읽기를 멈추기 전 받아 둘 수 있는 덩어리 4개(64KiB씩) — 원본 CAREER-31 plan 'A5 답 · 안 A 넣어 본 결과'`.
+        - (5)를 `test.each([[3_000_000], [6_000_000]])`로 바꾼다(이름 `… — 업로드 %i바이트`). 루프 끝 조건 `sent < total`. `bytesRead` 줄만 `toBeLessThan(REJECT_DRAIN_BYTES + SLACK + PAUSE_SLACK)`. 시간·로그·`send` 줄은 **그대로**. (1)~(4)는 한 글자도 고치지 않는다(D14).
+        - `api/src/config.js` `REJECT_LINGER_MS` 주석의 '그동안 읽지 않음' → '그동안 본문을 처리하지 않음(읽기 멈춤 — 멈추기 전 여분은 contracts §2)'. 값은 그대로.
+        - 확인: `npm --prefix api test -- server.test.js` → (5) 두 회차 모두 **초록**(옛 코드는 바로 끊으므로). 하나라도 빨강이면 멈춘다.
+        - 커밋: `CAREER-31: reject linger guard test bound for pre-pause socket reads` — 본문에 'contracts §2·§8 글이 실제 동작보다 강했다. 여분은 업로드 크기와 상관없이 묶임을 6,000,000 회차로 본다(plan A5 답)'.
+     2. 구현 `writeJson`(그 밖의 갈래는 그대로). (10/26) stash에서 꺼낼 때: `git stash list --format='%H %gs' | grep c31-g8-linger-wip` → 나온 SHA로 `git stash apply <SHA>`(`pop`·`stash@{0}`을 쓰지 않는다 — stash 목록은 다른 worktree와 같이 쓴다). 꺼낸 뒤 **`req.socket.pause()` 줄을 지운다**(plan '안 A 넣어 본 결과' — architect가 정한 것). 커밋하고 나서 같은 이름으로 다시 찾아 `git stash drop <그때의 stash@{n}>`. `const chunked = req.headers['content-length'] === undefined;` → 버리기 길의 `writeHead` 헤더를 `chunked ? { ...JSON_HEADERS, Connection: 'close', 'Content-Length': Buffer.byteLength(text) } : { ...JSON_HEADERS, Connection: 'close' }`로 바꾼다. `onData`의 한도 넘음 갈래는 `stop(); req.pause(); const t = setTimeout(() => req.socket.destroy(), REJECT_LINGER_MS); req.socket.once('close', () => clearTimeout(t));`로 바꾸고, **`res.end()`는 부르지 않는다**. 주석: `// res.end()를 부르면 Node가 곧바로 닫아 RST가 응답을 지울 수 있다 — 응답은 이미 Content-Length로 끝났다 (CAREER-31 plan A5 답)`. `onEnd`는 그대로. `node:stream` `finished`는 쓰지 않는다.
+     3. 확인: `npm --prefix api test -- server.test.js` → 'AC-2(f)' (1)~(5)와 'CAREER-31 AC-8'이 모두 통과해야 한다. (1)~(5) 중 하나라도 깨지면 테스트를 고치지 않고 **멈춘다** — (5)가 `bytesRead`로 깨지면 실제 값과 업로드 크기를 들고 알린다(`PAUSE_SLACK`을 세션이 바꾸지 않음 · plan 실패 시나리오 27). (5)의 `bytesRead`를 두 회차 모두 적어 둔다(PR '결정' 칸에 실측으로). AC-8 테스트에 걸린 시간을 vitest 출력에서 적어 둔다. 45초를 넘으면 시간 제한 60초에 가까우므로 **멈춘다**.
   2. AC-9: G7 1단계에서 찾은 곳의 리스너 수명을 맞춘다(붙인 곳에서 떼기 · 대상을 요청마다 따로). 원인이 테스트 코드면 테스트 쪽을 고치고 기대값은 그대로. 경고 끄기 금지(plan 실패 시나리오 19).
   3. AC-10: 로그 `catch {}`를 `catch (err) { try { process.stderr.write(`${JSON.stringify({ evt: 'log_failed', error: typeof err?.name === 'string' ? err.name : 'Unknown' })}\n`); } catch { /* 남길 곳이 없다 */ } }`로.
   4. 검사 명령. 실패하면 테스트를 고치지 않는다. AC-8이 고친 뒤에도 30번 중 실패하면 **멈추고** 실패 회차의 `status`·`complete`를 사용자에게 알린다. 값(`REJECT_LINGER_MS`)을 키우거나 안 B·C로 갈지는 사용자가 정한다 — 세션이 스스로 값을 바꾸지 않는다.
-  5. 흔들림: `bash -c 'for i in 1 2 3; do npm --prefix api test -- server.test.js -t "CAREER-31 AC-8" || exit 1; done'` → 3번 모두 통과.
+  5. 흔들림: `bash -c 'for i in 1 2 3; do npm --prefix api test -- server.test.js -t "CAREER-31 AC-8|AC-2\(f\)" || exit 1; done'` → 3번 모두 통과((10/26) (2)·(5)도 같은 길이라 함께 돌린다 — (2)가 깨지면 plan D14대로 멈춘다).
   6. 커밋: `CAREER-31: length-framed reject for chunked uploads, linger before close` (AC-9·AC-10은 `7e93b26`에서 끝남)
 - 검사 명령:
   ```
