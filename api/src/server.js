@@ -18,6 +18,7 @@ import {
   PERSON_MINUTE_LIMIT,
   PERSON_WINDOW_MS,
   REJECT_DRAIN_BYTES,
+  REJECT_LINGER_MS,
   USAGE_FILE,
 } from './config.js';
 import { createDailyLimit, DailyLimitError, UsageStoreError } from './daily-limit.js';
@@ -181,9 +182,12 @@ function writeJson(req, res, status, body, readBytes) {
   const onData = (chunk) => {
     drained += chunk.length;
     if (drained > REJECT_DRAIN_BYTES) {
+      // 한도를 넘음: 더 읽지 않고 REJECT_LINGER_MS 뒤 끊는다(CAREER-31 AC-8).
+      // res.end()를 부르면 Node가 곧바로 닫아 RST가 응답을 지울 수 있다 — 응답은 이미 Content-Length로 끝났다 (CAREER-31 plan A5 답)
       stop();
-      res.end();
-      req.socket.destroy(); // 한도를 넘음: 응답은 이미 보냈다
+      req.pause();
+      const t = setTimeout(() => req.socket.destroy(), REJECT_LINGER_MS);
+      req.socket.once('close', () => clearTimeout(t));
     }
   };
   const onEnd = () => {
@@ -194,7 +198,15 @@ function writeJson(req, res, status, body, readBytes) {
   req.on('end', onEnd);
   req.once('aborted', stop);
   req.once('close', stop);
-  res.writeHead(status, { ...JSON_HEADERS, Connection: 'close' });
+  // Content-Length 없이(chunked) 올린 요청이면 거절 응답에 길이를 붙여 응답이 먼저 끝나게 한다(CAREER-31 AC-8).
+  // 길이를 붙인 요청(브라우저 앱이 쓰는 길)은 그대로 — 보내는 쪽이 본문을 끝까지 올릴 수 있다(CAREER-25 거절 뒤 남은 업로드)
+  const chunked = req.headers['content-length'] === undefined;
+  res.writeHead(
+    status,
+    chunked
+      ? { ...JSON_HEADERS, Connection: 'close', 'Content-Length': Buffer.byteLength(text) }
+      : { ...JSON_HEADERS, Connection: 'close' },
+  );
   res.write(text);
   req.resume();
 }
