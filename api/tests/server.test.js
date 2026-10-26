@@ -257,6 +257,7 @@ describe('AC-6 로그에 사진·비밀값이 없다', () => {
 
 describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 · A6)', () => {
   const SLACK = 100_000; // 한 번 읽는 덩어리 64KiB + 헤더·chunk 틀 여유
+  const PAUSE_SLACK = 4 * 64 * 1024; // 읽기를 멈추기 전 받아 둘 수 있는 덩어리 4개(64KiB씩) — 원본 CAREER-31 plan 'A5 답 · 안 A 넣어 본 결과'
 
   async function own() {
     const lines = [];
@@ -362,7 +363,7 @@ describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 
       await o.close();
     }
   });
-  test('(5) Content-Length 없이 한도를 넘게 올리고 응답을 읽지 않는 상대도 REJECT_LINGER_MS 안에 끊는다', { timeout: 15_000 }, async () => {
+  test.each([[3_000_000], [6_000_000]])('(5) Content-Length 없이 한도를 넘게 올리고 응답을 읽지 않는 상대도 REJECT_LINGER_MS 안에 끊는다 — 업로드 %i바이트', { timeout: 15_000 }, async (total) => {
     const o = await own();
     try {
       const port = Number(new URL(o.base).port);
@@ -378,7 +379,7 @@ describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 
       piece[0] = 0xff;
       piece[1] = 0xd8;
       piece[2] = 0xff;
-      for (let sent = 0; sent < 3_000_000 && !sock.destroyed; sent += step) {
+      for (let sent = 0; sent < total && !sock.destroyed; sent += step) {
         const ok = sock.write(Buffer.concat([Buffer.from(`${step.toString(16)}\r\n`), piece, Buffer.from('\r\n')]));
         if (!ok) {
           await new Promise((r) => {
@@ -395,7 +396,7 @@ describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 
       const server = o.sockets[0];
       if (!server.closed) await new Promise((r) => server.once('close', r));
       expect(performance.now() - started).toBeLessThan(REJECT_LINGER_MS + 3_000);
-      expect(await o.bytesRead()).toBeLessThan(REJECT_DRAIN_BYTES + SLACK);
+      expect(await o.bytesRead()).toBeLessThan(REJECT_DRAIN_BYTES + SLACK + PAUSE_SLACK);
       expect(o.lines).toHaveLength(1);
       expect(JSON.parse(o.lines[0]).reason).toBe('too_large');
       expect(o.send).not.toHaveBeenCalled();
