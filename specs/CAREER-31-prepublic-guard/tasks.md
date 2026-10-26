@@ -1,6 +1,6 @@
 [CAREER-31](https://culonculon98.atlassian.net/browse/CAREER-31) · spec: [spec.md](spec.md) · plan: [plan.md](plan.md) · 약속: [contracts/appraise-http.md](../../contracts/appraise-http.md) §5·§8·§10 · [contracts/appraise.md](../../contracts/appraise.md) §5 · 결정: [ADR-0005](../../docs/adr/0005-usage-file-outside-code-folder.md) · [ADR-0006](../../docs/adr/0006-per-person-limit-in-server-memory.md)
 
-상태: 승인됨 (2026-10-24 — 사용자 승인, plan D1~D9 '정해진 것')
+상태: 승인됨 (2026-10-24 — 사용자 승인, plan D1~D9 '정해진 것') · (2026-10-26 — 사용자 승인, plan D10~D12: G8 단계 1 안 A)
 
 - 브랜치: `CAREER-31-prepublic-guard` 하나. 순서: **U1 → (G1 ∥ T1) → G2 → G3 → G4 → G5 → G6 → G7 → G8 · F1 (T1 뒤) → P1 (G8·F1 뒤)**
   - G1~G8은 모두 `api/`(guard, `human_only`)라 **앞 세션(사용자와 함께)**이 차례로 커밋한다. `server.js`·이미 있는 테스트를 여러 작업이 고쳐서 G끼리는 [P]가 아니다. 짝마다 테스트 커밋(홀수)이 구현 커밋(짝수)보다 먼저다 — reviewer가 커밋 순서로 본다.
@@ -182,18 +182,22 @@
 - 검사 명령: `{ npm --prefix api test 2>&1 | tee /tmp/c31-g7.log; echo "exit=${PIPESTATUS[0]}"; } ; grep -c MaxListenersExceededWarning /tmp/c31-g7.log; git status --porcelain api` (`bash -c '…'`로)
 - 끝난 상태: `exit` 0 아님 · 실패가 위 셋뿐 · 경고 수 1 이상 · `git status` 빈 줄.
 
-## G8 — CAREER-25 리뷰 ①②③ 고침 (초록) · 순서 9 (G7 뒤)
+## G8 — CAREER-25 리뷰 ①②③ 고침 (초록) · 순서 9 (G7 뒤) — 단계 1 승인됨 (10/26 사용자, plan D10 안 A · D11 1,000 · D12)
 - 담당: **앞 세션(사용자와 함께)**
-- 파일: `api/src/server.js` · (AC-9 원인에 따라) `api/src/bedrock.js` 또는 원인이 된 테스트 헬퍼
+- 파일: `api/src/server.js` · `api/src/config.js`(`REJECT_LINGER_MS`) · `api/tests/server.test.js`('AC-2(f)' (5) 더함만) · (AC-9 원인에 따라) `api/src/bedrock.js` 또는 원인이 된 테스트 헬퍼
 - AC: AC-8 · AC-9 · AC-10 (G7 통과)
-- 원본: plan 'A5 답'
+- 원본: plan 'A5 답' (AC-8은 '— AC-8 (10/26 다시 씀)')
 - 단계
-  1. AC-8 (`writeJson`의 버리기 길만): 헤더에 `'Content-Length': Buffer.byteLength(text)` · 한도를 넘으면 `stop(); req.pause(); res.end(); finished(res, () => req.socket.destroy());`(`import { finished } from 'node:stream'`). `req.complete`·`declared > REJECT_DRAIN_BYTES` 갈래는 그대로.
+  1. AC-8 — plan 'A5 답' **안 A** (10/26 다시 씀). AC-9·AC-10은 `7e93b26`에서 끝남.
+     0. 시작 조건: plan D10 = A, D11 값이 정해짐, architect가 contracts §2·§8을 D12대로 고치고 승인됨. 하나라도 아니면 **멈춘다**. D10 = C이면 이 단계를 건너뛰고(코드 고치지 않음), spec AC-8과 G7 AC-8 테스트는 사용자가 spec을 승인한 뒤 다시 정한다.
+     1. 지키는 테스트 먼저: `config.js`에 `export const REJECT_LINGER_MS = <D11 값>;`을 넣고 주석에 '한도를 넘은 거절 연결을 끊기 전 붙잡는 시간 — 그동안 읽지 않음. 원본: specs/CAREER-31-prepublic-guard/plan.md A5 답'을 적는다(테스트가 import하므로 이 커밋에 넣는다 — CAREER-25 A6 단계 1과 같은 이유). `server.test.js`의 'AC-2(f)' describe에 `(5) Content-Length 없이 한도를 넘게 올리고 응답을 읽지 않는 상대도 REJECT_LINGER_MS 안에 끊는다`를 더한다: `own()` → `net.connect(port)`로 `POST /api/appraise?myPrice=ten HTTP/1.1` · `Host` · `Content-Type: image/jpeg` · `Transfer-Encoding: chunked` 헤더를 보낸 뒤, `pause()`로 응답은 읽지 않고 64KiB짜리 chunk(`<hex 길이>\r\n…\r\n`)를 모두 3,000,000바이트 쓴다(쓰기 오류는 모으기만) → 연결 시각부터 `o.sockets[0]`의 `close`까지 `< REJECT_LINGER_MS + 3_000` · `await o.bytesRead() < REJECT_DRAIN_BYTES + SLACK` · 로그 1줄 `too_large` · `send` 0. `{ timeout: 15_000 }`. 돌려서 **초록**인지 본다(지금 코드는 바로 끊으므로). 커밋 `CAREER-31: reject linger bound guard test`.
+     2. 구현 `writeJson`(그 밖의 갈래는 그대로): `const chunked = req.headers['content-length'] === undefined;` → 버리기 길의 `writeHead` 헤더를 `chunked ? { ...JSON_HEADERS, Connection: 'close', 'Content-Length': Buffer.byteLength(text) } : { ...JSON_HEADERS, Connection: 'close' }`로 바꾼다. `onData`의 한도 넘음 갈래는 `stop(); req.pause(); const t = setTimeout(() => req.socket.destroy(), REJECT_LINGER_MS); req.socket.once('close', () => clearTimeout(t));`로 바꾸고, **`res.end()`는 부르지 않는다**. 주석: `// res.end()를 부르면 Node가 곧바로 닫아 RST가 응답을 지울 수 있다 — 응답은 이미 Content-Length로 끝났다 (CAREER-31 plan A5 답)`. `onEnd`는 그대로. `node:stream` `finished`는 쓰지 않는다.
+     3. 확인: `npm --prefix api test -- server.test.js` → 'AC-2(f)' (1)~(5)와 'CAREER-31 AC-8'이 모두 통과해야 한다. (1)~(4) 중 하나라도 깨지면 테스트를 고치지 않고 **멈춘다**. AC-8 테스트에 걸린 시간을 vitest 출력에서 적어 둔다. 45초를 넘으면 시간 제한 60초에 가까우므로 **멈춘다**.
   2. AC-9: G7 1단계에서 찾은 곳의 리스너 수명을 맞춘다(붙인 곳에서 떼기 · 대상을 요청마다 따로). 원인이 테스트 코드면 테스트 쪽을 고치고 기대값은 그대로. 경고 끄기 금지(plan 실패 시나리오 19).
   3. AC-10: 로그 `catch {}`를 `catch (err) { try { process.stderr.write(`${JSON.stringify({ evt: 'log_failed', error: typeof err?.name === 'string' ? err.name : 'Unknown' })}\n`); } catch { /* 남길 곳이 없다 */ } }`로.
-  4. 검사 명령. 실패하면 테스트를 고치지 않는다. AC-8이 고친 뒤에도 30번 중 실패하면 **멈추고** 사용자와 정한다(가설이 틀림 — plan '버린 것' lingering close를 다시 볼지).
+  4. 검사 명령. 실패하면 테스트를 고치지 않는다. AC-8이 고친 뒤에도 30번 중 실패하면 **멈추고** 실패 회차의 `status`·`complete`를 사용자에게 알린다. 값(`REJECT_LINGER_MS`)을 키우거나 안 B·C로 갈지는 사용자가 정한다 — 세션이 스스로 값을 바꾸지 않는다.
   5. 흔들림: `bash -c 'for i in 1 2 3; do npm --prefix api test -- server.test.js -t "CAREER-31 AC-8" || exit 1; done'` → 3번 모두 통과.
-  6. 커밋: `CAREER-31: complete reject response before closing, listener lifecycle, log failure notice`
+  6. 커밋: `CAREER-31: length-framed reject for chunked uploads, linger before close` (AC-9·AC-10은 `7e93b26`에서 끝남)
 - 검사 명령:
   ```
   bash -c 'npm --prefix api ci >/dev/null && { npm --prefix api test 2>&1 | tee /tmp/c31-g8.log; echo "exit=${PIPESTATUS[0]}"; }; echo "warnings=$(grep -c MaxListenersExceededWarning /tmp/c31-g8.log)"; grep -rnE "setMaxListeners|defaultMaxListeners|no-warnings|NODE_NO_WARNINGS|removeAllListeners\(.warning" api --include=*.js --include=package.json --exclude-dir=node_modules; git status --porcelain --untracked-files=all api'
@@ -225,7 +229,7 @@
   1. 저장소 루트에서 `for n in lint test e2e build api; do echo "== $n"; bash -c "$(jq -r ".checks.app.$n" pipeline.config.json)"; echo "exit=$?"; done` → 모두 `exit=0`, 통과 수 0 아님. 출력 그대로 보고.
   2. 제목 `CAREER-31: per-person limit, usage file location and startup check`
   3. 칸
-     - 결정: ADR-0005·0006 링크 · ADR-0002 49줄 고침 · plan D1~D8에서 사용자가 고른 것 · `createServer`가 `personLimit`을 꼭 받음(이미 있는 테스트를 고친 이유) · 시험 실행은 사람별 제한 넉넉히(D7) · AC-9 원인(G7 1단계 스택 요약)과 고친 곳 · AC-8 고침(`Content-Length` + 응답이 나간 뒤 끊기)
+     - 결정: ADR-0005·0006 링크 · ADR-0002 49줄 고침 · plan D1~D8에서 사용자가 고른 것 · `createServer`가 `personLimit`을 꼭 받음(이미 있는 테스트를 고친 이유) · 시험 실행은 사람별 제한 넉넉히(D7) · AC-9 원인(G7 1단계 스택 요약)과 고친 곳 · AC-8 고침(plan D10·D11에서 고른 안 — A면 'chunked 거절에만 `Content-Length`, 한도를 넘으면 읽기를 멈추고 `REJECT_LINGER_MS` 뒤 끊기'. 새 남용 값 `REJECT_LINGER_MS`는 '비용·남용 영향' 칸에도 적는다)
      - 범위 변경: "없음 (이 스토리). CAREER-30에 더할 것 제안: plan '범위 밖 · CAREER-30에 넘길 것' 목록 — 반영은 사용자"
      - 새 의존성: 없음
      - 비용·남용 영향: spec '비용·남용 영향' 그대로 + "로컬 셈 파일 자리가 바뀌어 한 번 0에서 다시 시작 · 로컬 worktree들이 셈 하나를 나눠 씀(D3)"

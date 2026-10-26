@@ -1,6 +1,13 @@
 [CAREER-31](https://culonculon98.atlassian.net/browse/CAREER-31) · spec: [spec.md](spec.md) · 작업: [tasks.md](tasks.md) · 약속: [contracts/appraise-http.md](../../contracts/appraise-http.md) §5·§8·§10 · [contracts/appraise.md](../../contracts/appraise.md) §5 · 결정: [ADR-0005](../../docs/adr/0005-usage-file-outside-code-folder.md) · [ADR-0006](../../docs/adr/0006-per-person-limit-in-server-memory.md) (둘 다 확정)
 
-상태: 승인됨 (2026-10-24 — 사용자 승인 D1~D9. contracts 두 곳 · ADR-0005·0006 · ADR-0002·0004 고침 함께 승인)
+상태: 승인됨 (2026-10-24 — 사용자 승인 D1~D9. contracts 두 곳 · ADR-0005·0006 · ADR-0002·0004 고침 함께 승인) · (2026-10-26 — 사용자 승인 D10~D12: 'A5 답 — AC-8' 다시 쓴 판 · contracts/appraise-http.md §2·§8 고침)
+
+## 정해진 것 (10/26 사용자 — AC-8 다시)
+| # | 무엇 | 정한 것 (10/26 사용자) | 후보 · 근거 | 어디에 반영 |
+|---|---|---|---|---|
+| D10 | **AC-8을 어떻게 지킬까** (자세한 것은 'A5 답 — AC-8') | **안 A** — 추천대로: `Content-Length` 없이(chunked) 올린 요청을 거절할 때만 응답에 `Content-Length`를 붙여 응답이 혼자 끝나게 하고, 한도를 넘으면 **더 읽지 않고 읽기만 멈춘 채** `REJECT_LINGER_MS` 뒤에 끊는다. `Content-Length`를 보낸 업로드(브라우저 앱)는 지금 그대로 | **안 B**: A에 더해 쓰기 쪽만 먼저 닫고(FIN) 그동안 더 읽어 버린다(Apache·nginx식 lingering close). 시간과 바이트, 새 값이 둘이 되고 `REJECT_DRAIN_BYTES`보다 더 읽게 되어 CAREER-25 (2)·(3) 상한을 다시 정해야 한다 / **안 C**: 코드는 그대로 두고 spec AC-8을 '받아들인 위험'으로 바꾼다(아래 글 제안). 새 값은 없지만 CAREER-25 리뷰 ①은 닫히지 않는다 | plan 'A5 답' · tasks G8 · (A·B면) contracts §2·§8 / (C면) spec AC-8 · G7 AC-8 테스트 |
+| D11 | **`REJECT_LINGER_MS`** (안 A·B일 때 새로 생기는 남용 값, contracts §8 후보) — 한도를 넘은 chunked 거절 연결을 끊기 전에 붙잡아 두는 시간 | **1,000 ms** — 추천대로 | **500**: 같은 리전의 CloudFront나 로컬은 몇 ms 안에 읽으므로 충분하다. 다만 붙잡는 시간은 줄어들어도 실제 차이는 거의 없다 / **1,000 (추천)**: 받는 쪽이 1초 넘게 읽지 못할 때만 실패한다. 이미 커밋된 AC-8 테스트(시간 제한 60초)는 30번이 모두 붙잡혀도 30초라 안에 들어온다 / **2,000** (Apache가 쓰는 2초): 30번이 모두 붙잡히면 60초가 되어 이미 커밋된 테스트의 시간 제한에 닿는다 — 테스트를 고쳐야 한다. 이 값을 쓰는 동안 붙잡히는 것은 연결 하나(fd 하나와 커널 받기 버퍼)뿐이고, 서버가 더 읽는 바이트는 0이다. 천천히 보내는 상대는 지금도 Node 기본 요청 시간 제한(`server.requestTimeout`, Node 18부터 기본 300초 — 이 저장소는 바꾸지 않음)까지 연결을 잡을 수 있으므로, 이 값 때문에 잡을 수 있는 시간이 늘어나지 않는다 | `api/src/config.js` · contracts §8 한 줄 · tasks G8 |
+| D12 | contracts 고칠 글 (A일 때) · 이 plan · tasks G8 승인 | **승인** — 아래 두 줄을 architect가 contracts에 넣었다(10/26) | §2 '본문을 다 읽기 전에 거절하면'의 "한도를 넘으면 연결을 끊는다(응답은 이미 보냈다)" → "한도를 넘으면 더 읽지 않고 `REJECT_LINGER_MS`(§8) 뒤 연결을 끊는다. 본문을 `Content-Length` 없이(chunked) 보냈으면 거절 응답에 `Content-Length`를 붙여 응답이 먼저 끝난다 — 보내는 쪽은 그 뒤 업로드를 멈춰도 된다" · §8에 `REJECT_LINGER_MS` 한 줄(D11 값 · '한도를 넘은 거절 연결을 끊기 전 붙잡는 시간, 그동안 읽지 않음' · 원본 이 plan 'A5 답') | contracts/appraise-http.md §2·§8 · 상태 줄 |
 
 ## 정해진 것 (10/24 사용자)
 | # | 무엇 | 정한 것 (10/24 사용자) | 후보 · 근거 | 어디에 반영 |
@@ -21,7 +28,7 @@
 1. **사람별 문**(AC-1~4) — 새 파일 `api/src/person-limit.js`. 요청이 우리 경로·메서드를 지나면 **본문을 읽기 전에** `CloudFront-Viewer-Address` 한 헤더로 사람 열쇠를 만들고, 메모리 셈에서 동기로 `take(key)`를 부른다. 걸리면 429 `person_limit`, 본문은 이미 있는 '거절 뒤 남은 업로드' 길로 버린다. 기억 hit·`invalid_input`·`daily_limit`으로 끝날 요청도 이 문을 먼저 지나므로 저절로 센다(U3). 하루 셈 문(CAREER-27)은 그대로 `send` 바로 앞에 있어 둘은 따로 돈다.
 2. **셈 파일 자리**(AC-6) — `config.js`의 `USAGE_FILE` 한 줄만 홈 아래 상태 폴더로 바꾸고, 처음 만들 때 권한을 좁힌다. 쓰는 법(ADR-0004)은 그대로.
 3. **자격 증명 시작 점검**(AC-7) — `startServer`가 진짜 Bedrock 클라이언트를 만들 때 `client.config.credentials()`(자격 증명 사슬 풀기 — Bedrock을 부르지 않음)를 `listen` **전에** 기다린다. 실패하면 이름만 든 로그 한 줄 + 종료 코드 1.
-4. **CAREER-25 리뷰 ①②③**(AC-8~10) — 거절 응답에 `Content-Length`를 붙이고 끊기를 응답이 다 나간 뒤로 미룸 · 경고는 원인을 찾아 없앰 · 로그 실패를 표준 오류에 한 줄.
+4. **CAREER-25 리뷰 ①②③**(AC-8~10) — (10/26 다시, D10 안 A — 사용자 승인) chunked 업로드를 거절할 때만 응답에 `Content-Length`를 붙이고, 한도를 넘으면 읽기를 멈춘 채 `REJECT_LINGER_MS` 뒤에 끊음 · 경고는 원인을 찾아 없앰 · 로그 실패를 표준 오류에 한 줄.
 5. **기록**(AC-11) — ADR-0005(셈 파일 자리) · ADR-0006(사람별 제한) · ADR-0002 49줄 고침.
 
 시계(`now`)·상한 값은 `createPersonLimit({ … , now })`로 밖에서 넣는다 — `send`·`memo`·`dailyLimit`과 같은 꼴.
@@ -29,17 +36,17 @@
 ### 바뀌는 파일
 | 파일 | 하는 일 | 누가 | AC |
 |---|---|---|---|
-| `api/src/config.js` | 더함: `PERSON_HEADER = 'cloudfront-viewer-address'` · `PERSON_MINUTE_LIMIT = 5` · `PERSON_WINDOW_MS = 60_000` · `PERSON_DAY_LIMIT = 50` · `PERSON_MAX_ENTRIES = 10_000`(D4). 바꿈: `USAGE_FILE = join(homedir(), '.local', 'state', 'how-much', 'usage.json')`(D3) | 앞 세션 | 2·6 |
+| `api/src/config.js` | 더함: `PERSON_HEADER = 'cloudfront-viewer-address'` · `PERSON_MINUTE_LIMIT = 5` · `PERSON_WINDOW_MS = 60_000` · `PERSON_DAY_LIMIT = 50` · `PERSON_MAX_ENTRIES = 10_000`(D4) · (10/26, D10 A·D11) `REJECT_LINGER_MS = 1_000`. 바꿈: `USAGE_FILE = join(homedir(), '.local', 'state', 'how-much', 'usage.json')`(D3) | 앞 세션 | 2·6·8 |
 | `api/src/person-limit.js` (새로) | `personOf(headerValue)` → `{ key, who }` · `createPersonLimit({ minuteLimit, windowMs, dayLimit, maxEntries, now })` → `{ take(key), size() }` · `PersonLimitError`. 디스크·네트워크를 쓰지 않는다. `dayOf`는 `daily-limit.js`에서 가져온다(서울 날짜 정의 한 곳) | 앞 세션 | 1~4 |
 | `api/src/daily-limit.js` (두 군데) | `mkdirSync(…, { recursive: true, mode: 0o700 })` · `writeFileSync(tmp, …, { flush: true, mode: 0o600 })` — 그 밖은 그대로 | 앞 세션 | 6 |
-| `api/src/server.js` | `createServer({ …, personLimit })` 필수(D6) · 경로·메서드 뒤 사람별 문 · `toReply`에 `PersonLimitError` → 429 · 로그 필드 셋 · 로그 실패를 stderr 한 줄(AC-10) · `writeJson` 고침(AC-8) · `startServer`에 자격 증명 점검과 `StartupError`(AC-7) · 직접 실행 경로에서 `StartupError`면 로그 한 줄 + `process.exitCode = 1` | 앞 세션 | 1~4·7·8·10 |
+| `api/src/server.js` | `createServer({ …, personLimit })` 필수(D6) · 경로·메서드 뒤 사람별 문 · `toReply`에 `PersonLimitError` → 429 · 로그 필드 셋 · 로그 실패를 stderr 한 줄(AC-10) · `writeJson` 고침(AC-8 — 'A5 답' 안 A) · `startServer`에 자격 증명 점검과 `StartupError`(AC-7) · 직접 실행 경로에서 `StartupError`면 로그 한 줄 + `process.exitCode = 1` | 앞 세션 | 1~4·7·8·10 |
 | `api/src/bedrock.js` | AC-9 원인이 여기라면 리스너 수명만 고친다(아래 'A5 답') — 원인이 다른 곳이면 건드리지 않는다 | 앞 세션 | 9 |
 | `api/eval/live.js` · `api/eval/run.js` | `runLive({ …, personLimit })` → `createServer`. `run.js`는 넉넉한 사람별 셈(D7) | 앞 세션 | (D6·D7) |
 | `api/tests/test-person-limit.js` (새로) | `testPersonLimit({ minuteLimit = 1000, dayLimit = 1000, windowMs = 60_000, maxEntries = 1000, now } = {})` → `createPersonLimit(…)` | 앞 세션 | — |
 | `api/tests/person-limit.test.js` (새로) | 단위(`personOf` · `take` · 창 · 하루 · 상한 · 잘못된 값) + HTTP로 AC-1~4 + AC-2 배포 값 | 앞 세션 | 1~4 |
 | `api/tests/usage-location.test.js` (새로) | AC-6 — `api/src`를 임시 폴더 둘에 복사해 각자의 `config.js`로 셈을 만들고 이어지는지 | 앞 세션 | 6 |
 | `api/tests/startup.test.js` (새로) | AC-7 — `node src/server.js`를 자식 프로세스로, 자격 증명 없음/가짜 환경 | 앞 세션 | 7 |
-| `api/tests/server.test.js` | 더함: AC-8(chunked 30번) · AC-10(로그 실패). 고침: `createServer`에 `personLimit`(D6) | 앞 세션 | 8·10 |
+| `api/tests/server.test.js` | 더함: AC-8(chunked 30번) · AC-10(로그 실패) · (10/26) 'AC-2(f)' (5) 붙잡는 시간 상한 지키는 테스트. 고침: `createServer`에 `personLimit`(D6) | 앞 세션 | 8·10 |
 | `api/tests/helpers.js` | 더함: `streamChunked(url, { headers, total })` — 응답을 기다리지 않고 본문을 계속 올리며 응답 상태·본문·`complete`(응답 `end`가 끊김보다 먼저)를 모은다 | 앞 세션 | 8 |
 | `api/tests/daily-limit.test.js` | 더함: 파일 맨 위 경고 모으기 + `afterAll`에서 `MaxListenersExceededWarning` 0개(AC-9). 고침: `start`에 `personLimit`(D6) | 앞 세션 | 9 |
 | `api/tests/photo-upload.test.js` · `memo.test.js` · `live.test.js` | `personLimit: testPersonLimit()`를 더함 — **이것 말고는 고치지 않는다** | 앞 세션 | (D6) |
@@ -49,7 +56,7 @@
 | `contracts/appraise-http.md` · `contracts/appraise.md` · `docs/adr/0005-…` · `0006-…` · `0002-…`(49줄) · `0004-…`(상태 줄·위험 첫 줄) | 이 PR에서 architect가 고침(10/24 사용자 승인) | architect | 11 |
 
 - 건드리지 않는 것: `app/src/App.jsx`(`e.code in ERROR_TEXT`가 이미 새 코드를 오류 길로 보낸다 — 아래 '화면') · `e2e/` 전부 · `infra/` · `.github/` · `pipeline.config.json` · `api/.gitignore`(`var/` 줄은 남겨 둔다 — 옛 셈 파일이 커밋되지 않게) · `api/src/memo.js`·`input.js`·`jpeg.js`·`output.js`·`prompt.js`·`grades.js`.
-- 새 의존성: 없음(`node:net` `isIP` · `node:os` `homedir` · `node:stream` `finished`만).
+- 새 의존성: 없음(`node:net` `isIP` · `node:os` `homedir`만. 10/26: 안 A는 `node:stream` `finished`를 쓰지 않는다).
 
 ## 요청 한 건의 흐름 (CAREER-27 표에 한 단계 더함)
 | 단계 | 끝나는 경우 → `code` · `reason` |
@@ -128,14 +135,51 @@ throws PersonLimitError { reason: 'person_day' | 'person_minute', minuteUsed, da
 - G5 첫 단계에서 `client.config.credentials`가 함수인지 실제로 본다. 함수가 아니면(SDK 판이 다르면) 멈추고 알린다 — 다른 길을 고르는 일은 이 plan을 고쳐 다시 묻는다.
 
 ## A5 답: AC-8 · AC-9 원인과 흔들리지 않는 확인법
-> 이 세션(architect)은 명령을 돌릴 수 없어 원인을 **재현으로 확인하지 못했다.** 아래는 코드를 읽고 세운 가설이고, G7 첫 단계가 재현이다. 재현이 가설과 다르면 G8을 시작하지 않고 멈춰 사용자에게 알린다.
+> 10/24 판은 코드만 읽고 세운 가설이었다. 10/26 지금: AC-8은 G7(커밋 `9dce0bd`)에서 재현됐고, AC-9·AC-10은 고쳐서 커밋했다(`7e93b26`). AC-8만 아래 '— AC-8 (10/26 다시)'로 바꿨다. D10~D12는 10/26 사용자 승인(안 A · `REJECT_LINGER_MS` 1,000 · contracts 글).
 
-### AC-8 — chunked로 큰 사진
-- **가설**: `Content-Length` 없이 1MB를 넘기면 `readBody`가 `too_large`로 거절 → `writeJson`의 버리기 길로 간다. 이 길은 응답 헤더를 `Content-Length` 없이 써서 Node가 응답을 **chunked**로 보낸다 → 응답의 끝 표시(`0\r\n\r\n`)는 `res.end()` 때 나간다. 그런데 2MB를 넘는 순간 `res.end()` **바로 뒤에** `req.socket.destroy()`를 부른다. 받는 쪽에 안 읽은 데이터가 있는 소켓을 닫으면 OS가 FIN 대신 RST를 보내고, 아직 안 나간 끝 표시가 버려질 수 있다 → 클라이언트는 상태 400과 본문은 받았지만 응답이 '끝나지 않은 채' 끊긴다(`aborted`/`ECONNRESET`). 그래서 가끔만 실패한다.
-- **고침**(가장 작게): ① 버리기 길의 응답 헤더에 `Content-Length: Buffer.byteLength(text)`를 넣는다 → 거절할 때 쓴 본문으로 응답이 **이미 끝난다**(끝 표시가 따로 없음). ② 한도를 넘으면 `req.pause()` · 리스너 떼기 · `res.end()` 뒤 `stream.finished(res, () => req.socket.destroy())` — 응답이 OS에 다 넘어간 뒤에 끊는다. 새 값 없음, `REJECT_DRAIN_BYTES`·읽는 바이트 상한은 그대로(이미 있는 '(2)·(3)' 테스트가 계속 본다).
-- **버린 것**: 끊지 않고 FIN만 보낸 채 잠깐 더 읽기(lingering close) — 가장 튼튼하지만 '얼마나 더 기다릴지' 새 남용 값이 생기고, 그동안 서버가 `REJECT_DRAIN_BYTES`보다 더 읽는다.
-- **확인법**: `helpers.js`의 새 `streamChunked` — 응답을 기다리지 않고 64KiB씩 3,000,000바이트(앞 3바이트 `FF D8 FF`)를 계속 쓰고, 응답 상태·본문·`complete`(응답 `end`가 소켓 `close`보다 먼저 왔나)를 모은다. 클라이언트 쓰기 오류(`EPIPE`·`ECONNRESET`)는 모으기만 한다(AC-8은 응답을 다 받는지만 본다). 한 테스트 안에서 **30번 차례로** 돌려 `complete === false`나 상태·본문이 다른 회차 수가 0인지 본다. `send` 0 · 로그 `reason: 'too_large'` 30줄.
-  - 재현(빨강) 기준: 고치기 전 같은 테스트가 30번 중 1번 이상 실패해야 한다. 0번이면 이 테스트가 원인을 못 잡는 것이므로 멈춘다(되풀이를 100번으로 늘리는 것은 사용자와 정함).
+### AC-8 — chunked로 큰 사진 (10/26 다시 씀 · 10/26 사용자 승인 — 안 A)
+**알게 된 것** (앞 세션이 Mac에서 돌린 결과, 브랜치 HEAD `7e93b26`)
+| 판 | 결과 | 읽은 뜻 |
+|---|---|---|
+| 지금 코드 (G7 재현) | 30번 중 27번 실패. 매번 400과 `{"code":"invalid_input"}`은 받았지만 `complete=false` | 끝 표시(`0\r\n\r\n`)를 `res.end()`로 보내는 바로 그 순간에 `destroy`한다 |
+| 시도 ① `Content-Length` + `finished(res)` 뒤 `destroy` | AC-8은 30번 중 1번 실패, 그 회차는 `status null`(응답을 하나도 못 받음). **CAREER-25 'AC-2(f) (1)' 두 개가 깨짐**(`finished=false`) | ⓐ 응답이 `Content-Length`로 먼저 끝나면 Node 클라이언트는 업로드를 마치기 전에 연결을 닫는다. 그래서 `Content-Length`를 **보낸** 업로드(브라우저 앱)에는 붙이면 안 된다. ⓑ `finished(res)`는 응답을 OS에 넘긴 시점일 뿐이다. 400 응답은 거절한 순간(약 1MB째)에 이미 나갔지만, Mac loopback은 버퍼가 커서 서버가 남은 1MB를 곧바로 읽어 치우므로 응답이 나간 뒤 끊기까지의 틈이 거의 없다 |
+| 시도 ② `Content-Length` 없이 `pause` + `finished(res)` 뒤 `destroy` | 3번 돌려 21·18·12/30 실패(모두 400, `complete=false`). 이미 있는 테스트는 통과 | 끝 표시와 끊기가 여전히 붙어 있다. 게다가 `Connection: close` 응답은 Node가 `res.end()`가 끝나면 **스스로** 소켓을 닫는다(`destroySoon`). 그래서 `res.end()`를 부르는 한 '끝 표시 → 바로 닫기'는 우리 `destroy`가 없어도 일어난다 |
+
+**뿌리**: 받는 쪽(클라이언트)이 아직 올리는 중일 때 서버가 소켓을 닫으면 OS는 FIN 대신 RST를 보낸다. RST를 받은 쪽 OS는 앱이 **아직 읽지 않은** 받은 데이터를 버린다. 그래서 '응답을 언제 보냈나'가 아니라 **'응답이 닿은 뒤 클라이언트가 읽을 시간이 있었나'**가 갈림길이다. 클라이언트가 계속 올리는 한, 시간을 두지 않는 고침은 확률만 줄일 뿐이다(시도 ①이 그랬다). 시간을 두지 않으려면 업로드를 끝까지 읽어야 하는데, 이는 `REJECT_DRAIN_BYTES`(CAREER-25 (2)·(3))와 부딪친다. 그러므로 AC-8을 글자 그대로 지키려면 **시간 값 하나가 꼭 필요하다**(D11).
+
+**지킬 것 넷**: AC-8(chunked > 2MB에서 30번 모두 `complete`) · CAREER-25 (1)(`Content-Length` ≤ 2MB 업로드는 끝까지 올라가고 오류 없음) · (2)·(3)(서버가 읽는 바이트 `< REJECT_DRAIN_BYTES + 100,000`) · (4)(끊긴 뒤 다음 요청 200).
+
+**후보 비교** (한 줄씩)
+| 안 | 무엇 | AC-8 | (1) | (2)·(3) | 새 값 | 코드 |
+|---|---|---|---|---|---|---|
+| **A (고름 — D10)** | chunked 거절만 응답에 `Content-Length`를 붙인다. 한도를 넘으면 `res.end()`를 부르지 않고 **읽기만 멈춘 채** `REJECT_LINGER_MS` 뒤 `destroy`한다 | 응답은 거절한 순간 이미 '끝난' 상태로 나가고, 끊기는 적어도 그 시간만큼 뒤에 온다. 클라이언트가 1초 넘게 읽지 못할 때만 실패한다 | 그대로(`Content-Length`를 보낸 갈래는 바꾸지 않음) | 그대로 — 붙잡는 동안 **읽지 않는다**(더 읽는 바이트 0) | 시간 하나 | `writeJson` 10줄 안팎 |
+| B | A + 쓰기 쪽만 먼저 닫고(`socket.end()`, FIN) 그동안 받은 것을 더 읽어 버림(Apache·nginx의 lingering close) | A와 같다. 클라이언트가 FIN을 보고 일찍 멈추므로 붙잡는 시간이 짧아진다 | 그대로 | **깨질 수 있다** — 더 읽는 바이트가 생겨 여유 100,000 안에 들거나 `REJECT_DRAIN_BYTES`의 뜻을 바꿔야 한다 | 시간 + 바이트 둘 | A보다 크고, HTTP가 쓰는 소켓의 쓰기 쪽을 직접 닫는다(Node 안쪽과 얽힘) |
+| C | 코드는 바꾸지 않고 spec AC-8을 '받아들인 위험'으로 바꾼다(아래 글 제안) | 바뀐 AC로 지킨다 | 그대로 | 그대로 | 없음 | 없음. G7 AC-8 테스트만 바꾼다 |
+- 버린 것: 시도 ①(실패가 남고 (1)을 깸) · 시도 ②(실패율 그대로) · 끝 표시만 소켓에 직접 쓰고(`socket.write('0\r\n\r\n')`) 붙잡기 — Node HTTP 계층 아래에서 응답 틀을 손으로 써야 하고, HTTP/1.0 상대에게는 틀린 바이트가 된다 / 한도 없이 끝까지 읽기 — (2)·(3)과 CAREER-25 실패 시나리오 36을 되살린다 / 끊지 않고 Node 기본 요청 시간 제한(300초)까지 두기 — 새 값은 없지만 AC-8 테스트가 회차마다 멈추고, 연결을 5분씩 잡게 된다.
+- **A를 고른 이유**: 새 값이 시간 하나뿐이고, 그 값으로 서버가 더 읽는 바이트는 0이다. 천천히 보내는 상대는 지금도 연결을 더 오래 잡을 수 있으므로 남용 길이 넓어지지 않는다. 브라우저 앱은 `Blob` 본문이라 늘 `Content-Length`를 보내므로(`app/src/appraise.js` `fetch(…, { body })`) 실제 사용자 길은 한 글자도 바뀌지 않는다. **C를 고르는 경우**: 새 값을 두기 싫고, 'chunked로 2MB 넘게 보내는 비브라우저 클라이언트가 400 대신 끊김을 볼 수 있음'을 받아들일 때. 실제 사용자에게 닿는 손해는 A와 C 모두 사실상 없다(사진은 1024px로 줄여 1MB 아래). 차이는 리뷰 ①을 닫느냐, 값 하나를 더 두느냐다.
+
+**안 A — 정한 동작** (`writeJson`의 버리기 길만. `req.complete` 갈래와 `declared > REJECT_DRAIN_BYTES` 갈래는 그대로)
+| 경우 | 동작 |
+|---|---|
+| 본문을 `Content-Length` 없이(chunked) 보냄 | 응답 헤더에 `'Content-Length': Buffer.byteLength(text)`를 더한다(`Connection: close`는 그대로). 본문을 `res.write(text)`로 쓰면 클라이언트 쪽에서는 응답이 끝난다. `res.end()`는 지금처럼 미룬다 |
+| `Content-Length` ≤ 한도를 보냄 (브라우저 앱 · CAREER-25 (1)·(4)) | **지금 그대로**(chunked 응답, 다 읽으면 `res.end()`) — 시도 ①의 (1) 깨짐을 피한다 |
+| 버리며 읽다가 본문이 끝남(`req` `end`) | 지금 그대로 `res.end()` → Node가 다 읽은 소켓을 정상으로 닫는다 |
+| 버리며 읽다가 `REJECT_DRAIN_BYTES`를 넘음 (실제로는 chunked만 여기 온다 — `Content-Length`를 보낸 본문은 Node 파서가 그 길이에서 자른다) | 리스너를 떼고(`stop()`), `req.pause()`(더 읽지 않음), `const t = setTimeout(() => req.socket.destroy(), REJECT_LINGER_MS)`, `req.socket.once('close', () => clearTimeout(t))`. **`res.end()`는 부르지 않는다** — 부르면 Node가 곧바로 소켓을 닫아(시도 ②) RST 경주가 되살아난다. 이 이유를 주석으로 남긴다 |
+| 붙잡는 동안 클라이언트가 끊음 | 소켓 `close` → 타이머를 지운다. 로그는 더 남기지 않는다(CAREER-25 '로그는 그대로') |
+- 사람별 거절(429 `person_limit`)도 같은 `writeJson` 길을 지나므로 같은 동작을 받는다(실패 시나리오 12).
+- 붙잡는 소켓은 그 뒤 다시 쓰이지 않는다(`Connection: close`). 그래서 `once('close')` 리스너가 keep-alive 소켓에 쌓이지 않는다(AC-9와 부딪치지 않음).
+
+**확인법**
+- AC-8: G7에서 이미 커밋한 테스트를 그대로 쓴다(30번, 시간 제한 60초 — 고치지 않는다). 한도를 넘어 붙잡히는 회차는 그 회차가 `REJECT_LINGER_MS`만큼 길어진다. 1,000이면 가장 나쁠 때 30초다.
+- CAREER-25 'AC-2(f)' (1)~(4): 그대로 통과해야 한다. 하나라도 깨지면 멈춘다.
+- **새 지키는 테스트 (5)** — 붙잡는 시간에 상한이 있는지 본다(타이머가 안 걸리는 고장은 Node 기본 300초까지 연결을 조용히 잡는다): `net.connect`로 chunked 요청 헤더를 보내고, 응답은 읽지 않은 채(`pause()`) 64KiB씩 3,000,000바이트를 쓴다 → 서버 쪽 소켓(`own()`의 `sockets`)이 연결부터 `close`까지 `REJECT_LINGER_MS + 3,000` ms 안에 끝난다 · `bytesRead < REJECT_DRAIN_BYTES + SLACK` · 로그 1줄 `too_large` · `send` 0. 지금 코드에서도 초록이다(지키는 테스트) — 구현 커밋보다 먼저 커밋한다.
+
+**안 C를 고를 때의 spec AC-8 글 (제안 — spec은 사용자 승인 몫)**
+> - AC-8 `Content-Length` 없이 큰 사진을 올려도 돈과 서버가 버틴다 (CAREER-25 리뷰 ① — 받아들인 위험)
+>   - 주어진: `api/` 테스트, `Content-Length` 없이(chunked) 보내는 클라이언트
+>   - 할 때: `REJECT_DRAIN_BYTES`(2,000,000)를 넘는 본문을 끝까지 보내기를 30번 차례로 한다
+>   - 그러면: 회차마다 클라이언트가 받는 것은 HTTP 400과 `{"code":"invalid_input"}`, 또는 연결 끊김 가운데 하나다(다른 상태·본문은 0번). Bedrock 호출은 0번이다. 서버가 읽은 바이트는 회차마다 `REJECT_DRAIN_BYTES` + 100,000 아래다. 이어서 보낸 정상 요청은 200이다. 끊김은 받아들인 위험으로 appraise-http.md §2에 적는다(브라우저 앱은 늘 `Content-Length`를 보낸다)
+- C일 때 바뀌는 곳: spec AC-8 · G7의 AC-8 테스트(테스트 커밋을 새로 한다) · contracts §2 한 줄('chunked로 한도를 넘으면 보내는 쪽은 응답 대신 끊김을 볼 수 있다') · G8 단계 1은 '코드 고치지 않음'. 새 값은 없다.
 
 ### AC-9 — `MaxListenersExceededWarning`
 - **가설(후보)**: 경고는 한 이벤트 대상(EventEmitter/AbortSignal/소켓)에 같은 이름의 리스너가 11개 넘게 붙을 때 난다. 코드에서 리스너를 붙이는 곳은 `bedrock.js`의 `signal.addEventListener('abort')`(시도마다가 아니라 요청마다 1개, `finally`에서 뗌) · `server.js`의 `res.on('close')`(요청마다) · `writeJson`의 `req.on/once`뿐이다 — 읽기로는 쌓이는 곳이 보이지 않는다. 그래서 (a) 동시 10건 테스트의 `fetch`(undici)가 한 연결·한 신호에 붙이는 것 (b) 재시도 대기 중 `deadline`/`sleep` 경주 (c) 테스트 헬퍼 중 하나일 수 있다.
@@ -196,6 +240,11 @@ throws PersonLimitError { reason: 'person_day' | 'person_minute', minuteUsed, da
 20. **로그 실패를 알리는 줄에 오류 메시지(사진·값이 들었을 수 있음)가 샘** → 이름만. AC-10 테스트가 메시지 글자 0번을 본다
 21. **AC-8 고침이 `REJECT_DRAIN_BYTES` 상한을 깸**(끊기를 미루다 더 읽음) → 한도를 넘는 순간 `req.pause()`와 리스너 떼기를 먼저. 이미 있는 '(2)·(3)' 테스트(`bytesRead < REJECT_DRAIN_BYTES + 100_000`)가 그대로 본다
 22. **CloudFront가 429·503을 자기 오류 페이지로 바꿔 화면이 `unavailable`만 봄** → CAREER-30 확인 항목(오류 응답 사용자 지정 안 함)
+23. (10/26) **붙잡기 타이머가 안 걸리거나 안 풀려 연결이 Node 기본 300초까지 남음**(조용한 고장) → 지키는 테스트 'AC-2(f) (5)'가 `REJECT_LINGER_MS + 3초` 안에 끊기는지 본다
+24. (10/26) **`res.end()`를 불러 Node가 스스로 닫아 RST 경주가 되살아남**(시도 ②) → 한도를 넘은 갈래에서 `res.end()`를 부르지 않는다. 이유를 주석으로 남긴다. AC-8이 본다
+25. (10/26) **`Content-Length`를 보낸 업로드에도 길이 붙은 응답을 줘서 업로드가 중간에 끊김**(시도 ①) → chunked 갈래에만 붙인다. CAREER-25 (1)이 본다
+26. (10/26) **chunked로 큰 업로드를 여럿 동시에 보내 연결을 잡아 둠** → 하나에 `REJECT_LINGER_MS`까지, 그동안 읽지 않는다. 같은 사람의 6번째 연결은 사람별 429다(그 응답도 같은 길). 천천히 보내는 상대는 지금도 더 오래 잡을 수 있으므로 받아들인다
+- (10/26) 실패 시나리오 12는 'A5 답 — AC-8' 안 A가 맡는다(사람별 거절도 같은 `writeJson` 길)
 - 건너뛴 것(일부러): 사람별 셈의 주기 비우기(LRU로 충분) · 자격 증명 주기 점검 · 여러 서버가 사람별 셈 나누기(가정 2) · 사람별 셈 파일 저장(D1 메모리).
 
 ## 고른 이유와 버린 대안 (나머지 — 셈 파일 자리는 ADR-0005, 사람별 제한은 ADR-0006)

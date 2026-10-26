@@ -1,6 +1,6 @@
 # 감정 서버 입구 약속 — `POST /api/appraise`
 
-- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES` · 10/22 거절 뒤 남은 업로드(사용자 승인) — §2 동작 한 줄 · §8 `REJECT_DRAIN_BYTES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음) · **10/23 CAREER-27 고침 (사용자 승인 — CAREER-27 plan D6)**: §5 `daily_limit`·`unavailable` 줄 · §5 '하루 상한' 절 · §8 세 줄. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음(429는 처음부터 약속에 있었다) · **10/24 CAREER-31 고침 (사용자 승인 — 2026-10-24, CAREER-31 plan D2·D3·D4·D5·D9)**: §5 `person_limit` 줄 · 어댑터 규칙 '다섯' · §5 '사람별 제한' 절 · §8 `USAGE_FILE` 바꿈과 사람별 다섯 줄 · §8 아래 두 줄(`personLimit` · 자격 증명 시작 점검) · §10 네 줄. 요청 모양·성공 응답은 바뀌지 않음, 실패 코드 하나 더함
+- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES` · 10/22 거절 뒤 남은 업로드(사용자 승인) — §2 동작 한 줄 · §8 `REJECT_DRAIN_BYTES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음) · **10/23 CAREER-27 고침 (사용자 승인 — CAREER-27 plan D6)**: §5 `daily_limit`·`unavailable` 줄 · §5 '하루 상한' 절 · §8 세 줄. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음(429는 처음부터 약속에 있었다) · **10/24 CAREER-31 고침 (사용자 승인 — 2026-10-24, CAREER-31 plan D2·D3·D4·D5·D9)**: §5 `person_limit` 줄 · 어댑터 규칙 '다섯' · §5 '사람별 제한' 절 · §8 `USAGE_FILE` 바꿈과 사람별 다섯 줄 · §8 아래 두 줄(`personLimit` · 자격 증명 시작 점검) · §10 네 줄. 요청 모양·성공 응답은 바뀌지 않음, 실패 코드 하나 더함 · **10/26 CAREER-31 고침 (사용자 승인 — 2026-10-26, CAREER-31 plan D10·D11·D12)**: §2 '본문을 다 읽기 전에 거절하면'의 한도 넘음 동작 · §8 `REJECT_LINGER_MS`. 요청·응답 모양·HTTP 상태는 바뀌지 않음(chunked로 보낸 요청의 거절 응답에 `Content-Length`가 붙음)
 - 근거: [specs/CAREER-25-real-appraise/plan.md](../specs/CAREER-25-real-appraise/plan.md) · 결정 E~I (CAREER-25 spec '정해진 것')
 - 이 문서는 **브라우저(감정 어댑터) ↔ 서버(`api/`)** 사이 약속이다. 서버는 CAREER-25가, 사진을 보내는 쪽은 CAREER-26이, 어댑터는 화면 연결 스토리(결정 A)가 만든다. 화면 쪽 함수 모양은 [appraise.md](appraise.md)가 원본이고, 이 문서는 그 아래 HTTP 모양만 정한다.
 - CAREER-26 spec과 대조(10/21, 앞 세션이 읽음): AC-1(1024px로 줄여 보냄)은 §3-4와, AC-5(서버 입구로만 한 번)는 §1 같은 출처 `/api/appraise`와, AC-7(서버 거절을 `invalid_input`으로 봄)은 §5 400과 맞다. AC-9(a)(d)는 아래 §2 마지막 줄로 대응한다.
@@ -30,7 +30,7 @@ Content-Length: 183204
 | `MAX_PHOTO_BYTES` | **1,000,000 바이트** (십진 1MB) — 이 값과 **같으면 통과, 1바이트라도 넘으면 거절** |
 
 - 크기는 `Content-Length`를 믿지 않고 **실제로 읽은 바이트**로 센다. 읽는 중 상한을 넘으면 그 자리에서 모으기를 멈춘다(메모리에 다 올리지 않음).
-- **본문을 다 읽기 전에 거절하면**(크기뿐 아니라 쿼리·`Content-Type`·경로·메서드 거절도 같음): 서버는 응답(400·404·405, 본문 `{"code":"invalid_input"}`)의 헤더와 본문을 먼저 쓰고, 남은 본문을 `REJECT_DRAIN_BYTES`(§8)까지 읽어 버린 뒤 응답을 끝낸다. 한도를 넘으면 연결을 끊는다(응답은 이미 보냈다). `Content-Length`가 처음부터 그 한도보다 크면 읽지 않고 응답을 끝내고 닫는다 — 이때 보내는 쪽은 쓰기 오류를 볼 수 있다. 응답 모양·상태는 그대로다.
+- **본문을 다 읽기 전에 거절하면**(크기뿐 아니라 쿼리·`Content-Type`·경로·메서드 거절도 같음): 서버는 응답(400·404·405, 본문 `{"code":"invalid_input"}`)의 헤더와 본문을 먼저 쓰고, 남은 본문을 `REJECT_DRAIN_BYTES`(§8)까지 읽어 버린 뒤 응답을 끝낸다. 한도를 넘으면 더 읽지 않고 `REJECT_LINGER_MS`(§8) 뒤 연결을 끊는다. 본문을 `Content-Length` 없이(chunked) 보냈으면 거절 응답에 `Content-Length`를 붙여 응답이 먼저 끝난다 — 보내는 쪽은 그 뒤 업로드를 멈춰도 된다. `Content-Length`가 처음부터 그 한도보다 크면 읽지 않고 응답을 끝내고 닫는다 — 이때 보내는 쪽은 쓰기 오류를 볼 수 있다. 응답 모양·상태는 그대로다.
 - 브라우저 쪽(CAREER-26)은 `fetch(url, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: jpegBlob })` 꼴로 보낸다. 쿼리는 `URLSearchParams`로 만든다.
 - 이 약속에는 '사진 칸'이 따로 없다(본문이 곧 사진). 그래서 **본문이 비었거나 `Content-Type`이 `image/jpeg`가 아니면 `invalid_input`**이다 — CAREER-26 AC-9(a)(d)('사진 칸이 없는 요청' 등)는 이것으로 대응한다.
 
@@ -136,6 +136,7 @@ Cache-Control: no-store
 | `LINE_MAX_CHARS` | 30 | §4 |
 | `MEMO_MAX_ENTRIES` | **10,000** (10/22 사용자 승인) (항목 하나 약 0.4KB → 약 4MB). 넘으면 가장 오래 안 쓴(LRU) 것부터 버림. **0이면 기억 끔**. 음수·소수·숫자 아님은 서버를 만들 때 오류 | §4 '같은 사진·같은 태그' · CAREER-25 AC-17 |
 | `REJECT_DRAIN_BYTES` | **2,000,000** (10/22 사용자 승인) — 거절 뒤 남은 본문을 읽어 버리는 한도, 넘으면 끊음. 값·이유의 원본은 [plan '거절 뒤 남은 업로드'](../specs/CAREER-25-real-appraise/plan.md) | §2 거절 뒤 남은 업로드 |
+| `REJECT_LINGER_MS` | **1,000** (CAREER-31 plan D11 — 10/26 사용자 승인) — 한도를 넘은 거절 연결을 끊기 전 붙잡는 시간, 그동안 읽지 않음. 값·이유의 원본은 [CAREER-31 plan 'A5 답'](../specs/CAREER-31-prepublic-guard/plan.md) | §2 거절 뒤 남은 업로드 |
 | `DAILY_CALL_LIMIT` | **300** (10/23 사용자 결정 U2 · 이름·자리 CAREER-27 plan D3 승인) — 하루 Bedrock 시도 수 상한. **0이면 급히 막기**. 음수·소수·숫자 아님은 서버를 만들 때 오류(`MEMO_MAX_ENTRIES`와 같은 규칙). 환경변수 없음 | §5 '하루 상한' |
 | `DAY_UTC_OFFSET_HOURS` | **9** (서울, 서머타임 없음 — 10/23 U3) | §5 '하루 상한' |
 | `USAGE_FILE` | **`~/.local/state/how-much/usage.json`** (CAREER-31 plan D3 — 10/24 사용자 승인) — 서버를 돌리는 사용자의 홈 기준(`os.homedir()`), **코드 폴더 밖**이라 배포로 `api/`를 바꿔 넣어도 셈이 이어진다. 환경변수 없음. 처음 만들 때 폴더 `0700` · 파일 `0600`. 자리는 [ADR-0005](../docs/adr/0005-usage-file-outside-code-folder.md), 모양·쓰는 법은 [ADR-0004](../docs/adr/0004-daily-call-count-in-one-json-file.md). (옛 값 `api/var/usage.json` — CAREER-27) | §5 '하루 상한' |
