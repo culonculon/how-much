@@ -1,3 +1,4 @@
+import net from 'node:net';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   AWS_REGION,
@@ -5,6 +6,7 @@ import {
   MAX_PHOTO_BYTES,
   MODEL_ID,
   REJECT_DRAIN_BYTES,
+  REJECT_LINGER_MS,
   TEMPERATURE,
   TOP_K,
 } from '../src/config.js';
@@ -360,6 +362,49 @@ describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 
       await o.close();
     }
   });
+  test('(5) Content-Length 없이 한도를 넘게 올리고 응답을 읽지 않는 상대도 REJECT_LINGER_MS 안에 끊는다', { timeout: 15_000 }, async () => {
+    const o = await own();
+    try {
+      const port = Number(new URL(o.base).port);
+      const started = performance.now();
+      const sock = net.connect(port, '127.0.0.1');
+      const errors = [];
+      sock.on('error', (e) => errors.push(e.code ?? e.message));
+      await new Promise((r) => sock.once('connect', r));
+      sock.pause(); // 응답은 읽지 않는다
+      sock.write('POST /api/appraise?myPrice=ten HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: image/jpeg\r\nTransfer-Encoding: chunked\r\n\r\n');
+      const step = 64 * 1024;
+      const piece = Buffer.alloc(step, 0x5a);
+      piece[0] = 0xff;
+      piece[1] = 0xd8;
+      piece[2] = 0xff;
+      for (let sent = 0; sent < 3_000_000 && !sock.destroyed; sent += step) {
+        const ok = sock.write(Buffer.concat([Buffer.from(`${step.toString(16)}\r\n`), piece, Buffer.from('\r\n')]));
+        if (!ok) {
+          await new Promise((r) => {
+            const done = () => {
+              sock.off('drain', done);
+              sock.off('close', done);
+              r();
+            };
+            sock.on('drain', done);
+            sock.on('close', done);
+          });
+        }
+      }
+      const server = o.sockets[0];
+      if (!server.closed) await new Promise((r) => server.once('close', r));
+      expect(performance.now() - started).toBeLessThan(REJECT_LINGER_MS + 3_000);
+      expect(await o.bytesRead()).toBeLessThan(REJECT_DRAIN_BYTES + SLACK);
+      expect(o.lines).toHaveLength(1);
+      expect(JSON.parse(o.lines[0]).reason).toBe('too_large');
+      expect(o.send).not.toHaveBeenCalled();
+      sock.destroy();
+    } finally {
+      await o.close();
+    }
+  });
+
   test('CAREER-31 AC-8 Content-Length 없이 큰 사진을 올려도 400 응답을 끝까지 받는다 (30번)', { timeout: 60_000 }, async () => {
     const o = await own();
     try {
