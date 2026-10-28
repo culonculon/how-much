@@ -1,6 +1,6 @@
 # 감정 서버 입구 약속 — `POST /api/appraise`
 
-- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES` · 10/22 거절 뒤 남은 업로드(사용자 승인) — §2 동작 한 줄 · §8 `REJECT_DRAIN_BYTES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음) · **10/23 CAREER-27 고침 (사용자 승인 — CAREER-27 plan D6)**: §5 `daily_limit`·`unavailable` 줄 · §5 '하루 상한' 절 · §8 세 줄. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음(429는 처음부터 약속에 있었다) · **10/24 CAREER-31 고침 (사용자 승인 — 2026-10-24, CAREER-31 plan D2·D3·D4·D5·D9)**: §5 `person_limit` 줄 · 어댑터 규칙 '다섯' · §5 '사람별 제한' 절 · §8 `USAGE_FILE` 바꿈과 사람별 다섯 줄 · §8 아래 두 줄(`personLimit` · 자격 증명 시작 점검) · §10 네 줄. 요청 모양·성공 응답은 바뀌지 않음, 실패 코드 하나 더함 · **10/26 CAREER-31 고침 (사용자 승인 — 2026-10-26, CAREER-31 plan D10·D11·D12)**: §2 '본문을 다 읽기 전에 거절하면'의 한도 넘음 동작 · §8 `REJECT_LINGER_MS`. 요청·응답 모양·HTTP 상태는 바뀌지 않음(chunked로 보낸 요청의 거절 응답에 `Content-Length`가 붙음) · **10/26 CAREER-31 고침 (사용자 승인 — 2026-10-26, CAREER-31 plan D13 '가')**: §2 한도 넘음 동작 글을 실제 동작에 맞춤(읽기 멈춤 · 멈추기 전 여분 · `REJECT_DRAIN_BYTES` + 256KiB 아래) · §8 `REJECT_LINGER_MS` 설명. 값·요청·응답 모양·HTTP 상태는 바뀌지 않음
+- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES` · 10/22 거절 뒤 남은 업로드(사용자 승인) — §2 동작 한 줄 · §8 `REJECT_DRAIN_BYTES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음) · **10/23 CAREER-27 고침 (사용자 승인 — CAREER-27 plan D6)**: §5 `daily_limit`·`unavailable` 줄 · §5 '하루 상한' 절 · §8 세 줄. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음(429는 처음부터 약속에 있었다) · **10/24 CAREER-31 고침 (사용자 승인 — 2026-10-24, CAREER-31 plan D2·D3·D4·D5·D9)**: §5 `person_limit` 줄 · 어댑터 규칙 '다섯' · §5 '사람별 제한' 절 · §8 `USAGE_FILE` 바꿈과 사람별 다섯 줄 · §8 아래 두 줄(`personLimit` · 자격 증명 시작 점검) · §10 네 줄. 요청 모양·성공 응답은 바뀌지 않음, 실패 코드 하나 더함 · **10/26 CAREER-31 고침 (사용자 승인 — 2026-10-26, CAREER-31 plan D10·D11·D12)**: §2 '본문을 다 읽기 전에 거절하면'의 한도 넘음 동작 · §8 `REJECT_LINGER_MS`. 요청·응답 모양·HTTP 상태는 바뀌지 않음(chunked로 보낸 요청의 거절 응답에 `Content-Length`가 붙음) · **10/26 CAREER-31 고침 (사용자 승인 — 2026-10-26, CAREER-31 plan D13 '가')**: §2 한도 넘음 동작 글을 실제 동작에 맞춤(읽기 멈춤 · 멈추기 전 여분 · `REJECT_DRAIN_BYTES` + 256KiB 아래) · §8 `REJECT_LINGER_MS` 설명. 값·요청·응답 모양·HTTP 상태는 바뀌지 않음 · **10/28 CAREER-30 고침 (사용자 승인 — 2026-10-28, CAREER-30 plan D1 '가' · D2 — D1은 I-12 조건부)**: §1 로컬 주소 줄 · §9 `HOST` 줄 · §10 표시. 요청·응답 모양·HTTP 상태는 바뀌지 않음
 - 근거: [specs/CAREER-25-real-appraise/plan.md](../specs/CAREER-25-real-appraise/plan.md) · 결정 E~I (CAREER-25 spec '정해진 것')
 - 이 문서는 **브라우저(감정 어댑터) ↔ 서버(`api/`)** 사이 약속이다. 서버는 CAREER-25가, 사진을 보내는 쪽은 CAREER-26이, 어댑터는 화면 연결 스토리(결정 A)가 만든다. 화면 쪽 함수 모양은 [appraise.md](appraise.md)가 원본이고, 이 문서는 그 아래 HTTP 모양만 정한다.
 - CAREER-26 spec과 대조(10/21, 앞 세션이 읽음): AC-1(1024px로 줄여 보냄)은 §3-4와, AC-5(서버 입구로만 한 번)는 §1 같은 출처 `/api/appraise`와, AC-7(서버 거절을 `invalid_input`으로 봄)은 §5 400과 맞다. AC-9(a)(d)는 아래 §2 마지막 줄로 대응한다.
@@ -9,7 +9,7 @@
 | 무엇 | 값 |
 |---|---|
 | 경로 | `POST /api/appraise` (이 경로 하나뿐) |
-| 로컬 주소 | `http://127.0.0.1:8787` — 서버는 `127.0.0.1`에만 묶는다(결정 B: 공개하지 않음). 포트는 환경변수 `PORT`로 바꿀 수 있다(§9) |
+| 로컬 주소 | `http://127.0.0.1:8787` — 서버는 환경변수 `HOST`(없으면 `127.0.0.1`)에 묶는다. 로컬은 늘 `127.0.0.1`. 배포에서는 systemd 단위가 `HOST=0.0.0.0`을 주고, 서버 포트에는 CloudFront VPC origin으로만 닿는다([deploy.md](deploy.md) §3·§4 · CAREER-30). 포트는 환경변수 `PORT`로 바꿀 수 있다(§9) |
 | 브라우저에서 | 같은 출처로만 부른다: 로컬은 Vite dev 서버 프록시(`/api` → `http://127.0.0.1:8787`), 나중엔 CloudFront `/api/*`. **CORS 헤더를 내지 않는다** — 다른 출처의 브라우저 요청은 브라우저가 막는다 |
 
 ## 2. 요청
@@ -155,11 +155,13 @@ Cache-Control: no-store
 | 이름 | 누가 읽나 | 값 |
 |---|---|---|
 | `PORT` | `api/` | 없으면 8787 |
+| `HOST` | `api/` | 없으면 `127.0.0.1`. IP 모양이 아니면 시작하지 않음(`startup_failed` `bad_host`) · 배포 값은 [deploy.md](deploy.md) |
 | `AWS_PROFILE` | AWS SDK 기본 자격 증명 사슬 | 로컬 시험 실행만 `terraform-admin`(결정 C). 코드에 적지 않는다. EC2에서는 쓰지 않음(인스턴스 역할) |
 - `VITE_*`는 없다. 브라우저는 상대 경로 `/api/appraise`만 쓴다
 - Bedrock 엔드포인트 주소 변수는 없다 — EC2에서는 VPC 엔드포인트 private DNS가 기본 주소를 가로챈다(ADR-0002)
 
 ## 10. 나중에 인프라가 맞출 것 (배포 스토리 — 이번엔 만들지 않음, 결정 B)
+(CAREER-30에서 맞춤 — [deploy.md](deploy.md) §3·§4)
 - CloudFront `/api/*` 동작: POST 허용, 캐시 안 함, 원본으로 **쿼리 문자열 전부**와 `Content-Type` 헤더를 넘김, 원본 응답 시간 제한 ≥ `TIMEOUT_MS` + 5초
 - EC2 보안 그룹 → bedrock-runtime 엔드포인트 443 (ADR-0002, `culonculon/aws-infra-portfolio`)
 - (CAREER-31 — 10/24 사용자 승인, 맞추는 일은 CAREER-30) CloudFront `/api/*` 원본 요청 정책에 **`CloudFront-Viewer-Address` 헤더**를 넣는다. 브라우저가 같은 이름 헤더를 보내도 CloudFront 값으로 덮이는지 확인한다
