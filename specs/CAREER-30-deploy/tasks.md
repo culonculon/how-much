@@ -1,14 +1,14 @@
-[CAREER-30](https://culonculon98.atlassian.net/browse/CAREER-30) · spec: [spec.md](spec.md) · plan: [plan.md](plan.md) · 인프라 사실: [i0-facts.md](i0-facts.md) · 약속: [contracts/deploy.md](../../contracts/deploy.md) · [contracts/appraise-http.md](../../contracts/appraise-http.md) §1·§9·§10 · 결정: [ADR-0007](../../docs/adr/0007-api-deploy-cloudfront-vpc-origin-systemd.md) (확정 2026-10-28)
+[CAREER-30](https://culonculon98.atlassian.net/browse/CAREER-30) · spec: [spec.md](spec.md) · plan: [plan.md](plan.md) · 인프라 사실: [i0-facts.md](i0-facts.md) · 약속: [contracts/deploy.md](../../contracts/deploy.md) · [contracts/appraise-http.md](../../contracts/appraise-http.md) §1·§10 · 결정: [ADR-0007](../../docs/adr/0007-api-deploy-cloudfront-vpc-origin-systemd.md) (확정 2026-10-28)
 
-상태: **승인됨 (2026-10-28 — 사용자 승인 D1~D12, D1은 I-12 조건부)** (초안 2판 — 2026-10-28 architect, I0 사실 반영). I0′과 U1 승인이 끝나기 전에는 아무것도 만들지 않는다(CLAUDE.md §4 — contracts 확정 전).
+상태: **승인됨 (2026-10-28 — 사용자 승인 D1~D12, 14:10 D1을 나로 바꿈)** (초안 2판 — 2026-10-28 architect, I0 사실 반영). I0′과 U1 승인이 끝나기 전에는 아무것도 만들지 않는다(CLAUDE.md §4 — contracts 확정 전).
 
 ## 공통 규칙
 - **저장소는 둘이다.**
   - **how-much** 브랜치 `CAREER-30-deploy`: PR-1(코드·스크립트·워크플로 — 배포 전에 머지) · PR-2(런북·증거 — 확인 뒤).
   - **`aws-infra-portfolio`**: PR #2(있음) · PR-B · PR-C는 `infra/`이고 **머지 = apply = 요금**이다. 배포 역할은 `bootstrap/`이고 **CI 밖이라 사용자가 로컬에서 apply**한다. 머지와 apply는 사용자만 한다.
 - **차례**: **I0(끝남) → I0′ → U1 → (G1\* ∥ S1 ∥ F1\*) → G2\* → S2 → P1(PR-1 머지)**. 인프라는 **I1(PR #2) → I2(PR-B) ∥ I2′(bootstrap)**로 간다. P1·I2·I2′ 셋 다 끝나면 **D1 서버 준비·첫 배포 → 같은 날 I3(PR-C = 공개) → V1 밖 확인 → R1 → P2**.
-  - \* G1·G2는 plan D1 '가'일 때만, F1은 D6 '나'일 때만 한다. 해당 없으면 '해당 없음'으로 적는다.
-  - [P] = 파일이 겹치지 않고 서로 기대지 않음: G1(`api/tests/`) · S1(`infra/deploy/`) · F1(`app/vite.config.js`). I2·I2′은 다른 폴더라 함께 갈 수 있지만 **둘 다 I1 머지 뒤**다.
+  - \* G1·G2는 **해당 없음**이다(plan D1 '나' — 2026-10-28 14:10). F1은 D6 '나'일 때만 한다. 해당 없으면 '해당 없음'으로 적는다.
+  - [P] = 파일이 겹치지 않고 서로 기대지 않음: S1(`infra/deploy/`) · F1(`app/vite.config.js`). I2·I2′은 다른 폴더라 함께 갈 수 있지만 **둘 다 I1 머지 뒤**다.
 - **담당 표기**: **앞 세션** = 사용자와 함께 쓰는 세션(`api/`는 `human_only`) · **함께(앞 세션 + 사용자)** = 인프라 · release-ops = 런북.
 - **어느 세션도 해서는 안 되는 것**: 어느 저장소에서도 `terraform apply` · `destroy`를 돌리지 않는다. `terraform plan`은 `infra/`는 CI에서만, `bootstrap/`은 사용자 로컬에서만 돈다. 세션은 로컬 AWS 자격 증명을 쓰지 않는다 — `aws …` 명령과 EIC 접속은 모두 **사용자가** 하고 출력을 붙인다.
 - **명령과 보고**: 모든 명령은 저장소 루트에서 돌린다. `cd`가 들어간 명령은 `bash -c '…'`로. 세션 보고에는 출력 그대로, PR '검사 결과' 칸에는 CI 링크만 넣는다(CI가 없는 검사는 plan D12대로 출력 그대로).
@@ -30,7 +30,7 @@
 - 단계
   1. I-11 — 사용자: `curl -sI https://<v1 CloudFront 주소>/ | grep -iE '^(HTTP|server|x-cache)'` → `200` · `server: nginx`면 접두사 목록 규칙으로 VPC origin이 닿는다
   2. I-4 — 사용자: `aws ec2 describe-images --image-ids ami-0d8d71a28c118c486 --query 'Images[].[Name,Description]' --output text` → 이름으로 표준/최소 AMI를 가른다. 앞 세션이 그 AMI 종류에 sshd·`ec2-instance-connect`·SSM 에이전트·`ec2-user` sudo가 있는지 AWS 문서에서 찾아 링크와 함께 적는다. `nodejs22` 꾸러미가 AL2023 저장소에 있는지와 실행 파일 이름도 문서에서 찾는다(서버 안 확인은 D1 단계 1)
-  3. I-12 — 앞 세션: 같은 EC2 ARN에 VPC origin을 둘(포트 다르게) 만들 수 있는지 AWS 문서·할당량에서 찾아 링크와 함께 적는다
+  3. I-12 — 앞 세션: 같은 EC2 ARN에 VPC origin을 둘(포트 다르게) 만들 수 있는지 AWS 문서·할당량에서 찾아 링크와 함께 적는다 → **해당 없음**(D1 '나', 14:10 — 문서 확인은 부분 확인으로 끝남)
   4. I-13 — 앞 세션: `aws-infra-portfolio` `infra/cdn.tf`에서 `origin_read_timeout`·`vpc_origin_config` 줄을 읽기만 하고(`grep -n 'origin_read_timeout\|vpc_origin_config\|keepalive' infra/cdn.tf`), VPC origin 원본의 응답 시간 제한을 어디에 두는지 문서에서 찾는다
   5. 앞 세션: 그 저장소 PR CI(`plan.yml`)가 fmt·validate·trivy를 돌리는지 `grep -nE 'fmt|validate|trivy' .github/workflows/plan.yml`로 본다(I-7 남은 것 · D12)
   6. architect: 결과로 plan I 칸을 '확인함: …'으로 고치고, 갈리면(I-11 실패 · I-12 안 됨 · I-4 둘 다 없음) D 표 추천을 고친다. **I-4가 'EIC도 SSM도 안 됨'이면 멈추고 사용자에게 알린다**(plan A6)
@@ -52,44 +52,35 @@
 - 검사 명령: `grep -m1 -H '상태' specs/CAREER-30-deploy/plan.md specs/CAREER-30-deploy/tasks.md contracts/deploy.md docs/adr/0007-*.md; grep -c '{D1' contracts/deploy.md; grep -c 'CAREER-30 고침' contracts/appraise-http.md`
 - 끝난 상태: 네 줄이 승인됨·승인됨·확정·확정 · deploy.md의 `{D1` 0개 · appraise-http.md 1 이상. (`<…>` id는 I2·I2′ 뒤 — D1 단계 0에서 채움)
 
-## G1 — `HOST` 테스트 (빨강) · 순서 4 · [P] · **D1 '가'일 때만**
-- 담당: **앞 세션** (`api/`는 `human_only`)
-- 파일: `api/tests/startup.test.js` (더함만)
-- AC: AC-3·AC-4의 앞 조건(plan D2)
-- 원본: plan D2 · contracts/appraise-http.md §1·§9(U1에서 고친 글)
-- 내용 (테스트 이름 `CAREER-30 HOST`. 이미 있는 `run(env)` 돕는 함수 · 공통 `env` · 가짜 키를 그대로 쓰고, 각각 `{ timeout: 15_000 }`)
-  - (a) `HOST` 없음 → `listening` 줄 `address === '127.0.0.1'`
-  - (b) `HOST: '0.0.0.0'` → `address === '0.0.0.0'`
-  - (c) `HOST: 'example.com'` · `HOST: ''` 각각 → `listening` 없음 · `startup_failed` 줄 정확히 1개 `{ evt: 'startup_failed', reason: 'bad_host', error: 'InvalidHost' }` · 종료 코드 0 아님(신호 아님)
-  - (d) (c)에서 가짜 키를 **빼도** 같은 `bad_host` — 주소 검사가 자격 증명 점검보다 먼저
-- 단계: 1. 더한다 2. 검사 명령 → 실패가 (b)(c)(d)뿐 3. 커밋 `CAREER-30: listen host tests`
-- 검사 명령: `{ npm --prefix api test; echo "exit=$?"; }; git status --porcelain api`
-- 끝난 상태: `exit` 0 아님 · 실패가 위 셋뿐 · `git status` 빈 줄
+## G1 — `HOST` 테스트 · **해당 없음 — D1 '나'** (2026-10-28 14:10 사용자 결정)
+- 담당: 앞 세션 (확인만)
+- 파일: 없음 — `api/`를 고치지 않는다
+- 까닭: `HOST`가 CAREER-31 테스트 'AC-6 (5) 설정 한 곳 — 환경변수는 PORT 줄뿐'과 부딪혔다. 사용자는 테스트를 고치지 않고 D1을 '나'로 바꿨다. 14:05 뒤 만든 HOST 테스트·구현 커밋은 지웠다(main 위 커밋은 `79d9d29` spec · `6f7a601` plan뿐)
+- 검사 명령: `git log --oneline origin/main..HEAD -- api; git diff --stat origin/main -- api`
+- 끝난 상태: 두 출력 모두 빈 줄
 
-## G2 — `HOST` 구현 (초록) · 순서 5 (G1 뒤) · **D1 '가'일 때만**
-- 담당: **앞 세션**
-- 파일: `api/src/config.js` · `api/src/server.js`
-- 단계
-  1. `config.js`: `HOST` → `DEFAULT_HOST = '127.0.0.1'`, 주석 `// 로컬은 늘 이 값. 배포는 systemd 단위가 HOST를 준다(contracts/deploy.md §1 · CAREER-30 D2)`
-  2. `server.js`
-     - `import { isIP } from 'node:net'`를 더한다.
-     - `startServer({ host = process.env.HOST ?? DEFAULT_HOST, … })`로 받는다.
-     - 맨 앞에 `if (isIP(host) === 0) throw new StartupError('bad_host', 'InvalidHost');`를 둔다.
-     - `listen(port, host, …)`로 바꾼다.
-     - 맨 위 주석 '127.0.0.1에만 묶는다'를 '`HOST`(없으면 127.0.0.1)'로 바꾼다.
-  3. 검사 명령. 실패하면 테스트를 고치지 않고 `api/src`를 고친다
-  4. 커밋: `CAREER-30: listen host from environment`
-- 검사 명령: `bash -c "$(jq -r '.checks.app.api' pipeline.config.json)"; echo "exit=$?"; grep -rn "process.env" api/src; git status --porcelain --untracked-files=all api`
-- 끝난 상태: `exit=0` · `process.env` 줄이 `server.js`의 `PORT`·`HOST` 둘뿐 · 커밋 뒤 `git status` 빈 줄
+## G2 — `HOST` 구현 · **해당 없음 — D1 '나'** (2026-10-28 14:10)
+- 담당: 앞 세션 (확인만)
+- 파일: 없음 — `api/src/config.js`·`server.js`는 `127.0.0.1` 고정 그대로
+- 검사 명령: `grep -rn "process.env" api/src; grep -rn "HOST" api/src`
+- 끝난 상태: `process.env` 줄이 `server.js`의 `PORT` 하나뿐 · `HOST` 줄은 main과 같은 것뿐(새 줄 없음 — 위 G1 diff 빈 줄로 확인)
 
 ## S1 — 서버 준비·배포 스크립트·nginx 설정 · 순서 4 · [P]
 - 담당: **함께(앞 세션 + 사용자)** — 구역 `infra`(infra-dev)
 - 파일: `infra/deploy/setup-host.sh` · `infra/deploy/install-release.sh` · `infra/deploy/how-much-api.service` · `infra/deploy/how-much-nginx.conf` (새로)
 - AC: AC-2(홈·`user_data` 안 건드림) · AC-4(화면) · AC-6(같은 방법으로 다시 배포) · AC-8 재료
-- 원본: plan '접근 방법' 2·3 · '고른 이유' · contracts/deploy.md §1·§2·§4
+- 원본: plan '접근 방법' 2·3 · '고른 이유' · contracts/deploy.md §1·§2·§4·§6
 - 단계
-  1. `how-much-api.service`: contracts/deploy.md §1 값 그대로(D1에 따라 `Environment=HOST=0.0.0.0` 있음/없음). `DynamicUser`·`ProtectHome`·`ProtectSystem=strict`는 넣지 않는다
-  2. `how-much-nginx.conf`: 80 · `root /opt/how-much/app/current` · `index index.html`. D1 '나'면 `location /api/ { proxy_pass http://127.0.0.1:8787; }`와 본문 상한 ≥ 1,000,000바이트를 더하고, 헤더는 지우지 않는다. v1 기본 server 블록과 겹치는지는 서버에서 `nginx -t`로 본다(D1 단계 1)
+  1. `how-much-api.service`: contracts/deploy.md §1 값 그대로. **`Environment=HOST` 줄은 없다**(D1 '나' — 서버는 `127.0.0.1` 고정). `DynamicUser`·`ProtectHome`·`ProtectSystem=strict`는 넣지 않는다
+  2. `how-much-nginx.conf`: 80 · `root /opt/how-much/app/current` · `index index.html`. 여기에 **`location /api/` 넘김을 넣는다** — contracts/deploy.md §6 표의 줄을 하나도 빼지 않는다.
+     - `proxy_pass http://127.0.0.1:8787;` — 뒤에 경로를 붙이지 않는다.
+     - `proxy_http_version 1.1` · `proxy_request_buffering off` · `proxy_buffering off` · `proxy_intercept_errors off`.
+     - `client_max_body_size`는 §6에서 사용자가 확인한 값이다. 확인 전이면 이 작업을 끝내지 않는다.
+     - `proxy_read_timeout 25s`.
+     - nginx가 직접 내는 오류를 JSON으로 바꾼다: `error_page` 413 → 400 `invalid_input` · 500 502 503 504 → 503 `unavailable`. 헤더는 둘 — `Content-Type: application/json; charset=utf-8` · `Cache-Control: no-store`.
+     - `access_log off`.
+     - `proxy_set_header`로 `CloudFront-Viewer-Address`·`Content-Type`을 지우거나 바꾸지 않는다.
+     - v1 기본 server 블록과 겹치는지는 서버에서 `nginx -t`로 본다(D1 단계 1). nginx가 실제로 약속대로 도는지는 D1 단계 5에서 본다
   3. `setup-host.sh`(한 번 실행, 다시 돌려도 같은 결과): 줄마다 하는 일은 이렇다.
      - `set -euo pipefail`
      - `id howmuch || useradd --system --create-home --home-dir /home/howmuch --shell /sbin/nologin howmuch`
@@ -106,18 +97,19 @@
      - `api-<sha>.tar.gz`는 `/opt/how-much/api/releases/<sha>`에, `app-<sha>.tar.gz`는 `/opt/how-much/app/releases/<sha>`에 푼다(주인 root).
      - 링크 둘을 각각 `ln -sfn` 임시 링크 → `mv -T`로 바꾼다.
      - `systemctl restart how-much-api`
-     - 확인 셋: 5초 안에 `journalctl -u how-much-api -o cat --since <재시작 시각>`에 `"evt":"listening"` 줄이 있다(D1 '가'면 `"address":"0.0.0.0"`) · contracts/deploy.md §4 `curl` 둘이 `400`·`200`이다.
+     - 확인 셋: 5초 안에 `journalctl -u how-much-api -o cat --since <재시작 시각>`에 `"evt":"listening"` 줄이 있다(`"address":"127.0.0.1"`) · contracts/deploy.md §4 `curl` 둘이 `400`·`200`이다.
      - 하나라도 아니면 링크 둘을 앞 판으로 되돌리고 재시작한 뒤 `exit 1`.
      - 끝으로 최근 3판 밖을 지우고(`/opt/how-much/*/releases/` 안만) `/var/tmp/how-much-deploy/<sha>`를 지운다.
   5. 검사 명령
   6. 커밋: `CAREER-30: host setup, release scripts and nginx site`
 - 검사 명령:
   ```
-  bash -n infra/deploy/setup-host.sh && bash -n infra/deploy/install-release.sh && echo "syntax ok"; grep -nE 'DynamicUser|ProtectHome|ProtectSystem=strict' infra/deploy/how-much-api.service; grep -nE 'rm .*(/home|~|\$HOME)|/home/howmuch/\.local|user_data|/usr/share/nginx' infra/deploy/*; grep -nE 'rm -rf? ' infra/deploy/*.sh; for n in fmt validate scan; do bash -c "$(jq -r ".checks.infra.$n" pipeline.config.json)"; echo "$n exit=$?"; done; git status --porcelain infra
+  bash -n infra/deploy/setup-host.sh && bash -n infra/deploy/install-release.sh && echo "syntax ok"; grep -nE 'DynamicUser|ProtectHome|ProtectSystem=strict|HOST' infra/deploy/how-much-api.service; grep -nE 'rm .*(/home|~|\$HOME)|/home/howmuch/\.local|user_data|/usr/share/nginx' infra/deploy/*; grep -nE 'rm -rf? ' infra/deploy/*.sh; for d in 'location /api/' 'proxy_pass http://127.0.0.1:8787;' 'proxy_http_version 1.1' 'proxy_request_buffering off' 'proxy_buffering off' 'proxy_intercept_errors off' 'client_max_body_size' 'proxy_read_timeout 25s' 'error_page 413' 'error_page 500 502 503 504' '{"code":"invalid_input"}' '{"code":"unavailable"}' 'application/json; charset=utf-8' 'no-store' 'access_log off'; do grep -qF "$d" infra/deploy/how-much-nginx.conf || echo "없음: $d"; done; grep -niE 'proxy_set_header +(cloudfront-viewer-address|content-type)|proxy_pass http://127\.0\.0\.1:8787/' infra/deploy/how-much-nginx.conf; for n in fmt validate scan; do bash -c "$(jq -r ".checks.infra.$n" pipeline.config.json)"; echo "$n exit=$?"; done; git status --porcelain infra
   ```
 - 끝난 상태
   - `syntax ok`가 나온다.
-  - 첫 두 `grep`이 0줄이다.
+  - 첫 두 `grep`이 0줄이다(단위 파일에 `HOST` 없음).
+  - `없음:` 줄이 0개다(§6 넘김 설정이 다 있음). 그다음 `grep`(헤더를 건드림 · `proxy_pass` 뒤 경로)이 0줄이다.
   - 셋째 `grep`(`rm`)의 줄이 모두 `/opt/how-much/` 또는 `/var/tmp/how-much-deploy/` 안이다.
   - fmt·validate·scan이 `exit=0`이다.
   - 커밋 뒤 `git status`가 빈 줄이다.
@@ -151,20 +143,20 @@
 - 검사 명령: `grep -nE 'workflow_dispatch|environment: production|concurrency|refs/heads/main|id-token: write|ec2-instance-connect|create-invalidation' .github/workflows/deploy.yml; grep -nE 'aws-access-key-id|aws-secret-access-key|secrets\.AWS|s3 (cp|sync)' .github/workflows/deploy.yml; git diff --stat origin/main -- .github/workflows/ci.yml .github/workflows/reusable-checks.yml; git status --porcelain .github`
 - 끝난 상태: 첫 `grep`이 7종 모두 나옴 · 둘째 `grep` 0줄 · `ci.yml`·`reusable-*` diff 빈 줄 · 커밋 뒤 `git status` 빈 줄. (실제로 도는지는 D1 — main에 들어가야 수동 실행 버튼이 생긴다)
 
-## P1 — how-much PR-1 · 순서 7 (G2\*·S1·S2·F1\* 뒤)
+## P1 — how-much PR-1 · 순서 7 (S1·S2·F1\* 뒤 — G1·G2 해당 없음)
 - 담당: 앞 세션(검사·PR 열기) · reviewer · **사용자(머지)**
 - 파일: 없음 (PR 본문 — `.github/pull_request_template.md`)
 - 단계
   1. `for n in lint test e2e build api; do echo "== $n"; bash -c "$(jq -r ".checks.app.$n" pipeline.config.json)"; echo "exit=$?"; done` · `for n in fmt validate scan; do bash -c "$(jq -r ".checks.infra.$n" pipeline.config.json)"; echo "exit=$?"; done` — 출력 그대로 보고
-  2. 제목: `CAREER-30: release scripts, nginx site and deploy workflow` (D1 '가'면 앞에 `listen host, `)
+  2. 제목: `CAREER-30: release scripts, nginx site and deploy workflow` (D1 '나' — nginx 설정에 `/api/` 넘김이 들어 있음)
   3. 칸
      - 결정: ADR-0007 · plan D1~D12에서 고른 것
      - 범위 변경: "화면을 밖 주소에 올리는 일(spec이 적지 않았으나 AC-4에 필요 — plan '먼저 알릴 것' 4) · v1 nginx 기본 페이지가 how-much 화면으로 바뀜"
      - 새 의존성: 없음(EC2에 Node 22)
-     - 비용·남용 영향: plan D 표 '월 요금' · 신뢰 경계 ⑩⑪⑫ · 'PR-1 머지만으로는 아무것도 열리지 않음'
+     - 비용·남용 영향: plan D 표 '월 요금' · 신뢰 경계 ⑪⑫(⑩ 해당 없음) · 'PR-1 머지만으로는 아무것도 열리지 않음' · 'nginx 넘김이 계약을 지키는지는 D1 단계 5에서 처음 확인함'
   4. spec AC ✔/✘ 대조 — 이 PR에서는 모두 '아직(배포 뒤 V1)'으로 적고 이유를 쓴다
 - 검사 명령: `gh pr checks --watch; git diff --stat origin/main -- api/src contracts docs/adr infra .github app`
-- 끝난 상태: 필수 검사 통과(`reviewer/gate` 포함) · `api/src` diff가 `config.js`·`server.js`뿐(D1 '나'면 0) · 사용자가 머지
+- 끝난 상태: 필수 검사 통과(`reviewer/gate` 포함) · `api/src` diff 0줄(D1 '나') · 사용자가 머지
 
 ## I1 — `aws-infra-portfolio` PR #2 정리와 머지 (요금 시작) · 순서 7 (U1 뒤 · plan D9: I2가 준비된 날)
 - 담당: **함께(앞 세션 + 사용자)** · 머지 = **사용자**
@@ -178,18 +170,18 @@
 - 검사 명령 (그 저장소 루트, 읽기): `gh pr view 2 --json isDraft,state,mergedAt,body | jq '{isDraft,state,mergedAt,hasSummary:(.body|test("to add")),hasChange1:(.body|test("변경 1"))}'; gh pr checks 2`
 - 끝난 상태: `hasSummary` · `hasChange1` true · 검사 통과 · 다시 돌린 plan에 `aws_instance` 교체·삭제 0줄 · `mergedAt`이 있음(사용자)
 
-## I2 — `aws-infra-portfolio` PR-B: EIC · (D1 '가') VPC origin 8787 · 보안 그룹 규칙 · 교체 막기 · 순서 8 (I1 머지 뒤)
-- 담당: **함께(앞 세션 + 사용자)** · IAM·요금은 plan D1·D3·D7에서 사용자가 고른 것만 · 머지 = **사용자**
-- 파일: 그 저장소 `infra/` — `aws_instance.web`와 보안 그룹 `portfolio-web`이 있는 파일 · (D1 '가') `infra/cdn.tf`의 VPC origin 옆. how-much `infra/*.tf`는 건드리지 않는다(결정 D)
+## I2 — `aws-infra-portfolio` PR-B: EIC · 22 규칙 · 교체 막기 · 순서 8 (I1 머지 뒤)
+- 담당: **함께(앞 세션 + 사용자)** · IAM·요금은 plan D1·D3·D7·D13에서 사용자가 고른 것만 · 머지 = **사용자**
+- 파일: 그 저장소 `infra/` — `aws_instance.web`와 보안 그룹 `portfolio-web`이 있는 파일. `infra/cdn.tf`는 건드리지 않는다(D1 '나'). how-much `infra/*.tf`도 건드리지 않는다(결정 D)
 - AC: AC-2 · AC-3 · (밖에 아직 안 열림)
 - 단계
   1. D3: `aws_ec2_instance_connect_endpoint`(v1 프라이빗 서브넷) + 그 보안 그룹(나가기 = `portfolio-web` 22만) · `portfolio-web`에 tcp 22 들어오기(출처 = EIC 보안 그룹)
-  2. (D1 '가', I-12가 '됨'일 때) 같은 `aws_instance.web.arn`을 가리키는 `aws_cloudfront_vpc_origin` 하나 더(http 8787) · `portfolio-web`에 tcp 8787 들어오기(출처 = CloudFront 접두사 목록 — 80 규칙과 같은 방식). **CloudFront 동작은 이 PR에서 바꾸지 않는다**
+  2. ~~두 번째 VPC origin · 8787 규칙~~ → **해당 없음**(D1 '나'). 80 규칙은 **D13이 '나'로 정해졌을 때만** 출처를 바꾼다. 정해지기 전이나 '가'면 80 규칙은 한 글자도 바꾸지 않는다. **CloudFront 동작은 이 PR에서 바꾸지 않는다**
   3. D7: `aws_instance.web`에 `lifecycle { prevent_destroy = true }`만. **`user_data`·AMI·인스턴스의 보안 그룹 목록은 바꾸지 않는다**
   4. CI plan · fmt·validate·trivy(D12). PR 설명에 plan 요약 + 아래 검사 결과
-  5. **사용자가 머지** → 출력(EIC 엔드포인트 id·보안 그룹 id·VPC origin id)을 적는다
-- 검사 명령 (그 저장소 CI plan 출력을 `plan.txt`로, diff는 그 저장소 루트에서): `grep -nE 'aws_instance\..*(must be replaced|will be destroyed)' plan.txt; grep -nE '"(0\.0\.0\.0/0|::/0)"' plan.txt; git diff origin/main -- infra | grep -nE '^[+-].*(user_data|ami *=|security_groups|vpc_security_group_ids)'`
-- 끝난 상태: 첫 `grep` 0줄 · 둘째는 들어오는 규칙에 0줄(나가는 규칙은 따로 읽음) · 셋째 0줄 · fmt·validate 통과 · 새 trivy HIGH·CRITICAL 0 · 사용자가 머지
+  5. **사용자가 머지** → 출력(EIC 엔드포인트 id·보안 그룹 id)을 적는다
+- 검사 명령 (그 저장소 CI plan 출력을 `plan.txt`로, diff는 그 저장소 루트에서): `grep -nE 'aws_instance\..*(must be replaced|will be destroyed)' plan.txt; grep -nE '"(0\.0\.0\.0/0|::/0)"' plan.txt; git diff origin/main -- infra | grep -nE '^[+-].*(user_data|ami *=|security_groups|vpc_security_group_ids)'; git diff origin/main -- infra | grep -nE '^[+-].*(8787|aws_cloudfront_vpc_origin)'; git diff --stat origin/main -- infra/cdn.tf`
+- 끝난 상태: 첫 `grep` 0줄 · 둘째는 들어오는 규칙에 0줄(나가는 규칙은 따로 읽음) · 셋째 0줄 · 넷째 0줄(D1 '나') · `cdn.tf` diff 빈 줄 · fmt·validate 통과 · 새 trivy HIGH·CRITICAL 0 · 사용자가 머지
 
 ## I2′ — `aws-infra-portfolio` `bootstrap/` 배포 역할 · 순서 8 (I1 뒤 · I2와 함께) · **D4 '가'일 때만**
 - 담당: **함께(앞 세션 + 사용자)** · IAM은 plan D5대로 · **plan·apply = 사용자 로컬**(CI 밖 — I-7)
@@ -211,15 +203,28 @@
   0. architect: I2·I2′ 출력의 id로 contracts/deploy.md `<…>`를 채운다
   1. 사용자가 EIC로 들어가 `rpm -q ec2-instance-connect nginx; uname -m; sudo -n true && echo sudo-ok`를 본다. `infra/deploy/`를 서버에 보내 `sudo bash setup-host.sh`를 돌리고 `id howmuch` · `systemctl is-enabled how-much-api` · `node --version` · `sudo nginx -t`를 확인한다. **들어갈 수 없으면 멈추고 묻는다**(plan 실패 시나리오 17)
   2. GitHub `deploy` 실행(main) → 사용자 승인 → 잡 요약에 다음 셋이 있어야 한다.
-     - `listening` 줄 (D1 '가'면 `"address":"0.0.0.0"`)
+     - `listening` 줄 `"address":"127.0.0.1"` (8787은 루프백만 — AC-3)
      - `curl` `400`·`200`
      - 무효화 id
      - `startup_failed` 줄은 없어야 한다(인스턴스 역할로 자격 증명이 풀림).
   3. EIC로 `sudo journalctl -u how-much-api -o cat | tail -3` → 마지막 `appraise` 줄 `outcome invalid_input` · `reason bad_my_price` · `attempts 0`
   4. `systemctl show how-much-api -p User -p DynamicUser -p ProtectHome` → `User=howmuch` · `DynamicUser=no` · `ProtectHome=no`
-  5. 밖에서 `curl -s https://<v1 주소>/ | grep -c '<div id="root"'` 1 — 화면이 보임(감정은 I3 전까지 안 됨 — plan 실패 시나리오 20)
-- 검사 명령: 위 1~5 (사용자가 돌림 — 세션은 AWS 자격 증명을 쓰지 않음) · architect: `grep -c '<' contracts/deploy.md`
-- 끝난 상태: 다섯 다 위 값 · Bedrock 0 · deploy.md의 `<` 0개. 하나라도 아니면 **I3(공개)으로 가지 않는다**
+  5. **nginx 넘김 확인 — contracts/deploy.md §6 약속을 처음 시험하는 곳 (Bedrock 0 · plan 실패 시나리오 23)**
+     - 언제·어떻게: 단계 2에서 1분 넘게 뒤에 사용자가 서버 안에서 돌린다. 헤더가 없는 요청은 모두 한 사람(`-`)이라 1분에 5번을 넘기지 않는다. 아래에서 서버에 닿는 헤더 없는 요청은 (a)(b)(c) 셋이다.
+     - 아래 '기대'는 약속이다. nginx가 실제로 그렇게 도는지는 **확인 못 함**이고, 이 단계가 처음 확인이다. 출력은 `-i` 그대로 붙인다.
+     - 준비: `sudo nginx -T | grep -nE 'client_max_body_size|proxy_(pass|http_version|request_buffering|buffering|intercept_errors|read_timeout|set_header)|error_page|access_log|error_log'` — 실제로 먹은 설정을 본다. 이어서 `head -c 1500000 /dev/zero > /tmp/hm-1500k; head -c 2500000 /dev/zero > /tmp/hm-2500k; head -c 3500000 /dev/zero > /tmp/hm-3500k`
+     - (a) 작은 거절: `curl -s -i -X POST -H 'Content-Type: image/jpeg' --data-binary x 'http://127.0.0.1/api/appraise'` → 기대: `400` · `Content-Type: application/json; charset=utf-8` · `Cache-Control: no-store` · 본문 `{"code":"invalid_input"}`
+     - (b) **거절 뒤 남은 업로드 — 길이 있음 (CAREER-25)**: `curl -s -i -X POST -H 'Content-Type: image/jpeg' --data-binary @/tmp/hm-1500k 'http://127.0.0.1/api/appraise?myPrice=ten'; echo "curl exit=$?"` → 기대: `400` · `{"code":"invalid_input"}` · `curl exit=0`(쓰기 오류가 아님) · 서버 로그 그 줄 `reason` `too_large`
+     - (c) **거절 뒤 남은 업로드 — chunked · 한도 넘음 (CAREER-31)**: `time curl -s -i -X POST -H 'Content-Type: image/jpeg' -H 'Transfer-Encoding: chunked' --data-binary @/tmp/hm-2500k 'http://127.0.0.1/api/appraise?myPrice=ten'; echo "curl exit=$?"` → 기대: `400` · `{"code":"invalid_input"}`이 보이고 몇 초 안에 끝난다(멈춰 있지 않음). curl 종료 코드는 그대로 적는다 — appraise-http.md §2에 따라 서버가 끊으므로 0이 아닐 수 있다
+     - (d) **nginx 본문 상한 넘음 → JSON 400**: `curl -s -i -X POST -H 'Content-Type: image/jpeg' --data-binary @/tmp/hm-3500k 'http://127.0.0.1/api/appraise?myPrice=ten'; echo "curl exit=$?"` → 기대: `400` · JSON 헤더 둘 · `{"code":"invalid_input"}`, 또는 쓰기 오류(appraise-http.md §2 '처음부터 한도보다 크면 … 쓰기 오류를 볼 수 있다'). `<html`이 보이면 실패다. (§6 상한이 `3m`일 때 이 요청은 서버에 닿지 않는다 — 서버 로그에 줄이 없다. `0`을 골랐으면 서버 `too_large` 줄이 생긴다)
+     - (e) **api 꺼짐 → JSON 503**: `sudo systemctl stop how-much-api; curl -s -i -X POST -H 'Content-Type: image/jpeg' --data-binary x 'http://127.0.0.1/api/appraise'; sudo systemctl start how-much-api` → 기대: `503` · `Content-Type: application/json; charset=utf-8` · `Cache-Control: no-store` · 본문 `{"code":"unavailable"}`(`<html`이면 실패). 다시 켠 뒤 5초 안에 `listening` 줄이 나와야 한다
+     - (f) **헤더 넘김 (ADR-0006)**: `curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: image/jpeg' -H 'CloudFront-Viewer-Address: 203.0.113.7:443' -H 'X-Forwarded-For: 203.0.113.8' --data-binary x 'http://127.0.0.1/api/appraise'` → 기대: `400` · 서버 로그 그 줄 `who` `ip4`. `none`이면 nginx가 헤더를 지운 것이다 — 실패
+     - (g) **로그에 주소 없음**: (준비에서 본 `access_log`·`error_log` 자리로) `sudo grep -rcE '203\.0\.113\.(7|8)' /var/log/nginx/; sudo journalctl -u how-much-api -o cat --since '-15 min' | grep -cE '203\.0\.113\.'` → 기대: 모두 0. nginx 로그 자리가 `/var/log/nginx/`가 아니면 준비 출력의 자리로 바꿔 돌린다(v1 기본 자리는 확인 못 함)
+     - 끝으로 `rm -f /tmp/hm-1500k /tmp/hm-2500k /tmp/hm-3500k`
+     - **하나라도 기대와 다르면 I3(공개)으로 가지 않는다.** S1 nginx 설정을 고쳐 `setup-host.sh`를 다시 돌리고 이 단계를 다시 한다. 계약 글(appraise-http.md §2·§5)을 바꿔야 맞출 수 있으면 멈추고 묻는다(contracts/deploy.md §6 '대비')
+  6. 밖에서 `curl -s https://<v1 주소>/ | grep -c '<div id="root"'` 1 — 화면이 보임(감정은 I3 전까지 안 됨 — plan 실패 시나리오 20)
+- 검사 명령: 위 1~6 (사용자가 돌림 — 세션은 AWS 자격 증명을 쓰지 않음) · architect: `grep -c '<' contracts/deploy.md`
+- 끝난 상태: 여섯 다 위 값(단계 5는 (a)~(g) 모두) · Bedrock 0 · deploy.md의 `<` 0개. 하나라도 아니면 **I3(공개)으로 가지 않는다**
 
 ## I3 — `aws-infra-portfolio` PR-C: CloudFront `/api/*` = 공개 · 순서 10 (D1 뒤, 같은 날)
 - 담당: **함께(앞 세션 + 사용자)** · 머지 = **사용자** (이 머지 시각이 공개 시각)
@@ -227,20 +232,21 @@
 - AC: AC-1 · AC-2 · AC-3 · (넘겨받은 것 1)
 - 단계
   1. contracts/deploy.md §3 그대로 바꾼다.
-     - `ordered_cache_behavior` `/api/*`: 메서드 7 · `CachingDisabled` · 사용자 지정 원본 요청 정책(쿼리 전부 + `Content-Type` + `CloudFront-Viewer-Address`) · 원본 = D1대로 · 응답 시간 제한 30초(I-13 자리).
-     - **기본 동작은 바꾸지 않는다.** 오류 응답 사용자 지정은 더하지 않는다.
+     - `ordered_cache_behavior` `/api/*`: 메서드 7 · `CachingDisabled` · 사용자 지정 원본 요청 정책(쿼리 전부 + `Content-Type` + `CloudFront-Viewer-Address`) · 원본 = 있는 VPC origin `portfolio-web`(D1 '나').
+     - **기본 동작과 원본 `portfolio-web` 설정은 바꾸지 않는다.** 응답 시간 제한은 그 원본의 기본 30초에 기댄다(i0-facts I0′ I-13 — `cdn.tf`에 적힌 값 없음). 오류 응답 사용자 지정은 더하지 않는다.
   2. CI plan · fmt·validate·trivy(D12) · PR 설명에 plan 요약 · 'CAREER-31 머지 2026-10-28 13:21(`ef17df3`) 뒤'
   3. **사용자가 머지** → 머지 시각을 적는다
-- 검사 명령 (CI plan 출력 `plan.txt`): `grep -nE 'aws_instance\..*(must be replaced|will be destroyed)' plan.txt; grep -niE 'cloudfront-viewer-address' plan.txt; grep -nE 'custom_error_response|error_code' plan.txt; git diff origin/main -- infra/cdn.tf | grep -nE '^[+-] *default_cache_behavior'`
-- 끝난 상태: 첫째 0줄 · 둘째 1줄 이상 · 셋째 0줄 · 넷째 0줄 · 사용자가 머지
+- 검사 명령 (CI plan 출력 `plan.txt`): `grep -nE 'aws_instance\..*(must be replaced|will be destroyed)' plan.txt; grep -niE 'cloudfront-viewer-address' plan.txt; grep -nE 'custom_error_response|error_code' plan.txt; git diff origin/main -- infra/cdn.tf | grep -nE '^[+-] *default_cache_behavior'; git diff origin/main -- infra/cdn.tf | grep -nE '^[+-].*(aws_cloudfront_vpc_origin|origin_read_timeout|origin_keepalive_timeout|http_port|8787)'`
+- 끝난 상태: 첫째 0줄 · 둘째 1줄 이상 · 셋째 0줄 · 넷째 0줄 · 다섯째 0줄(원본·VPC origin 안 바꿈) · 사용자가 머지
 
 ## V1 — 밖에서 확인 (사람 · Bedrock 보통 3, 최대 9) · 순서 11 (I3 뒤). 단계 사이 1분 넘게
 - 담당: **사용자**(iPhone·명령) + 앞 세션(로그 읽기·PR 칸 채우기)
 - 파일: 없음 (증거는 P2)
 - AC: AC-3 ~ AC-7
 - 단계
-  1. **AC-3 보안 그룹·공인 IP**: plan 'A1 답' AC-3 확인 1·2 명령 → 출력 그대로
+  1. **AC-3 보안 그룹·공인 IP**: plan 'A1 답' AC-3 확인 1·2 명령 → 출력 그대로. 8787 규칙이 없어야 한다(D1 '나' — 들어오는 길은 80·22뿐)
   2. **AC-3 꾸민 헤더**(Bedrock 0): 확인 3 `curl` → `400` · 로그 그 줄 `who` = `ip4`/`ip6`. `bad`면 **멈춘다**(plan 실패 시나리오 4)
+     - 이어서 1분 넘게 뒤, **밖에서 거절 뒤 남은 업로드**(Bedrock 0 — CloudFront + nginx를 다 거친 길): `head -c 1500000 /dev/zero > /tmp/hm-1500k; curl -s -i -X POST -H 'Content-Type: image/jpeg' --data-binary @/tmp/hm-1500k 'https://<밖 주소>/api/appraise?myPrice=ten'; echo "curl exit=$?"; rm -f /tmp/hm-1500k` → 기대: `400` · `{"code":"invalid_input"}` · `curl exit=0` · 로그 `reason` `too_large`. 다르면 멈추고 D1 단계 5 (b)와 비교한다(CloudFront 쪽인지 nginx 쪽인지)
   3. **AC-4**: iPhone Safari로 모바일 데이터에서 밖 주소를 연다.
      - 리전 안내 문구를 본다.
      - 카메라로 찍은 물건 사진 + 마음 가격(+ 태그 하나 — AC-5에서 그대로 씀)으로 '감정 받기'를 누른다.
@@ -301,7 +307,7 @@
 |---|---|---|
 | AC-1 | I1 · I3 (머지는 사용자) · S2·I2′(main·`environment:production`만) | I1·I3 머지 시각 > CAREER-31 `ef17df3`(10/28 13:21) · PR #2 설명 · R1 점검표 |
 | AC-2 | I2(D7 · `user_data` 0줄) · S1(홈 안 건드림) · I2′(D12) | I1·I2·I3 plan `grep` · fmt·validate·trivy(CI 또는 D12 출력) · bootstrap 사용자 plan 요약 |
-| AC-3 | I2(보안 그룹 · EIC) · I3(헤더) | V1 단계 1·2 |
+| AC-3 | I2(보안 그룹 · EIC — 8787 규칙 없음) · S1(nginx가 헤더를 그대로 넘김) · I3(헤더) · (D13 '나'면 I2에서 80 출처) | D1 단계 2 (`address` `127.0.0.1`)·5 (f) · V1 단계 1·2 |
 | AC-4 | P1 · D1(화면·서버) · I3 · (F1) | V1 단계 3 |
 | AC-5 | (CAREER-31 코드) · I3(헤더) | V1 단계 4 |
 | AC-6 | S1 · S2 | V1 단계 5 |
