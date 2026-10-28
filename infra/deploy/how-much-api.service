@@ -1,0 +1,13 @@
+[Unit]
+Description=how-much api
+After=network.target
+
+[Service]
+User=howmuch
+WorkingDirectory=/opt/how-much/api/current
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
