@@ -1,0 +1,121 @@
+# how-much 배포 (CAREER-30 S2). 수동 실행만, main의 커밋 하나를 서버에 올린다.
+# 약속: contracts/deploy.md §2 · 서버 쪽: infra/deploy/install-release.sh
+# 비밀값 없음 — OIDC 역할 + 저장소 변수(AWS_DEPLOY_ROLE_ARN · EIC_ENDPOINT_ID · DEPLOY_INSTANCE_ID · CF_DISTRIBUTION_ID)
+# action은 커밋 SHA로 고정한다(ci.yml · reusable-checks.yml과 같은 판).
+name: deploy
+
+on: workflow_dispatch
+
+# 겹쳐 돌지 않는다. 서버 쪽 flock이 한 번 더 막는다.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: production # 사용자 승인 필요(저장소 설정)
+    timeout-minutes: 20
+    env:
+      AWS_REGION: ap-northeast-2
+      SHA: ${{ github.sha }}
+      EIC_ENDPOINT_ID: ${{ vars.EIC_ENDPOINT_ID }}
+      DEPLOY_INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }}
+    steps:
+      - name: main 커밋만, 변수 확인
+        env:
+          REF: ${{ github.ref }}
+          ROLE: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          DIST: ${{ vars.CF_DISTRIBUTION_ID }}
+        run: |
+          [ "$REF" = "refs/heads/main" ] || { echo "::error::main에서만 배포합니다 (지금: $REF)"; exit 1; }
+          [[ $SHA =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha 모양이 이상합니다"; exit 1; }
+          for v in ROLE DIST EIC_ENDPOINT_ID DEPLOY_INSTANCE_ID; do
+            [ -n "${!v}" ] || { echo "::error::저장소 변수 비어 있음: $v"; exit 1; }
+          done
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22 # 서버와 같은 메이저
+
+      - name: 빌드 (화면 + api 운영 의존성)
+        run: |
+          npm --prefix app ci
+          npm --prefix app run build
+          # shortcut: 러너(x64)에서 설치한다 — 의존성이 순수 JS인 동안만 arm64 서버에서 돈다. 네이티브 모듈이 생기면 다시 본다(plan '묶음')
+          npm --prefix api ci --omit=dev
+
+      - name: 묶음 만들기
+        run: |
+          out="$RUNNER_TEMP/bundle"
+          mkdir -p "$out"
+          tar -czf "$out/api-$SHA.tar.gz" -C api src package.json package-lock.json node_modules
+          tar -czf "$out/app-$SHA.tar.gz" -C app/dist .
+          (cd "$out" && sha256sum "api-$SHA.tar.gz" "app-$SHA.tar.gz" > SHA256SUMS && cat SHA256SUMS)
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-2
+
+      # ssh 키는 이 실행의 러너 임시 폴더에만 있다. 내용은 출력하지 않는다.
+      - name: EIC로 올리고 설치
+        run: |
+          set -euo pipefail
+          t="$RUNNER_TEMP"
+          ssh-keygen -q -t ed25519 -N '' -f "$t/deploy_key"
+          cat > "$t/ssh_config" <<EOF
+          Host target
+            HostName $DEPLOY_INSTANCE_ID
+            User ec2-user
+            IdentityFile $t/deploy_key
+            IdentitiesOnly yes
+            BatchMode yes
+            ConnectTimeout 30
+            StrictHostKeyChecking accept-new
+            UserKnownHostsFile $t/known_hosts
+            ProxyCommand aws ec2-instance-connect open-tunnel --instance-connect-endpoint-id $EIC_ENDPOINT_ID --instance-id %h
+          EOF
+          # 밀어 넣은 공개 키는 60초만 쓸 수 있어서 연결마다 다시 민다
+          push_key() {
+            aws ec2-instance-connect send-ssh-public-key --instance-id "$DEPLOY_INSTANCE_ID" \
+              --instance-os-user ec2-user --ssh-public-key "file://$t/deploy_key.pub" --output text > /dev/null
+          }
+          dest="/var/tmp/how-much-deploy/$SHA"
+
+          push_key
+          ssh -F "$t/ssh_config" target "rm -rf '$dest' && mkdir -p '$dest'"
+          push_key
+          scp -F "$t/ssh_config" "$t/bundle/SHA256SUMS" "$t/bundle/api-$SHA.tar.gz" "$t/bundle/app-$SHA.tar.gz" "target:$dest/"
+
+          push_key
+          ssh -F "$t/ssh_config" target "sudo /opt/how-much/bin/install-release.sh '$SHA'" 2>&1 | tee "$t/install.log"
+
+          # 요약용: 서버가 낸 시작 줄(로그에는 주소·비밀값이 없다)
+          push_key
+          ssh -F "$t/ssh_config" target "sudo journalctl -u how-much-api -o cat --since '-3 min' | grep -E '\"evt\":\"(listening|startup_failed)\"' | tail -n 3" > "$t/listening.log" || true
+
+      - name: CloudFront 무효화
+        env:
+          DIST: ${{ vars.CF_DISTRIBUTION_ID }}
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DIST" --paths '/*' --query Invalidation.Id --output text)
+          echo "$id" > "$RUNNER_TEMP/invalidation.id"
+
+      - name: 요약
+        if: always()
+        run: |
+          t="$RUNNER_TEMP"
+          {
+            echo "### deploy $SHA"
+            for f in install.log listening.log; do
+              if [ -s "$t/$f" ]; then printf '\n**%s**\n```\n' "$f"; cat "$t/$f"; echo '```'; fi
+            done
+            if [ -s "$t/invalidation.id" ]; then echo; echo "CloudFront 무효화: $(cat "$t/invalidation.id")"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
