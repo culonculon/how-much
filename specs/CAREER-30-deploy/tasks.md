@@ -135,7 +135,7 @@
      1. checkout → `npm --prefix app ci && npm --prefix app run build` → `npm --prefix api ci --omit=dev`
      2. `api-<sha>.tar.gz` · `app-<sha>.tar.gz` · `SHA256SUMS`를 만든다.
      3. OIDC(`vars.AWS_DEPLOY_ROLE_ARN`)로 역할을 받는다.
-     4. EIC(`vars.EIC_ENDPOINT_ID` · `vars.DEPLOY_INSTANCE_ID`, `ec2-user`)로 `scp`해 `/var/tmp/how-much-deploy/<sha>/`에 둔다.
+     4. EIC(`vars.EIC_ENDPOINT_ID` · `vars.EIC_DNS_NAME` · `vars.DEPLOY_PRIVATE_IP` · `vars.DEPLOY_INSTANCE_ID`, `ec2-user` — 10/28: 사설 IP·DNS 이름을 직접 넘겨 Describe 없이)로 `scp`해 `/var/tmp/how-much-deploy/<sha>/`에 둔다.
      5. `ssh … sudo /opt/how-much/bin/install-release.sh <sha>`
      6. `aws cloudfront create-invalidation --distribution-id ${{ vars.CF_DISTRIBUTION_ID }} --paths '/*'`
      7. 스크립트 출력(로그 줄)을 `$GITHUB_STEP_SUMMARY`로 옮긴다.
@@ -191,7 +191,7 @@
   1. 역할 `github-actions-how-much-deploy`(이름은 plan 역할에 맞춤): 신뢰 = 같은 OIDC 공급자 · `sub` = `repo:<owner>/how-much:environment:production` 하나
   2. 권한(인라인): `ec2-instance-connect:OpenTunnel` on 그 EIC 엔드포인트 ARN · `ec2-instance-connect:SendSSHPublicKey` on 그 인스턴스 ARN(OS 사용자 `ec2-user` 조건) · `cloudfront:CreateInvalidation` on 그 배포 ARN. 조건 키 이름은 AWS 문서에서 확인해 PR 설명에 링크한다(plan D5 '확인 못 함')
   3. 앞 세션: `bash -c 'cd bootstrap && terraform fmt -check && terraform init -backend=false -input=false && terraform validate && trivy config .'` — 출력 그대로 PR 설명에(D12)
-  4. 사용자: 로컬 `terraform plan` 요약을 PR 설명에 → 머지 → 로컬 apply → 역할 ARN을 how-much 저장소 변수 `AWS_DEPLOY_ROLE_ARN`에 넣는다(`DEPLOY_INSTANCE_ID`·`EIC_ENDPOINT_ID`·`CF_DISTRIBUTION_ID`도)
+  4. 사용자: 로컬 `terraform plan` 요약을 PR 설명에 → 머지 → 로컬 apply → 역할 ARN을 how-much 저장소 변수 `AWS_DEPLOY_ROLE_ARN`에 넣는다(`DEPLOY_INSTANCE_ID`·`DEPLOY_PRIVATE_IP`·`EIC_ENDPOINT_ID`·`EIC_DNS_NAME`·`CF_DISTRIBUTION_ID`도)
 - 검사 명령 (그 저장소 루트): `git diff origin/main -- bootstrap | grep -nE '"\*"|AdministratorAccess|FullAccess|s3:'; git diff origin/main -- bootstrap | grep -nE 'environment:production'`
 - 끝난 상태: 첫 `grep` 0줄 · 둘째 1줄 이상 · 3의 출력이 통과 · 사용자 plan 요약에 `0 to destroy` · 사용자가 apply
 
