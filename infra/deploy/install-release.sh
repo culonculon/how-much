@@ -24,8 +24,8 @@ verify() {
     out=$(journalctl -u how-much-api -o cat --since "$since" || true)
     # D1 '나': 127.0.0.1 에서 듣는다(nginx가 같은 컴퓨터에서 넘김)
     if grep -qF '"evt":"listening","address":"127.0.0.1"' <<<"$out"; then
-      [ "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: image/jpeg' --data-binary x http://127.0.0.1:8787/api/appraise)" = 400 ] &&
-        [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1/)" = 200 ]
+      [ "$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: image/jpeg' --data-binary x http://127.0.0.1:8787/api/appraise)" = 400 ] &&
+        [ "$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' http://127.0.0.1/)" = 200 ]
       return
     fi
     sleep 0.5
@@ -60,7 +60,14 @@ case "${1:-}" in
     [ -n "$prev" ] && [ -d "/opt/how-much/app/releases/$prev" ] || { echo "되돌릴 앞 판이 없습니다" >&2; exit 1; }
     swap api "/opt/how-much/api/releases/$prev"
     swap app "/opt/how-much/app/releases/$prev"
-    restart_and_verify || { echo "되돌린 뒤 확인 실패" >&2; exit 1; }
+    if ! restart_and_verify; then
+      # 되돌린 판도 확인에 실패하면 원래 판으로 다시 돌려놓고 끝낸다(실패한 판에 머물지 않음 — PR #16 리뷰)
+      echo "되돌린 뒤 확인 실패 — 원래 판($now)으로 돌려놓습니다" >&2
+      swap api "/opt/how-much/api/releases/$now"
+      swap app "/opt/how-much/app/releases/$now"
+      systemctl restart how-much-api || true
+      exit 1
+    fi
     echo "rolled back to $prev"
     ;;
   *)
@@ -96,6 +103,12 @@ case "${1:-}" in
       else
         echo "앞 판이 없습니다(첫 배포)" >&2
       fi
+      # 실패한 판 폴더는 지운다 — 남기면 '가장 최근 판'이 되어 --rollback이 그 판을 고른다(PR #16 리뷰).
+      # 앞 판과 같은 sha(같은 판을 다시 배포)면 지우지 않는다
+      for d in api app; do
+        [ "$(basename "$(cur "$d")")" = "$sha" ] && continue
+        rm -rf -- "/opt/how-much/$d/releases/$sha"
+      done
       exit 1
     fi
 
