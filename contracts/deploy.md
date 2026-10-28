@@ -22,7 +22,7 @@ v1 EC2: AL2023 · **arm64** · `t4g.small` · IMDSv2만 · 공인 IP 없음 · �
 | 쓰지 않는 설정 | `DynamicUser=` · `ProtectHome=` · `ProtectSystem=strict` (CAREER-31 넘겨받은 것) | — |
 | 다시 켜기 | `Restart=on-failure` · `RestartSec=2` · `WantedBy=multi-user.target` | — |
 | 로그 | 표준 출력 1줄씩 → journald(`Storage=persistent` · `SystemMaxUse=200M`). `journalctl -u how-much-api -o cat` | 런북 |
-| nginx | v1 `user_data`가 깐 nginx(이미 있음 — I-1). how-much 설정은 `/etc/nginx/conf.d/how-much.conf` 하나: 80에서 화면 `root /opt/how-much/app/current` + `location /api/` → `http://127.0.0.1:8787` (넘김 약속은 §6). 꾸러미 폴더 `/usr/share/nginx/html`은 쓰지 않는다 | `setup-host.sh` |
+| nginx | v1 `user_data`가 깐 nginx(이미 있음 — I-1). how-much 설정은 `/etc/nginx/conf.d/how-much.conf` 하나: 80 `default_server`(2026-10-28 14:45 사용자 — Host가 무엇이든 이 블록이 받음. v1 nginx.conf에도 있으면 `nginx -t` 실패로 멈춤)에서 화면 `root /opt/how-much/app/current` + `location /api/` → `http://127.0.0.1:8787` (넘김 약속은 §6). 꾸러미 폴더 `/usr/share/nginx/html`은 쓰지 않는다 | `setup-host.sh` |
 | `user_data` | **건드리지 않는다** — `user_data_replace_on_change = true`(I-5)라 바꾸면 서버가 교체된다 | — |
 
 ## 2. 묶음과 올리는 길 (plan D3·D4)
