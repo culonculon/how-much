@@ -34,7 +34,7 @@ v1 EC2: AL2023 · **arm64** · `t4g.small` · IMDSv2만 · 공인 IP 없음 · �
 | 보내는 자리 | 서버 `/var/tmp/how-much-deploy/<sha>/` (EIC 터널 `scp`) — 풀고 나면 지운다 |
 | 서버에서 도는 것 | `sudo /opt/how-much/bin/install-release.sh <sha>` — `sha256sum -c` · 풀기 · `current` 둘 바꾸기 · 재시작 · 확인(§4). 실패하면 앞 판으로 |
 | 그 뒤 | CloudFront 무효화 `/*` (배포 `<distribution id>`) |
-| GitHub 저장소 변수 (how-much) | `AWS_DEPLOY_ROLE_ARN` · `DEPLOY_INSTANCE_ID` · `EIC_ENDPOINT_ID` · `CF_DISTRIBUTION_ID` — 비밀값이 아니라 변수다(ARN·id는 비밀이 아님). **비밀값은 0개** |
+| GitHub 저장소 변수 (how-much) | `AWS_DEPLOY_ROLE_ARN` · `DEPLOY_INSTANCE_ID` · `DEPLOY_PRIVATE_IP` · `EIC_ENDPOINT_ID` · `EIC_DNS_NAME` · `CF_DISTRIBUTION_ID` — 사설 IP·EIC DNS 이름은 터널을 열 때 CLI가 `ec2:Describe*`를 부르지 않게 직접 넘긴다(배포 역할에 Describe 권한 없음 — 2026-10-28 사용자) · 비밀값이 아니라 변수다(ARN·id는 비밀이 아님). **비밀값은 0개** |
 | 배포 역할 (D5) | `aws-infra-portfolio` `bootstrap/how-much.tf` · 신뢰 = how-much `environment:production` · 권한 = `OpenTunnel`(그 EIC) · `SendSSHPublicKey`(그 인스턴스, `ec2-user`) · `CreateInvalidation`(그 배포). S3 권한 없음 |
 | S3 | 쓰지 않는다. S3 게이트웨이 엔드포인트 정책(AL2023 저장소만)은 그대로 둔다 |
 
