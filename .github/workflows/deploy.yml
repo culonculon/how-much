@@ -73,6 +73,7 @@ jobs:
           set -euo pipefail
           t="$RUNNER_TEMP"
           ssh-keygen -q -t ed25519 -N '' -f "$t/deploy_key"
+          # --max-tunnel-duration: 배포 역할 OpenTunnel 조건 maxTunnelDuration ≤ 3600은 값이 없으면 맞지 않는다(10/29 첫 배포 AccessDenied)
           cat > "$t/ssh_config" <<EOF
           Host target
             HostName $DEPLOY_INSTANCE_ID
@@ -83,7 +84,7 @@ jobs:
             ConnectTimeout 30
             StrictHostKeyChecking accept-new
             UserKnownHostsFile $t/known_hosts
-            ProxyCommand aws ec2-instance-connect open-tunnel --instance-connect-endpoint-id $EIC_ENDPOINT_ID --instance-connect-endpoint-dns-name $EIC_DNS_NAME --private-ip-address $DEPLOY_PRIVATE_IP --remote-port 22
+            ProxyCommand aws ec2-instance-connect open-tunnel --instance-connect-endpoint-id $EIC_ENDPOINT_ID --instance-connect-endpoint-dns-name $EIC_DNS_NAME --private-ip-address $DEPLOY_PRIVATE_IP --remote-port 22 --max-tunnel-duration 3600
           EOF
           # 밀어 넣은 공개 키는 60초만 쓸 수 있어서 연결마다 다시 민다
           push_key() {
