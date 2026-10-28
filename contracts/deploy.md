@@ -1,7 +1,7 @@
 # 배포 약속 — `api/` 서버 · 화면 ↔ v1 인프라(`aws-infra-portfolio`)
 
 - Refs: CAREER-30 · 상태: **승인됨 (2026-10-28 — 사용자 승인 D1~D12, 14:10 D1을 나로 바꿈)** (초안 2판 — 2026-10-28 architect, I0 사실 반영). 인프라 사실의 근거는 [specs/CAREER-30-deploy/i0-facts.md](../specs/CAREER-30-deploy/i0-facts.md)다(`aws-infra-portfolio` main `1ea4bf2` · PR #2 `bf5d8cf`). `<…>`는 그 저장소 리소스가 생긴 뒤 id로 채운다. D1은 '나'만 남겼다(14:10 사용자 결정 — 있는 nginx가 `/api/`를 넘김). '가'(두 번째 VPC origin · `HOST`)는 쓰지 않는다
-- **아직 사용자 몫 두 가지**: §4 80 규칙 출처(plan D13) · §6 `client_max_body_size` 값(상한 값 — CLAUDE.md §4). 정해지기 전에는 그 줄을 '추천'으로 읽는다
+- **정한 것**: §4 80 규칙 출처는 그대로(plan D13 '가' — 2026-10-28 14:35 사용자). **아직 사용자 몫 하나**: §6 `client_max_body_size` 값(상한 값 — CLAUDE.md §4). 정해지기 전에는 그 줄을 '추천'으로 읽는다
 - 근거: [specs/CAREER-30-deploy/plan.md](../specs/CAREER-30-deploy/plan.md) D1~D12 · [ADR-0007](../docs/adr/0007-api-deploy-cloudfront-vpc-origin-systemd.md)(확정 2026-10-28) · [appraise-http.md](appraise-http.md) §8·§10
 - 이 문서는 **how-much 코드(`api/`·`app/`)와 배포 스크립트(`infra/deploy/`) ↔ `aws-infra-portfolio`의 리소스** 사이 약속이다. 한쪽 이름을 바꾸면 다른 쪽을 같은 날 맞춘다(ADR-0002)
 - 값(상한·요금·IAM 범위)은 여기서 새로 정하지 않는다. plan D 표에서 사용자가 고른 것을 옮긴다
