@@ -12,7 +12,13 @@ import {
   HOST,
   MAX_PHOTO_BYTES,
   MEMO_MAX_ENTRIES,
+  PERSON_DAY_LIMIT,
+  PERSON_HEADER,
+  PERSON_MAX_ENTRIES,
+  PERSON_MINUTE_LIMIT,
+  PERSON_WINDOW_MS,
   REJECT_DRAIN_BYTES,
+  REJECT_LINGER_MS,
   USAGE_FILE,
 } from './config.js';
 import { createDailyLimit, DailyLimitError, UsageStoreError } from './daily-limit.js';
@@ -21,6 +27,7 @@ import { checkQuery, InputError } from './input.js';
 import { checkJpeg } from './jpeg.js';
 import { createMemo, memoKey } from './memo.js';
 import { OutputError, parseModelOutput } from './output.js';
+import { createPersonLimit, PersonLimitError, personOf } from './person-limit.js';
 import { buildConverseInput } from './prompt.js';
 
 const PATH = '/api/appraise';
@@ -62,10 +69,17 @@ function readBody(req) {
   });
 }
 
-async function appraise(req, res, entry, send, memo, dailyLimit) {
+async function appraise(req, res, entry, send, memo, dailyLimit, personLimit) {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname !== PATH) throw invalid('bad_path', 404);
   if (req.method !== 'POST') throw invalid('bad_method', 405);
+
+  // 사람별 문(CAREER-31): 본문을 읽기 전, 경로·메서드를 지난 요청마다 1번 센다(기억 hit·입력 거절 포함)
+  const person = personOf(req.headers[PERSON_HEADER]);
+  entry.who = person.who;
+  const used = personLimit.take(person.key);
+  entry.personMinute = used.minuteUsed;
+  entry.personDay = used.dayUsed;
 
   const { tags } = checkQuery(url.searchParams);
 
@@ -134,6 +148,7 @@ function toReply(err) {
   if (err instanceof InputError) return invalid(err.reason);
   if (err instanceof OutputError) return new Reply(503, 'unavailable', err.reason);
   if (err instanceof UpstreamError) return new Reply(503, 'unavailable', err.reason);
+  if (err instanceof PersonLimitError) return new Reply(429, 'person_limit', err.reason);
   if (err instanceof DailyLimitError) return new Reply(429, 'daily_limit', err.reason);
   if (err instanceof UsageStoreError) return new Reply(503, 'unavailable', err.reason);
   return new Reply(500, 'unavailable', 'internal');
@@ -167,9 +182,12 @@ function writeJson(req, res, status, body, readBytes) {
   const onData = (chunk) => {
     drained += chunk.length;
     if (drained > REJECT_DRAIN_BYTES) {
+      // 한도를 넘음: 더 읽지 않고 REJECT_LINGER_MS 뒤 끊는다(CAREER-31 AC-8).
+      // res.end()를 부르면 Node가 곧바로 닫아 RST가 응답을 지울 수 있다 — 응답은 이미 Content-Length로 끝났다 (CAREER-31 plan A5 답)
       stop();
-      res.end();
-      req.socket.destroy(); // 한도를 넘음: 응답은 이미 보냈다
+      req.pause();
+      const t = setTimeout(() => req.socket.destroy(), REJECT_LINGER_MS);
+      req.socket.once('close', () => clearTimeout(t));
     }
   };
   const onEnd = () => {
@@ -180,7 +198,15 @@ function writeJson(req, res, status, body, readBytes) {
   req.on('end', onEnd);
   req.once('aborted', stop);
   req.once('close', stop);
-  res.writeHead(status, { ...JSON_HEADERS, Connection: 'close' });
+  // Content-Length 없이(chunked) 올린 요청이면 거절 응답에 길이를 붙여 응답이 먼저 끝나게 한다(CAREER-31 AC-8).
+  // 길이를 붙인 요청(브라우저 앱이 쓰는 길)은 그대로 — 보내는 쪽이 본문을 끝까지 올릴 수 있다(CAREER-25 거절 뒤 남은 업로드)
+  const chunked = req.headers['content-length'] === undefined;
+  res.writeHead(
+    status,
+    chunked
+      ? { ...JSON_HEADERS, Connection: 'close', 'Content-Length': Buffer.byteLength(text) }
+      : { ...JSON_HEADERS, Connection: 'close' },
+  );
   res.write(text);
   req.resume();
 }
@@ -190,8 +216,10 @@ export function createServer({
   log = (line) => console.log(line),
   memo = createMemo({ maxEntries: MEMO_MAX_ENTRIES }), // 서버 인스턴스마다 새로(전역 상태 없음)
   dailyLimit, // 하루 셈 — 기본값 없음: 상한을 거치지 않는 호출 길을 만들지 않는다(CAREER-27 D4)
+  personLimit, // 사람별 셈 — 기본값 없음(같은 이유, CAREER-31 D6)
 } = {}) {
   if (typeof dailyLimit?.take !== 'function') throw new TypeError('dailyLimit이 필요하다');
+  if (typeof personLimit?.take !== 'function') throw new TypeError('personLimit이 필요하다');
   return http.createServer(async (req, res) => {
     const started = performance.now();
     let readBytes = 0; // 이 요청에서 읽은 본문 바이트(거절 뒤 버림 한도에 함께 셈)
@@ -210,14 +238,21 @@ export function createServer({
       memo: null, // null · off · hit · miss · raced (열쇠 해시는 남기지 않음)
       day: null, // 하루 셈 날짜(셈을 거친 요청만)
       dayUsed: null, // 그 시점 그날 셈
+      who: null, // 사람 열쇠를 만든 방법(ip4 · ip6 · none · bad) — 주소·해시는 남기지 않는다(plan A2 답)
+      personMinute: null, // 그 사람 최근 1분 요청 수
+      personDay: null, // 그 사람 그날 요청 수
     };
     let status;
     let body;
     try {
-      ({ status, body } = await appraise(req, res, entry, send, memo, dailyLimit));
+      ({ status, body } = await appraise(req, res, entry, send, memo, dailyLimit, personLimit));
     } catch (err) {
       const reply = toReply(err);
       if (typeof err?.attempts === 'number') entry.attempts = err.attempts;
+      if (err instanceof PersonLimitError) {
+        entry.personMinute = err.minuteUsed;
+        entry.personDay = err.dayUsed;
+      }
       if (err instanceof DailyLimitError) {
         entry.day = err.day;
         entry.dayUsed = err.used;
@@ -230,31 +265,64 @@ export function createServer({
     entry.ms = Math.round(performance.now() - started);
     try {
       log(JSON.stringify(entry));
-    } catch {
-      // 로그가 실패해도 응답은 보낸다
+    } catch (err) {
+      // 로그가 실패해도 응답은 보낸다. 조용히 삼키지 않고 오류 이름만 표준 오류에 남긴다(CAREER-31 AC-10)
+      try {
+        process.stderr.write(`${JSON.stringify({ evt: 'log_failed', error: typeof err?.name === 'string' ? err.name : 'Unknown' })}\n`);
+      } catch {
+        // 남길 곳이 없다 — 받아들임
+      }
     }
     writeJson(req, res, status, body, () => readBytes);
   });
 }
 
+// 시작 점검 실패(CAREER-31 AC-7). 메시지·경로·프로필 이름은 담지 않는다 — 원래 오류의 이름만(plan A4 답)
+export class StartupError extends Error {
+  constructor(reason, causeName) {
+    super(reason);
+    this.name = 'StartupError';
+    this.reason = reason; // no_credentials
+    this.causeName = causeName;
+  }
+}
+
 // 직접 실행 경로: 127.0.0.1에만 묶는다(환경변수로 바꾸지 않음)
-export function startServer({
+export async function startServer({
   port = Number(process.env.PORT ?? DEFAULT_PORT),
   send,
   log,
   dailyLimit = createDailyLimit({ file: USAGE_FILE, limit: DAILY_CALL_LIMIT }),
+  personLimit = createPersonLimit({
+    minuteLimit: PERSON_MINUTE_LIMIT,
+    windowMs: PERSON_WINDOW_MS,
+    dayLimit: PERSON_DAY_LIMIT,
+    maxEntries: PERSON_MAX_ENTRIES,
+  }),
 } = {}) {
   let realSend = send;
   if (!realSend) {
     const client = makeBedrockClient();
+    // listen 전에 SDK가 쓰는 바로 그 사슬을 한 번 푼다 — Bedrock·STS는 부르지 않는다(CAREER-31 AC-7)
+    try {
+      await client.config.credentials();
+    } catch (err) {
+      throw new StartupError('no_credentials', typeof err?.name === 'string' ? err.name : 'Unknown');
+    }
     realSend = (command, options) => client.send(command, options);
   }
-  const server = createServer({ send: realSend, log, dailyLimit });
+  const server = createServer({ send: realSend, log, dailyLimit, personLimit });
   return new Promise((resolve) => server.listen(port, HOST, () => resolve(server)));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const server = await startServer();
-  const { address, port } = server.address();
-  console.log(JSON.stringify({ evt: 'listening', address, port }));
+  try {
+    const server = await startServer();
+    const { address, port } = server.address();
+    console.log(JSON.stringify({ evt: 'listening', address, port }));
+  } catch (err) {
+    if (!(err instanceof StartupError)) throw err;
+    console.log(JSON.stringify({ evt: 'startup_failed', reason: err.reason, error: err.causeName }));
+    process.exitCode = 1; // process.exit은 파이프로 나가는 stdout을 덜 쓰고 끝낼 수 있어 쓰지 않는다
+  }
 }

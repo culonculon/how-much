@@ -9,6 +9,7 @@ import { mochiOf } from '../src/grades.js';
 import { createMemo } from '../src/memo.js';
 import { converseReply, makeJpeg } from './helpers.js';
 import { tempDailyLimit } from './temp-daily-limit.js';
+import { testPersonLimit } from './test-person-limit.js';
 
 const daily = tempDailyLimit(); // CAREER-27: 진짜 셈 파일을 건드리지 않는다
 afterAll(() => daily.cleanup());
@@ -42,7 +43,7 @@ describe('E3 진짜 실행 모드 — 서버를 같은 프로세스·빈 포트�
   test('사진마다 K번 차례로 부르고, 결과 행은 정해진 필드뿐', async () => {
     const seen = [];
     const send = replyFor(seen);
-    const result = await runLive({ dailyLimit: daily.dailyLimit, memo: createMemo({ maxEntries: 0 }), send, cases: CASES, photosDir: photosDir(['01-mug.jpg', '02-sky.jpg']), rounds: 2 });
+    const result = await runLive({ dailyLimit: daily.dailyLimit, personLimit: testPersonLimit(), memo: createMemo({ maxEntries: 0 }), send, cases: CASES, photosDir: photosDir(['01-mug.jpg', '02-sky.jpg']), rounds: 2 });
 
     expect(send).toHaveBeenCalledTimes(4);
     expect(result.stopped).toBeNull();
@@ -62,7 +63,7 @@ describe('E3 진짜 실행 모드 — 서버를 같은 프로세스·빈 포트�
 
   test('모든 사진을 같은 입력으로 부른다 — myPrice=ten, 태그 없음', async () => {
     const seen = [];
-    await runLive({ dailyLimit: daily.dailyLimit, memo: createMemo({ maxEntries: 0 }), send: replyFor(seen), cases: CASES, photosDir: photosDir(['01-mug.jpg', '02-sky.jpg']), rounds: 2 });
+    await runLive({ dailyLimit: daily.dailyLimit, personLimit: testPersonLimit(), memo: createMemo({ maxEntries: 0 }), send: replyFor(seen), cases: CASES, photosDir: photosDir(['01-mug.jpg', '02-sky.jpg']), rounds: 2 });
     for (const input of seen) {
       const texts = input.messages.flatMap((m) => m.content).filter((c) => c.text).map((c) => c.text);
       expect(texts).toEqual(['사연 태그: 없음']);
@@ -71,7 +72,7 @@ describe('E3 진짜 실행 모드 — 서버를 같은 프로세스·빈 포트�
 
   test('unavailable이 한 번 나오면 그 자리에서 멈춘다(남은 호출 0)', async () => {
     const send = vi.fn(async () => converseReply('흠 좋구먼'));
-    const result = await runLive({ dailyLimit: daily.dailyLimit, memo: createMemo({ maxEntries: 0 }), send, cases: CASES, photosDir: photosDir(['01-mug.jpg', '02-sky.jpg']), rounds: 2 });
+    const result = await runLive({ dailyLimit: daily.dailyLimit, personLimit: testPersonLimit(), memo: createMemo({ maxEntries: 0 }), send, cases: CASES, photosDir: photosDir(['01-mug.jpg', '02-sky.jpg']), rounds: 2 });
     expect(send).toHaveBeenCalledTimes(1);
     expect(result.rows).toHaveLength(1);
     expect(result.stopped).toMatchObject({ photo: '01-mug.jpg', round: 1, code: 'unavailable' });
@@ -97,6 +98,7 @@ describe('E3 고침 (10/22) — 기억 켬/끔', () => {
     });
     const result = await runLive({
       dailyLimit: daily.dailyLimit,
+      personLimit: testPersonLimit(),
       memo: createMemo({ maxEntries: 10 }),
       send,
       cases: CASES,

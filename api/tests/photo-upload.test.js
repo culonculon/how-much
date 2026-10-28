@@ -9,6 +9,7 @@ import { createMemo } from '../src/memo.js';
 import { createServer } from '../src/server.js';
 import { collectLog, converseReply, listen, makeJpeg, PNG_BYTES, TEXT_BYTES, withGpsExif } from './helpers.js';
 import { tempDailyLimit } from './temp-daily-limit.js';
+import { testPersonLimit } from './test-person-limit.js';
 
 const F1 = new Uint8Array(readFileSync(new URL('./fixtures/f1-prepared.jpg', import.meta.url)));
 const { lines, log } = collectLog();
@@ -29,7 +30,7 @@ beforeAll(async () => {
     oldEnv[k] = process.env[k];
     process.env[k] = tmp;
   }
-  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit });
+  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit, personLimit: testPersonLimit() });
   base = await listen(server);
 });
 

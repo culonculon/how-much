@@ -1,6 +1,6 @@
 # 감정 서버 입구 약속 — `POST /api/appraise`
 
-- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES` · 10/22 거절 뒤 남은 업로드(사용자 승인) — §2 동작 한 줄 · §8 `REJECT_DRAIN_BYTES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음) · **10/23 CAREER-27 고침 (사용자 승인 — CAREER-27 plan D6)**: §5 `daily_limit`·`unavailable` 줄 · §5 '하루 상한' 절 · §8 세 줄. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음(429는 처음부터 약속에 있었다)
+- Refs: CAREER-25 · CAREER-26 · 상태: **확정** (2026-10-22 — 사용자 승인. 10/21 확정본 + 10/22: §8 `TOP_K`(승인됨) · 결과 기억 — §4 동작 한 줄 · §8 `MEMO_MAX_ENTRIES` · 10/22 거절 뒤 남은 업로드(사용자 승인) — §2 동작 한 줄 · §8 `REJECT_DRAIN_BYTES`. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음) · **10/23 CAREER-27 고침 (사용자 승인 — CAREER-27 plan D6)**: §5 `daily_limit`·`unavailable` 줄 · §5 '하루 상한' 절 · §8 세 줄. 요청·응답 모양·HTTP 상태·헤더는 바뀌지 않음(429는 처음부터 약속에 있었다) · **10/24 CAREER-31 고침 (사용자 승인 — 2026-10-24, CAREER-31 plan D2·D3·D4·D5·D9)**: §5 `person_limit` 줄 · 어댑터 규칙 '다섯' · §5 '사람별 제한' 절 · §8 `USAGE_FILE` 바꿈과 사람별 다섯 줄 · §8 아래 두 줄(`personLimit` · 자격 증명 시작 점검) · §10 네 줄. 요청 모양·성공 응답은 바뀌지 않음, 실패 코드 하나 더함 · **10/26 CAREER-31 고침 (사용자 승인 — 2026-10-26, CAREER-31 plan D10·D11·D12)**: §2 '본문을 다 읽기 전에 거절하면'의 한도 넘음 동작 · §8 `REJECT_LINGER_MS`. 요청·응답 모양·HTTP 상태는 바뀌지 않음(chunked로 보낸 요청의 거절 응답에 `Content-Length`가 붙음) · **10/26 CAREER-31 고침 (사용자 승인 — 2026-10-26, CAREER-31 plan D13 '가')**: §2 한도 넘음 동작 글을 실제 동작에 맞춤(읽기 멈춤 · 멈추기 전 여분 · `REJECT_DRAIN_BYTES` + 256KiB 아래) · §8 `REJECT_LINGER_MS` 설명. 값·요청·응답 모양·HTTP 상태는 바뀌지 않음
 - 근거: [specs/CAREER-25-real-appraise/plan.md](../specs/CAREER-25-real-appraise/plan.md) · 결정 E~I (CAREER-25 spec '정해진 것')
 - 이 문서는 **브라우저(감정 어댑터) ↔ 서버(`api/`)** 사이 약속이다. 서버는 CAREER-25가, 사진을 보내는 쪽은 CAREER-26이, 어댑터는 화면 연결 스토리(결정 A)가 만든다. 화면 쪽 함수 모양은 [appraise.md](appraise.md)가 원본이고, 이 문서는 그 아래 HTTP 모양만 정한다.
 - CAREER-26 spec과 대조(10/21, 앞 세션이 읽음): AC-1(1024px로 줄여 보냄)은 §3-4와, AC-5(서버 입구로만 한 번)는 §1 같은 출처 `/api/appraise`와, AC-7(서버 거절을 `invalid_input`으로 봄)은 §5 400과 맞다. AC-9(a)(d)는 아래 §2 마지막 줄로 대응한다.
@@ -30,7 +30,7 @@ Content-Length: 183204
 | `MAX_PHOTO_BYTES` | **1,000,000 바이트** (십진 1MB) — 이 값과 **같으면 통과, 1바이트라도 넘으면 거절** |
 
 - 크기는 `Content-Length`를 믿지 않고 **실제로 읽은 바이트**로 센다. 읽는 중 상한을 넘으면 그 자리에서 모으기를 멈춘다(메모리에 다 올리지 않음).
-- **본문을 다 읽기 전에 거절하면**(크기뿐 아니라 쿼리·`Content-Type`·경로·메서드 거절도 같음): 서버는 응답(400·404·405, 본문 `{"code":"invalid_input"}`)의 헤더와 본문을 먼저 쓰고, 남은 본문을 `REJECT_DRAIN_BYTES`(§8)까지 읽어 버린 뒤 응답을 끝낸다. 한도를 넘으면 연결을 끊는다(응답은 이미 보냈다). `Content-Length`가 처음부터 그 한도보다 크면 읽지 않고 응답을 끝내고 닫는다 — 이때 보내는 쪽은 쓰기 오류를 볼 수 있다. 응답 모양·상태는 그대로다.
+- **본문을 다 읽기 전에 거절하면**(크기뿐 아니라 쿼리·`Content-Type`·경로·메서드 거절도 같음): 서버는 응답(400·404·405, 본문 `{"code":"invalid_input"}`)의 헤더와 본문을 먼저 쓰고, 남은 본문을 `REJECT_DRAIN_BYTES`(§8)까지 읽어 버린 뒤 응답을 끝낸다. 한도를 넘으면 서버는 본문을 더 처리하지 않고 읽기를 멈춘 뒤 `REJECT_LINGER_MS`(§8) 뒤 연결을 끊는다. 읽기를 멈추기 전에 받아 둔 바이트는 더 들어올 수 있다(Node·OS 읽기 단위 몇 번, 하나에 최대 64KiB). 한도를 넘은 연결에서 서버가 받는 바이트는 업로드 크기와 상관없이 `REJECT_DRAIN_BYTES` + 256KiB 아래다. 본문을 `Content-Length` 없이(chunked) 보냈으면 거절 응답에 `Content-Length`를 붙여 응답이 먼저 끝난다 — 보내는 쪽은 그 뒤 업로드를 멈춰도 된다. `Content-Length`가 처음부터 그 한도보다 크면 읽지 않고 응답을 끝내고 닫는다 — 이때 보내는 쪽은 쓰기 오류를 볼 수 있다. 응답 모양·상태는 그대로다.
 - 브라우저 쪽(CAREER-26)은 `fetch(url, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: jpegBlob })` 꼴로 보낸다. 쿼리는 `URLSearchParams`로 만든다.
 - 이 약속에는 '사진 칸'이 따로 없다(본문이 곧 사진). 그래서 **본문이 비었거나 `Content-Type`이 `image/jpeg`가 아니면 `invalid_input`**이다 — CAREER-26 AC-9(a)(d)('사진 칸이 없는 요청' 등)는 이것으로 대응한다.
 
@@ -71,9 +71,10 @@ Cache-Control: no-store
 | `refused` | 422 | 모델이 이 사진의 감정을 거절함(§7) | 나옴 |
 | `unavailable` | 503 (예상 못 한 서버 오류는 500) | Bedrock 실패(재시도 뒤)·시간 제한·모델 출력이 §7 모양이 아님 · 하루 셈 저장소를 읽거나 쓰지 못함(CAREER-27 — 아래 '하루 상한') | 나옴 |
 | `daily_limit` | 429 | 하루 상한(CAREER-27 — 아래 '하루 상한') | 나옴 (CAREER-27부터) |
+| `person_limit` | 429 | 같은 사람이 너무 자주 보냄(CAREER-31 — 아래 '사람별 제한') (코드 이름·상태 CAREER-31 plan D2 — 10/24 사용자 승인) | 나옴 (CAREER-31부터) |
 
 - 공통 헤더: `Content-Type: application/json; charset=utf-8` · `Cache-Control: no-store`
-- **어댑터 규칙**(화면 연결 스토리): HTTP 상태가 아니라 본문 `code`로 가른다. 본문이 JSON이 아니거나, `code`가 위 넷이 아니거나, 성공 본문이 §4 모양이 아니거나, 네트워크가 끊기면 → `unavailable`. 빈 성공으로 바꾸지 않는다
+- **어댑터 규칙**(화면 연결 스토리): HTTP 상태가 아니라 본문 `code`로 가른다. 본문이 JSON이 아니거나, `code`가 위 다섯이 아니거나, 성공 본문이 §4 모양이 아니거나, 네트워크가 끊기면 → `unavailable`. 빈 성공으로 바꾸지 않는다
 
 ### 하루 상한 (CAREER-27 — 10/23 사용자 승인. 서버 안 동작·로그·셈 파일의 원본은 [CAREER-27 plan](../specs/CAREER-27-daily-limit/plan.md) · [ADR-0004](../docs/adr/0004-daily-call-count-in-one-json-file.md))
 - 세는 것: 그날 서버가 Bedrock에 **보낸 시도 수**(재시도·실패 포함). 시도마다 보내기 바로 전에 센다 — 셈이 `DAILY_CALL_LIMIT`(§8)에 닿았으면 그 시도를 보내지 않고 `daily_limit`. 재시도 도중이어도 남은 시도를 보내지 않고 그 요청을 `daily_limit`으로 끝낸다. 동시에 몰린 요청도 합쳐 상한을 넘지 않는다
@@ -82,6 +83,17 @@ Cache-Control: no-store
 - 서버를 다시 켜도 그날 셈은 이어진다. 셈 저장소를 읽거나 쓰지 못하면(깨짐 포함) 보내지 않고 503 `unavailable`이다 — 0으로 보고 통과시키지 않는다
 - `DAILY_CALL_LIMIT`이 0이면 올바른 요청은 모두(기억 hit 빼고) `daily_limit`이다 — 급히 막는 스위치
 - 응답 헤더는 위 공통 헤더뿐이다(`Retry-After` 없음). 본문은 정확히 `{"code":"daily_limit"}`
+
+### 사람별 제한 (CAREER-31 — 10/24 사용자 승인. 값 1분 5번·하루 50번·서버에서 세기는 10/24 사용자 결정 U2·U3. 서버 안 동작·로그의 원본은 [CAREER-31 plan](../specs/CAREER-31-prepublic-guard/plan.md) 'A2 답'·'A3 답' · [ADR-0006](../docs/adr/0006-per-person-limit-in-server-memory.md))
+- **사람을 가르는 값은 `CloudFront-Viewer-Address` 요청 헤더 하나뿐이다**(`PERSON_HEADER`, §8). 모양 `<IP>:<포트>`(IPv6는 대괄호 없음). 서버는 마지막 `:` 뒤 포트를 버린다. `X-Forwarded-For` 등 다른 헤더와 연결의 소켓 주소는 읽지 않는다
+- 같은 사람: IPv4는 주소가 같으면, IPv6는 앞 64비트(/64)가 같으면(plan D5 — 10/24 사용자 승인). IPv4를 담은 IPv6(`::ffff:a.b.c.d`)는 그 IPv4로 본다
+- 헤더가 없거나 모양이 틀리면(헤더가 둘이라 이어 붙여진 경우 포함) **그런 요청은 모두 한 사람**으로 센다 — 사람별 제한을 거치지 않는 길은 없다. 로컬(Vite 프록시)은 헤더가 없어 늘 이 '한 사람'이다
+- 세는 것: 경로·메서드(§1)를 지난 **모든 요청** — `invalid_input`으로 끝날 요청, §4 기억에서 꺼낼 요청, `daily_limit`에 걸릴 요청도 센다. 404·405는 세지 않는다. **사람별 제한에 걸린 요청은 세지 않는다**
+- 한도: 최근 `PERSON_WINDOW_MS`(60초) 안에 `PERSON_MINUTE_LIMIT`(5)번 — 미끄러지는 창, 정확히 60초 전 요청은 창 밖 · 그날(서울 00:00 시작, `DAY_UTC_OFFSET_HOURS`) `PERSON_DAY_LIMIT`(50)번. 이미 그만큼 셌으면 그 요청은 `person_limit`
+- 확인은 **본문을 읽기 전**이다. 걸리면 Bedrock·하루 셈(위 '하루 상한')에 닿지 않고, 남은 본문은 §2 '본문을 다 읽기 전에 거절하면'대로 버린다. 하루 상한과는 따로 돈다
+- 응답 헤더는 위 공통 헤더뿐이다(`Retry-After` 없음). 본문은 정확히 `{"code":"person_limit"}` (plan D2 — 10/24 사용자 승인)
+- 사람별 셈은 서버 메모리에 있다 — **서버를 다시 켜면 모두 비워진다**(1분·하루 몫 모두) (plan D1 — 10/24 사용자 승인). 기억하는 사람 수는 `PERSON_MAX_ENTRIES`(§8)이고, 넘으면 가장 오래 안 온 사람부터 잊는다(그 사람은 셈이 새로 찬다)
+- 접속 주소는 로그·응답 어디에도 남기지 않는다(해시도 남기지 않음)
 
 ## 6. 등급 5단계와 서버 표 (결정 E — 표 A 확정)
 - 표는 `api/` 안 **한 곳**에만 둔다(AC-1). 값은 서로 달라야 하고 등급이 오를수록 커야 한다 — 시험 실행이 `mochi`로 등급을 거꾸로 찾는다
@@ -124,12 +136,20 @@ Cache-Control: no-store
 | `LINE_MAX_CHARS` | 30 | §4 |
 | `MEMO_MAX_ENTRIES` | **10,000** (10/22 사용자 승인) (항목 하나 약 0.4KB → 약 4MB). 넘으면 가장 오래 안 쓴(LRU) 것부터 버림. **0이면 기억 끔**. 음수·소수·숫자 아님은 서버를 만들 때 오류 | §4 '같은 사진·같은 태그' · CAREER-25 AC-17 |
 | `REJECT_DRAIN_BYTES` | **2,000,000** (10/22 사용자 승인) — 거절 뒤 남은 본문을 읽어 버리는 한도, 넘으면 끊음. 값·이유의 원본은 [plan '거절 뒤 남은 업로드'](../specs/CAREER-25-real-appraise/plan.md) | §2 거절 뒤 남은 업로드 |
+| `REJECT_LINGER_MS` | **1,000** (CAREER-31 plan D11 — 10/26 사용자 승인) — 한도를 넘은 거절 연결을 끊기 전 붙잡는 시간, 그동안 본문을 처리하지 않음(읽기 멈춤 — 멈추기 전 받은 여분은 §2). 값·이유의 원본은 [CAREER-31 plan 'A5 답'](../specs/CAREER-31-prepublic-guard/plan.md) | §2 거절 뒤 남은 업로드 |
 | `DAILY_CALL_LIMIT` | **300** (10/23 사용자 결정 U2 · 이름·자리 CAREER-27 plan D3 승인) — 하루 Bedrock 시도 수 상한. **0이면 급히 막기**. 음수·소수·숫자 아님은 서버를 만들 때 오류(`MEMO_MAX_ENTRIES`와 같은 규칙). 환경변수 없음 | §5 '하루 상한' |
 | `DAY_UTC_OFFSET_HOURS` | **9** (서울, 서머타임 없음 — 10/23 U3) | §5 '하루 상한' |
-| `USAGE_FILE` | `api/var/usage.json` (`api/` 기준, 커밋하지 않음) — 모양·쓰는 법은 [ADR-0004](../docs/adr/0004-daily-call-count-in-one-json-file.md) | §5 '하루 상한' |
+| `USAGE_FILE` | **`~/.local/state/how-much/usage.json`** (CAREER-31 plan D3 — 10/24 사용자 승인) — 서버를 돌리는 사용자의 홈 기준(`os.homedir()`), **코드 폴더 밖**이라 배포로 `api/`를 바꿔 넣어도 셈이 이어진다. 환경변수 없음. 처음 만들 때 폴더 `0700` · 파일 `0600`. 자리는 [ADR-0005](../docs/adr/0005-usage-file-outside-code-folder.md), 모양·쓰는 법은 [ADR-0004](../docs/adr/0004-daily-call-count-in-one-json-file.md). (옛 값 `api/var/usage.json` — CAREER-27) | §5 '하루 상한' |
+| `PERSON_HEADER` | `cloudfront-viewer-address` (Node가 소문자로 받는 이름) — 사람을 가르는 유일한 값 | §5 '사람별 제한' |
+| `PERSON_MINUTE_LIMIT` | **5** (10/24 사용자 결정 U2) — 1 이상 정수, 아니면 서버를 만들 때 오류. 0을 '끔'으로 쓰지 않는다(급히 막기는 `DAILY_CALL_LIMIT` 0 하나) | §5 '사람별 제한' |
+| `PERSON_WINDOW_MS` | **60,000** (1분 — U2) | §5 '사람별 제한' |
+| `PERSON_DAY_LIMIT` | **50** (10/24 사용자 결정 U2) — 규칙은 `PERSON_MINUTE_LIMIT`과 같음 | §5 '사람별 제한' |
+| `PERSON_MAX_ENTRIES` | **10,000** (CAREER-31 plan D4 — 10/24 사용자 승인) (사람 하나 약 0.3KB → 약 3MB). 넘으면 가장 오래 안 온 사람부터 잊음 | §5 '사람별 제한' |
 
 - 기억 켜기/끄기는 `MEMO_MAX_ENTRIES` 하나로만 정한다(환경변수 없음). 테스트·시험 실행은 서버 인스턴스에 작은 상한·0을 따로 넣는다 — 방법과 열쇠 모양, 로그 필드 `memo`(값 `null`·`off`·`hit`·`miss`·`raced`), 열쇠 해시를 로그에 남기지 않는 것은 [plan '요청 한 건의 흐름'·'열린 질문 8 답'](../specs/CAREER-25-real-appraise/plan.md)이 원본이다
 - 하루 셈도 같은 방식으로 넣는다: 서버 인스턴스는 `createServer({ dailyLimit })`로 셈을 **꼭** 받는다(기본값 없음 — 상한을 거치지 않는 서버를 만들 수 없게). 진짜 서버·시험 실행은 위 세 값으로, 테스트는 임시 폴더·작은 상한·가짜 시계로 만든다. 로그 필드 `day`·`dayUsed`와 `reason` 이름은 [CAREER-27 plan '요청 한 건의 흐름'](../specs/CAREER-27-daily-limit/plan.md)이 원본이다
+- 사람별 셈도 같은 방식이다(CAREER-31 plan D6 — 10/24 사용자 승인): 서버 인스턴스는 `createServer({ personLimit })`로 **꼭** 받는다(기본값 없음). 진짜 서버는 위 사람별 값으로, 테스트는 작은 상한·가짜 시계로, 시험 실행은 넉넉한 값(plan D7 — 돈은 하루 상한이 막음)으로 만든다. 로그 필드 `who`·`personMinute`·`personDay`와 `reason`(`person_day`·`person_minute`)은 [CAREER-31 plan '요청 한 건의 흐름'](../specs/CAREER-31-prepublic-guard/plan.md)이 원본이다
+- 진짜 Bedrock 클라이언트로 뜨는 서버는 `listen` 전에 AWS 자격 증명 사슬을 한 번 풀어 보고, 못 풀면 포트를 열지 않고 종료 코드 1로 끝난다(CAREER-31 plan 'A4 답'). Bedrock은 부르지 않는다
 
 ## 9. 환경변수
 | 이름 | 누가 읽나 | 값 |
@@ -142,6 +162,10 @@ Cache-Control: no-store
 ## 10. 나중에 인프라가 맞출 것 (배포 스토리 — 이번엔 만들지 않음, 결정 B)
 - CloudFront `/api/*` 동작: POST 허용, 캐시 안 함, 원본으로 **쿼리 문자열 전부**와 `Content-Type` 헤더를 넘김, 원본 응답 시간 제한 ≥ `TIMEOUT_MS` + 5초
 - EC2 보안 그룹 → bedrock-runtime 엔드포인트 443 (ADR-0002, `culonculon/aws-infra-portfolio`)
+- (CAREER-31 — 10/24 사용자 승인, 맞추는 일은 CAREER-30) CloudFront `/api/*` 원본 요청 정책에 **`CloudFront-Viewer-Address` 헤더**를 넣는다. 브라우저가 같은 이름 헤더를 보내도 CloudFront 값으로 덮이는지 확인한다
+- (CAREER-31) 원본(EC2)은 CloudFront에서만 닿게 한다 — 바로 오면 위 헤더를 꾸밀 수 있다(§5 '사람별 제한')
+- (CAREER-31) CloudFront 오류 응답 사용자 지정으로 `/api/*`의 429·503을 바꾸지 않는다 — 화면은 본문 `code`로 가른다(§5 어댑터 규칙)
+- (CAREER-31) 서버를 돌리는 사용자에게 다시 배포해도 남고 쓸 수 있는 홈이 있어야 한다 — `USAGE_FILE`(§8)이 그 아래다
 
 ## 11. 바꾸는 법
 - 이 문서를 바꾸면 서버(`api/`)·사진 보내는 쪽(CAREER-26)·어댑터를 같은 PR이나 차례로 이어진 PR에서 맞춘다. 확정 뒤 바꾸려면 architect가 고치고 사용자가 승인한다

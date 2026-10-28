@@ -54,6 +54,7 @@ export const ERROR_TEXT = {
   invalid_input: '사진이나 선택을 다시 골라 주세요.',
   refused: '이 사진은 감정하지 않아요. 물건 사진으로 다시 골라 주세요.',
   unavailable: "감정이 잘 안 됐어요. 잠시 뒤 '감정 받기'를 다시 눌러 주세요.",
+  person_limit: '허허, 너무 자주 왔구먼. 좀 쉬었다 와.',
 }
 
 // Source of truth: contracts/appraise.md §5.

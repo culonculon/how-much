@@ -7,7 +7,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from '../src/App.jsx'
 import { appraise } from '../src/appraise.js'
-import { OFF_DUTY_TEXT } from '../src/options.js'
+import { ERROR_TEXT as APP_ERROR_TEXT, OFF_DUTY_TEXT } from '../src/options.js'
 
 vi.mock('../src/appraise.js', () => ({ appraise: vi.fn(), FAKE_DELAY_MS: 800 }))
 
@@ -228,6 +228,7 @@ const ERROR_TEXT = {
   invalid_input: '사진이나 선택을 다시 골라 주세요.',
   refused: '이 사진은 감정하지 않아요. 물건 사진으로 다시 골라 주세요.',
   unavailable: "감정이 잘 안 됐어요. 잠시 뒤 '감정 받기'를 다시 눌러 주세요.",
+  person_limit: '허허, 너무 자주 왔구먼. 좀 쉬었다 와.',
 }
 const reject = (code) => Object.assign(new Error('x'), code ? { code } : {})
 
@@ -254,6 +255,7 @@ test('AC-7 invalid_input ends thinking, shows the notice, and allows a second tr
 test.each([
   ['unavailable', 'unavailable'],
   ['refused', 'refused'],
+  ['person_limit', 'person_limit'],
   [undefined, 'unavailable'],
 ])('AC-7 failure code %s shows the %s notice and idles the mascot', async (code, text) => {
   appraise.mockRejectedValueOnce(reject(code))
@@ -315,4 +317,33 @@ test('CAREER-27 AC-9 off-duty text matches contracts/appraise.md', () => {
   expect(line).toBeTruthy()
   expect(OFF_DUTY_TEXT).toBeTruthy()
   expect(line.match(/"([^"]+)"/)[1]).toBe(OFF_DUTY_TEXT)
+})
+
+// CAREER-31 AC-5: person_limit은 퇴근이 아니라 오류 문구 + 갸웃 끝, 다시 누르면 다시 갸웃
+test('CAREER-31 AC-5 person_limit is a notice, not off-duty, and retry thinks again', async () => {
+  appraise.mockRejectedValueOnce(reject('person_limit'))
+  renderApp()
+  pickFile(png())
+  pickPrice('🍡 10개')
+  fireEvent.click(submit())
+  await screen.findByTestId('appraise-error')
+  expect(mascot().textContent).not.toContain('퇴근')
+  expect(screen.queryByTestId('off-duty')).toBeNull()
+  expect(submit().disabled).toBe(false)
+
+  appraise.mockReturnValue(new Promise(() => {}))
+  fireEvent.click(submit())
+  expect(mascot().textContent).toContain('갸웃')
+  expect(screen.queryByTestId('appraise-error')).toBeNull()
+  expect(appraise).toHaveBeenCalledTimes(2)
+})
+
+// CAREER-31 AC-5: 화면 글자 = contracts/appraise.md §5 person_limit 줄의 첫 따옴표 글자, 30자 이내
+test('CAREER-31 AC-5 person_limit text matches contracts/appraise.md and is at most 30 chars', () => {
+  const doc = readFileSync(resolve(cwd(), '../contracts/appraise.md'), 'utf8')
+  const line = doc.split('\n').find((l) => l.startsWith('| `person_limit`'))
+  expect(line).toBeTruthy()
+  const text = line.match(/"([^"]+)"/)[1]
+  expect(APP_ERROR_TEXT.person_limit).toBe(text)
+  expect([...text].length).toBeLessThanOrEqual(30)
 })

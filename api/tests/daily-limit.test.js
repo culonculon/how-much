@@ -9,6 +9,7 @@ import { createMemo } from '../src/memo.js';
 import { createServer } from '../src/server.js';
 import { collectLog, converseReply, listen, makeJpeg, PHOTO_MARK, PNG_BYTES } from './helpers.js';
 import { tempDailyLimit } from './temp-daily-limit.js';
+import { testPersonLimit } from './test-person-limit.js';
 
 const FAKE_SECRET = 'howmuch-fake-secret-c27-value';
 process.env.AWS_SECRET_ACCESS_KEY = FAKE_SECRET;
@@ -32,7 +33,7 @@ function temp(opts) {
 // 서버 하나: 하루 셈은 밖에서 넣는다(D4). 기억은 기본 끔
 async function start({ dailyLimit, send, memoEntries = 0 }) {
   const { lines, log } = collectLog();
-  const server = createServer({ send: (...a) => send(...a), log, memo: createMemo({ maxEntries: memoEntries }), dailyLimit });
+  const server = createServer({ send: (...a) => send(...a), log, memo: createMemo({ maxEntries: memoEntries }), dailyLimit, personLimit: testPersonLimit() });
   const base = await listen(server);
   cleanups.push(() => new Promise((r) => server.close(r)));
   const post = async (body, { tags = 'how-1' } = {}) => {

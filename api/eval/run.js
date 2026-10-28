@@ -63,8 +63,9 @@ async function liveMode() {
   }
 
   const { makeBedrockClient } = await import('../src/server.js');
-  const { DAILY_CALL_LIMIT, MEMO_MAX_ENTRIES, USAGE_FILE } = await import('../src/config.js');
+  const { DAILY_CALL_LIMIT, MEMO_MAX_ENTRIES, PERSON_WINDOW_MS, USAGE_FILE } = await import('../src/config.js');
   const { createDailyLimit } = await import('../src/daily-limit.js');
+  const { createPersonLimit } = await import('../src/person-limit.js');
   const { createMemo } = await import('../src/memo.js');
   const { runLive } = await import('./live.js');
   const client = makeBedrockClient();
@@ -83,6 +84,8 @@ async function liveMode() {
     memo: createMemo({ maxEntries: memoMode === 'on' ? MEMO_MAX_ENTRIES : 0 }),
     // 시험 실행의 진짜 호출도 하루 상한에 센다 — dev 서버와 같은 셈 파일(CAREER-27 D5)
     dailyLimit: createDailyLimit({ file: USAGE_FILE, limit: DAILY_CALL_LIMIT }),
+    // 시험 실행은 운영자 도구 — 사람별 제한은 넉넉히, 돈은 하루 상한이 막는다 (CAREER-31 D7)
+    personLimit: createPersonLimit({ minuteLimit: 1000, windowMs: PERSON_WINDOW_MS, dayLimit: 1000, maxEntries: 1000 }),
     log,
     onRow: (r) => console.log(`${r.photo} #${r.round} ${r.refused ? '거절' : r.code ?? `등급 ${r.grade} · ${r.line}`} [${r.memo}] (${r.ms}ms)`),
   });

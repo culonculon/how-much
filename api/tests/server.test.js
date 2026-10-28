@@ -1,3 +1,4 @@
+import net from 'node:net';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   AWS_REGION,
@@ -5,6 +6,7 @@ import {
   MAX_PHOTO_BYTES,
   MODEL_ID,
   REJECT_DRAIN_BYTES,
+  REJECT_LINGER_MS,
   TEMPERATURE,
   TOP_K,
 } from '../src/config.js';
@@ -20,9 +22,16 @@ import {
   PHOTO_MARK,
   PNG_BYTES,
   TEXT_BYTES,
+  streamChunked,
   uploadAfterResponse,
 } from './helpers.js';
 import { tempDailyLimit } from './temp-daily-limit.js';
+import { testPersonLimit } from './test-person-limit.js';
+
+// CAREER-31 AC-9: 이 파일 프로세스의 경고를 모은다 — 맨 아래 afterAll이 MaxListenersExceededWarning 0개를 본다
+// (10/24 G7 재현: 경고는 이 파일에서 helpers.js uploadAfterResponse의 req.once('drain').once('close')로 났다)
+const warnings = [];
+process.on('warning', (w) => warnings.push(w.name));
 
 const FAKE_KEY_ID = 'AKIAHOWMUCHFAKEKEY01';
 const FAKE_SECRET = 'howmuch-fake-secret-value';
@@ -39,7 +48,7 @@ let base;
 
 beforeAll(async () => {
   // AC-1~6은 기억과 따로 본다(같은 사진을 여러 번 보냄) — 기억은 memo.test.js(AC-17)
-  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit });
+  server = createServer({ send: (...args) => send(...args), log, memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit, personLimit: testPersonLimit() });
   base = await listen(server);
 });
 afterAll(() => new Promise((resolve) => server.close(resolve)));
@@ -248,12 +257,13 @@ describe('AC-6 로그에 사진·비밀값이 없다', () => {
 
 describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 · A6)', () => {
   const SLACK = 100_000; // 한 번 읽는 덩어리 64KiB + 헤더·chunk 틀 여유
+  const PAUSE_SLACK = 4 * 64 * 1024; // 읽기를 멈추기 전 받아 둘 수 있는 덩어리 4개(64KiB씩) — 원본 CAREER-31 plan 'A5 답 · 안 A 넣어 본 결과'
 
   async function own() {
     const lines = [];
     let send = vi.fn(async () => converseReply(JSON.stringify({ grade: 2, line: '쓸 만하구먼' })));
     const sockets = [];
-    const s = createServer({ send: (...a) => send(...a), log: (l) => lines.push(l), memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit });
+    const s = createServer({ send: (...a) => send(...a), log: (l) => lines.push(l), memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit, personLimit: testPersonLimit() });
     s.on('connection', (sock) => sockets.push(sock));
     const base = await listen(s);
     return {
@@ -353,4 +363,116 @@ describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 
       await o.close();
     }
   });
+  test.each([[3_000_000], [6_000_000]])('(5) Content-Length 없이 한도를 넘게 올리고 응답을 읽지 않는 상대도 REJECT_LINGER_MS 안에 끊는다 — 업로드 %i바이트', { timeout: 15_000 }, async (total) => {
+    const o = await own();
+    try {
+      const port = Number(new URL(o.base).port);
+      const started = performance.now();
+      const sock = net.connect(port, '127.0.0.1');
+      const errors = [];
+      sock.on('error', (e) => errors.push(e.code ?? e.message));
+      await new Promise((r) => sock.once('connect', r));
+      sock.pause(); // 응답은 읽지 않는다
+      sock.write('POST /api/appraise?myPrice=ten HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: image/jpeg\r\nTransfer-Encoding: chunked\r\n\r\n');
+      const step = 64 * 1024;
+      const piece = Buffer.alloc(step, 0x5a);
+      piece[0] = 0xff;
+      piece[1] = 0xd8;
+      piece[2] = 0xff;
+      for (let sent = 0; sent < total && !sock.destroyed; sent += step) {
+        const ok = sock.write(Buffer.concat([Buffer.from(`${step.toString(16)}\r\n`), piece, Buffer.from('\r\n')]));
+        if (!ok) {
+          await new Promise((r) => {
+            const done = () => {
+              sock.off('drain', done);
+              sock.off('close', done);
+              r();
+            };
+            sock.on('drain', done);
+            sock.on('close', done);
+          });
+        }
+      }
+      const server = o.sockets[0];
+      if (!server.closed) await new Promise((r) => server.once('close', r));
+      expect(performance.now() - started).toBeLessThan(REJECT_LINGER_MS + 3_000);
+      expect(await o.bytesRead()).toBeLessThan(REJECT_DRAIN_BYTES + SLACK + PAUSE_SLACK);
+      expect(o.lines).toHaveLength(1);
+      expect(JSON.parse(o.lines[0]).reason).toBe('too_large');
+      expect(o.send).not.toHaveBeenCalled();
+      sock.destroy();
+    } finally {
+      await o.close();
+    }
+  });
+
+  test('CAREER-31 AC-8 Content-Length 없이 큰 사진을 올려도 400 응답을 끝까지 받는다 (30번)', { timeout: 60_000 }, async () => {
+    const o = await own();
+    try {
+      const bad = [];
+      for (let i = 0; i < 30; i++) {
+        const r = await streamChunked(`${o.base}/api/appraise?myPrice=ten`, {
+          headers: { 'content-type': 'image/jpeg' },
+          total: 3_000_000,
+        });
+        if (!(r.status === 400 && r.text === '{"code":"invalid_input"}' && r.complete)) {
+          bad.push({ i, status: r.status, text: r.text, complete: r.complete });
+        }
+      }
+      expect(bad).toEqual([]);
+      expect(o.send).not.toHaveBeenCalled();
+      expect(o.lines).toHaveLength(30);
+      expect(o.lines.every((l) => JSON.parse(l).reason === 'too_large')).toBe(true);
+    } finally {
+      await o.close();
+    }
+  });
+});
+
+describe('CAREER-31 AC-10 로그를 못 써도 조용히 사라지지 않는다', () => {
+  test('CAREER-31 AC-10 로그 실패는 응답을 바꾸지 않고 표준 오류에 log_failed 한 줄 · 내용 0번', async () => {
+    const okLines = [];
+    const servers = [
+      createServer({ send: (...a) => send(...a), log: (l) => okLines.push(l), memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit, personLimit: testPersonLimit() }),
+      createServer({
+        send: (...a) => send(...a),
+        log: () => {
+          throw new TypeError('HOWMUCH-LOG-SECRET');
+        },
+        memo: createMemo({ maxEntries: 0 }),
+        dailyLimit: daily.dailyLimit,
+        personLimit: testPersonLimit(),
+      }),
+    ];
+    const bases = [];
+    for (const s of servers) bases.push(await listen(s));
+    const spy = vi.spyOn(process.stderr, 'write');
+    try {
+      const body = makeJpeg({ width: 777 });
+      const results = [];
+      for (const b of bases) {
+        const res = await fetch(`${b}/api/appraise?myPrice=ten`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body });
+        results.push({ status: res.status, text: await res.text() });
+      }
+      expect(results[1]).toEqual(results[0]);
+      const written = spy.mock.calls.map((c) => String(c[0]));
+      const failed = written.flatMap((w) => w.split('\n')).filter((l) => l.includes('log_failed'));
+      expect(failed).toHaveLength(1);
+      expect(JSON.parse(failed[0])).toEqual({ evt: 'log_failed', error: 'TypeError' });
+      const all = written.join('');
+      const mark = Buffer.from(PHOTO_MARK, 'latin1');
+      for (const needle of ['HOWMUCH-LOG-SECRET', PHOTO_MARK, mark.toString('base64'), mark.toString('hex'), FAKE_SECRET]) {
+        expect(all).not.toContain(needle);
+      }
+    } finally {
+      spy.mockRestore();
+      await Promise.all(servers.map((s) => new Promise((r) => s.close(r))));
+    }
+  });
+});
+
+// CAREER-31 AC-9: 이 파일에서 MaxListenersExceededWarning이 나지 않는다(경고 끄기 금지 — plan 실패 시나리오 19)
+afterAll(async () => {
+  await new Promise((r) => setImmediate(r));
+  expect(warnings.filter((n) => n === 'MaxListenersExceededWarning')).toEqual([]);
 });
