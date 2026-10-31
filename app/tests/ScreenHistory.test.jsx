@@ -138,3 +138,33 @@ test('CAREER-32 AC-5 popstate on a result returns to input with focus on submit'
   expect(card()).toBeNull()
   expect(document.activeElement).toBe(submit())
 })
+
+// CAREER-32 R1 ①: 갸웃 중 popstate 뒤 늦은 답(성공·실패)이 와서 busy-note가 사라져도 초점은 감정 받기로 간다
+test.each([
+  ['success', (h) => h.resolve({ mochi: 3, line: 'x' })],
+  ['failure', (h) => h.reject(reject('unavailable'))],
+])('CAREER-32 R1 late %s moves focus from busy note to submit', async (_name, settle) => {
+  const h = hold()
+  choose()
+  fireEvent.click(submit())
+  popstate()
+  expect(document.activeElement.id).toBe('busy-note')
+
+  await act(async () => settle(h))
+  expect(screen.queryByText(BUSY_TEXT)).toBeNull()
+  expect(document.activeElement).toBe(submit())
+})
+
+// CAREER-32 R1 ②: 사용자가 다른 칸에 초점을 둔 뒤 늦은 답이 와도 초점은 그대로
+test('CAREER-32 R1 late answer leaves focus alone when it is elsewhere', async () => {
+  const h = hold()
+  choose()
+  fireEvent.click(submit())
+  popstate()
+  const other = priceGroup().getByRole('button', { name: '🍡 10개' })
+  act(() => other.focus())
+
+  await act(async () => h.resolve({ mochi: 3, line: 'x' }))
+  expect(screen.queryByText(BUSY_TEXT)).toBeNull()
+  expect(document.activeElement).toBe(other)
+})
