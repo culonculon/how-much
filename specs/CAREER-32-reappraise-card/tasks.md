@@ -226,3 +226,13 @@
 - 단계: spec AC-6 '할 때' 그대로. (a)에서 카드 아래 끝 · '다시 감정'이 도구 막대에 가리면 ✘로 적고 architect에게 알린다(plan 실패 시나리오 9). (f) 새로고침 뒤 404면 ADR-0008이 틀린 것이니 바로 알린다.
 - 검사 명령: runbook §5 로그 보기 명령으로 이 6번의 `appraise` 줄 — `memo` · `outcome` · `attempts`
 - 끝난 상태: (a)~(g) 모두 ✔이고 PR 칸에 적혀 있다.
+
+---
+
+## R1 — reviewer '고치면 좋은 것' ① 초점 떨어짐 (PR #21 리뷰 뒤, 사용자 10/31 고치기로)
+- 문제: 갸웃 중 '뒤로' → 입력 화면에서 초점이 `#busy-note`에 있음 → 늦은 답이 와서 `busy`가 풀리면 `#busy-note`가 사라지며 초점이 `body`로 떨어진다(키보드 사용자는 처음부터 다시)
+- 정함(10/31): `busy`가 풀릴 때 초점이 `#busy-note`에 있었으면 초점을 '감정 받기'로 옮긴다(이제 눌릴 수 있는 버튼 — plan A1 입력 화면 초점 대상과 같음). 초점이 다른 곳(사진 칸 등)에 있었으면 건드리지 않는다. 스크롤은 바꾸지 않는다
+- R1-T (test-writer): `app/tests/ScreenHistory.test.jsx`에 더함만 — ① 갸웃 중 popstate → 늦은 답(성공·실패 각 1) → `document.activeElement`가 '감정 받기' ② 갸웃 중 popstate → 사용자가 다른 칸(가격 버튼)에 초점을 둔 뒤 늦은 답 → 초점은 그 칸 그대로. 빨강 이유: ①은 `body`. ②는 지금도 통과할 수 있음(지키는 테스트). 커밋: `CAREER-32: busy note focus unit tests`
+- R1-F (frontend-dev): `app/src/App.jsx`만. 커밋: `CAREER-32: keep focus when busy note goes away`
+- 검사: `checks.app` 전부(lint · test · e2e · build · api)
+

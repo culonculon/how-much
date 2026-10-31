@@ -1,4 +1,4 @@
-[CAREER-32](https://culonculon98.atlassian.net/browse/CAREER-32) · spec: [spec.md](spec.md) · 작업: [tasks.md](tasks.md) · 약속: [contracts/appraise.md](../../contracts/appraise.md) §5(바꾸지 않음) · 결정: [ADR-0008](../../docs/adr/0008-screens-without-url-change.md)(제안)
+[CAREER-32](https://culonculon98.atlassian.net/browse/CAREER-32) · spec: [spec.md](spec.md) · 작업: [tasks.md](tasks.md) · 약속: [contracts/appraise.md](../../contracts/appraise.md) §5(바꾸지 않음) · 결정: [ADR-0008](../../docs/adr/0008-screens-without-url-change.md)(확정)
 
 상태: 승인됨 (2026-10-31)
 <!-- 앞 방향(한 페이지 + 스크롤)의 plan.md.old · tasks.md.old는 따르지 않는다. 가져온 사실: 지금 상태 흐름(App.jsx), first-flow.spec.js 67~68줄 메모, 375×548 화면 크기 근거, e2e '화면을 내린 상태' 만드는 법 -->
@@ -157,7 +157,7 @@ useLayoutEffect(() => {
 - **새 의존성: 없음** (라우터를 넣지 않으므로 크기 · 이유를 적을 것도 없다)
 
 ## 사용자가 정할 것
-1. 이 plan(A1~A4) · ADR-0008(제안 → 확정) 승인. contracts는 바뀌지 않는다
+1. 이 plan(A1~A4) · ADR-0008(제안 → 확정) 승인 — 2026-10-31 사용자 승인. contracts는 바뀌지 않는다
 2. U10 (b) 안내 글자 `BUSY_TEXT` — "앞 감정을 마무리하는 중이에요. 끝나면 다시 누를 수 있어요." 그대로 — 사용자 확정 (2026-10-31)
 
 ## spec에 대한 메모 (고칠 필요는 없음 — 사용자 판단)
