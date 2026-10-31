@@ -62,3 +62,6 @@ export const REGION_NOTICE = '사진은 감정하는 동안 서울 밖 아시아
 
 // Source of truth: contracts/appraise.md §5 daily_limit row.
 export const OFF_DUTY_TEXT = '아저씨 오늘 퇴근했어요. 밤 12시에 다시 출근해요.'
+
+// CAREER-32 plan A1 (U10 b) — not in contracts
+export const BUSY_TEXT = '앞 감정을 마무리하는 중이에요. 끝나면 다시 누를 수 있어요.'
