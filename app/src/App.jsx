@@ -31,6 +31,7 @@ export default function App() {
   const errorRef = useRef(null)
   const submitRef = useRef(null)
   const busyRef = useRef(null)
+  const refocusSubmit = useRef(false)
 
   // Free the blob URL when it is replaced or the component goes away.
   useEffect(() => () => previewUrl && URL.revokeObjectURL(previewUrl), [previewUrl])
@@ -74,6 +75,7 @@ export default function App() {
         setStatus('idle')
       }
     } finally {
+      refocusSubmit.current = document.activeElement === busyRef.current // note disappears with busy; keep focus on the button
       setBusy(false)
     }
     if (id === reqRef.current) setScreen('result')
@@ -104,6 +106,11 @@ export default function App() {
             : busyRef.current
     target?.focus({ preventScroll: true })
   }, [screen])
+
+  useLayoutEffect(() => {
+    if (!busy && refocusSubmit.current) submitRef.current?.focus({ preventScroll: true })
+    refocusSubmit.current = false
+  }, [busy])
 
   return (
     <main>
