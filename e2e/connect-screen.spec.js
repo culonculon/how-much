@@ -50,6 +50,7 @@ test('CAREER-29 AC-3 unavailable returns to idle and retry works', async ({ page
 
   await expect(page.getByTestId('appraise-error')).toHaveText(UNAVAILABLE)
   await expect(page.getByRole('status', { name: '감정사 아저씨' })).toHaveText(/대기/)
+  await page.getByRole('button', { name: '다시 감정' }).click()
   await expect(submit).toBeEnabled()
 
   await submit.click()
