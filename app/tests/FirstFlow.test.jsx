@@ -153,6 +153,7 @@ function holdAppraise() {
   return (value) => resolve(value)
 }
 const mascot = () => screen.getByRole('status', { name: '감정사 아저씨' })
+const again = () => screen.getByRole('button', { name: '다시 감정' })
 
 // AC-7: 갸웃, 버튼 비활성, 두 번 눌러도 호출 1번
 test('AC-7 thinking state, disabled button, appraise called once', () => {
@@ -162,10 +163,11 @@ test('AC-7 thinking state, disabled button, appraise called once', () => {
   pickFile(photo)
   pickPrice('🍡 10개')
   pickTag('🎁 선물')
-  fireEvent.click(submit())
-  fireEvent.click(submit())
+  const button = submit()
+  fireEvent.click(button)
+  fireEvent.click(button)
   expect(mascot().textContent).toContain('갸웃')
-  expect(submit().disabled).toBe(true)
+  expect(screen.queryByRole('button', { name: '감정 받기' })).toBeNull()
   expect(appraise).toHaveBeenCalledTimes(1)
   expect(appraise).toHaveBeenCalledWith({ photo, myPrice: 'ten', tags: ['how-1'] })
   expect(screen.queryByRole('region', { name: '감정 결과' })).toBeNull()
@@ -242,6 +244,7 @@ test('AC-7 invalid_input ends thinking, shows the notice, and allows a second tr
   const notice = await screen.findByTestId('appraise-error')
   expect(notice.textContent).toBe(ERROR_TEXT.invalid_input)
   expect(mascot().textContent).toContain('대기')
+  fireEvent.click(again())
   expect(submit().disabled).toBe(false)
 
   pickFile(jpg())
@@ -284,6 +287,7 @@ test('CAREER-27 AC-9 daily_limit shows off-duty mascot, no error, no card, and r
   expect(within(mascot()).getByTestId('off-duty').textContent).toBe(OFF_DUTY_TEXT)
   expect(screen.queryByTestId('appraise-error')).toBeNull()
   expect(screen.queryByRole('region', { name: '감정 결과' })).toBeNull()
+  fireEvent.click(again())
   expect(submit().disabled).toBe(false)
 
   appraise.mockReturnValue(new Promise(() => {}))
@@ -295,6 +299,7 @@ test('CAREER-27 AC-9 daily_limit shows off-duty mascot, no error, no card, and r
 
 test('CAREER-27 AC-9 picking another photo keeps the off-duty state', async () => {
   await reachOffDuty()
+  fireEvent.click(again())
   pickFile(jpg())
   expect(mascot().textContent).toContain('🚶 퇴근')
   expect(screen.getByTestId('off-duty')).toBeTruthy()
@@ -303,6 +308,7 @@ test('CAREER-27 AC-9 picking another photo keeps the off-duty state', async () =
 
 test('CAREER-27 AC-9 a successful retry after off-duty shows the card and the stamp', async () => {
   await reachOffDuty()
+  fireEvent.click(again())
   appraise.mockResolvedValueOnce({ mochi: 10, line: '흠' })
   fireEvent.click(submit())
   await screen.findByRole('region', { name: '감정 결과' })
@@ -329,6 +335,7 @@ test('CAREER-31 AC-5 person_limit is a notice, not off-duty, and retry thinks ag
   await screen.findByTestId('appraise-error')
   expect(mascot().textContent).not.toContain('퇴근')
   expect(screen.queryByTestId('off-duty')).toBeNull()
+  fireEvent.click(again())
   expect(submit().disabled).toBe(false)
 
   appraise.mockReturnValue(new Promise(() => {}))

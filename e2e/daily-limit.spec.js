@@ -45,6 +45,7 @@ test('CAREER-27 AC-10 daily_limit shows off-duty and retry works', async ({ page
   await expect(page.getByTestId('off-duty')).toHaveText(OFF_DUTY)
   await expect(page.getByTestId('appraise-error')).toHaveCount(0)
   await expect(page.getByRole('region', { name: '감정 결과' })).toHaveCount(0)
+  await page.getByRole('button', { name: '다시 감정' }).click()
   await expect(submit).toBeEnabled()
 
   await submit.click()

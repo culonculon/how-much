@@ -125,6 +125,7 @@ test('AC-7 server rejection ends thinking and allows another try', async ({ page
   await expect(page.getByTestId('appraise-error')).toHaveText(INVALID_INPUT_TEXT)
   await expect(mascot).toHaveText(/대기/)
   await expect(mascot).not.toHaveText(/갸웃/)
+  await page.getByRole('button', { name: '다시 감정' }).click()
   await page.getByLabel('사진 고르기').setInputFiles(F3)
   const submit = page.getByRole('button', { name: '감정 받기' })
   await expect(submit).toBeEnabled()

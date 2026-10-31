@@ -65,7 +65,7 @@ test('first flow end to end (AC-1,3,4,5,6,7,8, CAREER-26 AC-5)', async ({ page }
   await submit.click()
   const mascot = page.getByRole('status', { name: '감정사 아저씨' })
   await expect(mascot).toHaveText(/갸웃/)
-  await expect(submit).toBeDisabled()
+  await expect(submit).toHaveCount(0)
 
   // AC-8
   await expect(mascot).toHaveText(/도장/)
