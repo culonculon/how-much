@@ -190,3 +190,30 @@ test('CAREER-34 AC-2 share passes one image file — double press', async ({ pag
   await flush(page)
   expect(await shareCount(page)).toBe(1)
 })
+
+// ---------------------------------------------------------------- T3 AC-3
+
+// AC-3: 아저씨 값 · 비교 한 줄이 바뀌어도 카드 바이트는 같다. 내 값은 들어가 있다.
+test('CAREER-34 AC-3 card bytes ignore mochi and compare line', async ({ page }) => {
+  test.slow()
+  await routeQueue(page, [ok(30), ok(3), ok(10), ok(30), ok(3)])
+  await fakeShare(page, 'hold')
+  const take = async (price) => {
+    await reveal(page, { price })
+    await press(page)
+    return shared(page)
+  }
+  const ten = [await take('🍡 10개'), await take('🍡 10개'), await take('🍡 10개')] // 더 쳐줌 · 짜게 봄 · 같음
+  const never = [await take('🙅 안 팔아'), await take('🙅 안 팔아')]
+
+  for (const s of [...ten, ...never]) expect(s.bytes.length).toBeGreaterThan(1000)
+  expect(ten[1].bytes.equals(ten[0].bytes)).toBe(true)
+  expect(ten[2].bytes.equals(ten[0].bytes)).toBe(true)
+  expect(never[1].bytes.equals(never[0].bytes)).toBe(true)
+  expect(ten[0].bytes.equals(never[0].bytes)).toBe(false) // 내 값은 정말 들어간다
+  for (const s of [...ten, ...never]) {
+    expect(s.name).toBe(CARD_NAME)
+    expect(s.name).not.toContain('30')
+    expect(JSON.stringify(s.keys)).not.toContain('30')
+  }
+})
