@@ -282,3 +282,60 @@ test('CAREER-34 AC-5 card has no location data', async ({ page, browser }) => {
   expect(bytes.includes(F1.buffer.subarray(0, 4096))).toBe(false)
   expect(bytes.includes(Buffer.from('how-much\0'))).toBe(false) // F1 EXIF 글자
 })
+
+// ---------------------------------------------------------------- T6 AC-6
+
+// 받은 파일이 카드이고, 화면은 ⑥ 그대로다
+async function stays(page, download, bytes) {
+  expect(download.suggestedFilename()).toBe(CARD_NAME)
+  expect(jpegInfo(bytes)).toMatchObject({ isJpeg: true, hasExif: false })
+  await expect(page.getByRole('region', { name: '감정 결과' })).toBeVisible()
+  await expect(page.getByRole('group', { name: '값 공개' })).toBeVisible()
+  expect(new URL(page.url()).pathname).toBe('/')
+}
+
+// AC-6 ①②③: 공유 창이 없거나 이 파일을 못 받으면 같은 클릭에서 내려받고, 글자는 '저장'
+for (const mode of ['none', 'nocanshare', 'cantshare']) {
+  test(`CAREER-34 AC-6 falls back to download — ${mode}`, async ({ page }) => {
+    await routeQueue(page, [ok(30)])
+    await fakeShare(page, mode)
+    await reveal(page)
+    await enabled(page)
+    const [download] = await Promise.all([page.waitForEvent('download'), shareOf(page).click()])
+    await expect(page.getByTestId('share-button')).toHaveText('저장')
+    await expect(noteOf(page)).toHaveCount(0)
+    const bytes = readFileSync(await download.path())
+    await stays(page, download, bytes)
+
+    // 공유 파일이 없으므로 같은 고른 것 · 같은 답으로 다른 탭에서 공유 파일을 받아 비교한다
+    const other = await page.context().newPage()
+    await routeQueue(other, [ok(30)])
+    await fakeShare(other, 'hold')
+    await reveal(other)
+    await press(other)
+    expect(bytes.equals((await shared(other)).bytes)).toBe(true)
+  })
+}
+
+// AC-6 ④⑤: 공유가 거부되면 저절로 내려받지 않고 문구 + '저장', 한 번 더 누르면 내려받는다
+for (const mode of ['notallowed', 'other']) {
+  test(`CAREER-34 AC-6 falls back to download — ${mode}`, async ({ page }) => {
+    await routeQueue(page, [ok(30)])
+    await fakeShare(page, mode)
+    const downloads = []
+    page.on('download', (d) => downloads.push(d))
+    await reveal(page)
+    await press(page)
+    const s = await shared(page)
+    await expect(noteOf(page)).toBeVisible()
+    await expect(noteOf(page)).toHaveText(USE_SAVE)
+    await expect(page.getByTestId('share-button')).toHaveText('저장')
+    expect(downloads).toHaveLength(0)
+
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('share-button').click()])
+    await expect(noteOf(page)).toHaveCount(0)
+    const bytes = readFileSync(await download.path())
+    expect(bytes.equals(s.bytes)).toBe(true)
+    await stays(page, download, bytes)
+  })
+}
