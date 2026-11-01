@@ -8,6 +8,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from '../src/App.jsx'
 import { appraise } from '../src/appraise.js'
 import { REGION_NOTICE } from '../src/options.js'
+import { back, enter, face, next, resetHistory, walkToPrice } from './shop-steps.jsx'
 
 vi.mock('../src/appraise.js', () => ({ appraise: vi.fn(), FAKE_DELAY_MS: 800 }))
 
@@ -15,6 +16,7 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:test')
   URL.revokeObjectURL = vi.fn()
   appraise.mockReset()
+  resetHistory() // back()이 이 테스트가 쌓은 칸만 지나가게
 })
 afterEach(cleanup)
 
@@ -34,14 +36,13 @@ const priceGroup = () => within(screen.getByRole('group', { name: '마음 가격
 const tagGroup = () => within(screen.getByRole('group', { name: '사연 태그' }))
 const pickPrice = (name) => fireEvent.click(priceGroup().getByRole('button', { name, exact: true }))
 const pickTag = (name) => fireEvent.click(tagGroup().getByRole('button', { name, exact: true }))
-const submit = () => screen.getByRole('button', { name: '감정 받기' })
+const submit = () => screen.getByRole('button', { name: '감정 받기!' })
 const preview = () => screen.queryByRole('img', { name: '고른 사진 미리보기' })
 const mascot = () => screen.getByRole('status', { name: '감정사 아저씨' })
 
 const reject = (code) => Object.assign(new Error('x'), code ? { code } : {})
 
 const card = () => screen.queryByRole('region', { name: '감정 결과' })
-const again = () => screen.getByRole('button', { name: '다시 감정' })
 
 // 답을 테스트가 풀어 줄 때까지 붙잡는다
 function hold() {
@@ -76,26 +77,29 @@ test('CAREER-32 AC-1 three screens appear one at a time', async () => {
   renderApp()
   expect(document.activeElement).toBe(document.body) // 처음엔 초점을 뺏지 않음
 
-  // 입력 화면
+  // 입력 화면 ②③④: 고르는 칸은 자기 단계에서만 보인다
+  enter()
   expect(screen.getByLabelText('사진 고르기')).toBeTruthy()
-  expect(screen.getByRole('group', { name: '마음 가격' })).toBeTruthy()
+  pickFile(png())
+  next()
   expect(screen.getByRole('group', { name: '사연 태그' })).toBeTruthy()
+  pickTag('🎁 선물')
+  next()
+  expect(screen.getByRole('group', { name: '마음 가격' })).toBeTruthy()
   expect(screen.getByText(REGION_NOTICE)).toBeTruthy()
   expect(submit()).toBeTruthy()
   expect(card()).toBeNull()
-  expect(screen.queryByRole('button', { name: '다시 감정' })).toBeNull()
-  expect(mascot().textContent).not.toContain('갸웃')
-  expect(mascot().textContent).not.toContain('도장')
+  expect(screen.queryByRole('button', { name: '다른 물건 꺼내기' })).toBeNull()
+  expect(face()).not.toBe('think')
+  expect(face()).not.toBe('happy')
 
-  pickFile(png())
   pickPrice('🍡 10개')
-  pickTag('🎁 선물')
   const button = submit()
   fireEvent.click(button)
   fireEvent.click(button)
 
   // 갸웃 화면
-  expect(mascot().textContent).toContain('🔍 갸웃')
+  expect(face()).toBe('think')
   expect(screen.queryAllByRole('button')).toHaveLength(0)
   noInputs()
   expect(card()).toBeNull()
@@ -104,14 +108,14 @@ test('CAREER-32 AC-1 three screens appear one at a time', async () => {
   // 결과 화면
   resolve({ mochi: 3, line: '첫 대사' })
   const region = await screen.findByRole('region', { name: '감정 결과' })
-  expect(mascot().textContent).toContain('🔨 도장')
+  expect(face()).toBe('happy')
   const inCard = within(region)
   expect(inCard.getByTestId('appraised-price').textContent).toBe('모찌 3개')
   expect(inCard.getByTestId('my-price').textContent).toBe('모찌 10개')
   expect(inCard.getByTestId('mascot-line').textContent).toBe('첫 대사')
-  expect(again()).toBeTruthy()
+  expect(screen.getByRole('button', { name: '다른 물건 꺼내기' })).toBeTruthy()
   noInputs()
-  expect(screen.queryByRole('button', { name: '감정 받기' })).toBeNull()
+  expect(screen.queryByRole('button', { name: '감정 받기!' })).toBeNull()
   expect(appraise).toHaveBeenCalledTimes(1)
   expect(document.activeElement).toBe(region)
 })
@@ -121,9 +125,8 @@ async function firstCard() {
   appraise.mockResolvedValueOnce({ mochi: 3, line: '첫 대사' })
   renderApp()
   const photo = png()
-  pickFile(photo)
+  walkToPrice({ photo })
   pickPrice('🍡 10개')
-  pickTag('🎁 선물')
   fireEvent.click(submit())
   await screen.findByText('모찌 3개')
   return photo
@@ -134,41 +137,45 @@ const pressedOf = (group) =>
     group.getAllByRole('button').map((b) => [b.textContent, b.getAttribute('aria-pressed')]),
   )
 
-// 입력 화면에 고른 것이 그대로 있다 (AC-2 ① · AC-3 ②)
-function expectChosen() {
-  expect(preview()).not.toBeNull()
+// ④에서 시작해 고른 것이 그대로 있다: ④ 값 + 감정 받기 / 뒤로 ③ 태그 / 뒤로 ② 미리보기, 다음 둘로 ④로 돌아온다 (AC-2 ① · AC-3 ②)
+async function expectChosen() {
   expect(pressedOf(priceGroup())).toEqual({
     '🍡 1개': 'false',
     '🍡 10개': 'true',
     '🍡 100개': 'false',
     '🙅 안 팔아': 'false',
   })
+  expect(submit().disabled).toBe(false)
+  await back()
   const tags = pressedOf(tagGroup())
   expect(Object.keys(tags)).toHaveLength(16)
   expect(Object.entries(tags).filter(([, on]) => on === 'true')).toEqual([['🎁 선물', 'true']])
-  expect(submit().disabled).toBe(false)
+  await back()
+  expect(preview()).not.toBeNull()
+  next()
+  next()
 }
 
 // CAREER-32 AC-2 ① ②: '다시 감정'은 고른 것을 그대로 둔 입력 화면으로, 같은 값이 다시 나간다
 test('CAREER-32 AC-2 again returns to the input screen with choices kept, then the same values are sent', async () => {
   const photo = await firstCard()
-  fireEvent.click(again())
+  await back() // ⑥ → ④
 
-  expectChosen()
+  await expectChosen()
   expect(screen.queryByText('모찌 3개')).toBeNull()
   expect(card()).toBeNull()
-  expect(mascot().textContent).not.toContain('도장')
-  expect(mascot().textContent).not.toContain('갸웃')
-  expect(appraise).toHaveBeenCalledTimes(1) // '다시 감정'만으로는 보내지 않음
+  expect(face()).not.toBe('happy')
+  expect(face()).not.toBe('think')
+  expect(appraise).toHaveBeenCalledTimes(1) // '뒤로'만으로는 보내지 않음
 
   const { resolve } = hold()
   fireEvent.click(submit())
-  expect(mascot().textContent).toContain('갸웃')
+  expect(face()).toBe('think')
   expect(screen.queryByText('모찌 3개')).toBeNull()
 
   resolve({ mochi: 7, line: '둘째' })
   await screen.findByText('모찌 7개')
-  expect(mascot().textContent).toContain('🔨 도장')
+  expect(face()).toBe('happy')
   expect(screen.queryByText('모찌 3개')).toBeNull()
   expect(appraise).toHaveBeenCalledTimes(2)
   expect(appraise.mock.calls[1][0]).toEqual(appraise.mock.calls[0][0])
@@ -177,15 +184,18 @@ test('CAREER-32 AC-2 again returns to the input screen with choices kept, then t
 
 // CAREER-32 AC-2 ③: 하나만 바꾸면 바꾼 것만 바뀌어 나가고, 카드의 '내 값'은 그때 고른 값
 const other = jpg()
+// 마지막 칸은 ④에서 거기까지 뒤로 가는 횟수: 사진은 ②(2번), 태그는 ③(1번), 가격은 ④(0번)
 test.each([
-  ['photo', () => pickFile(other), () => ({ photo: other, myPrice: 'ten', tags: ['how-1'] })],
-  ['price', () => pickPrice('🍡 100개'), (p) => ({ photo: p, myPrice: 'hundred', tags: ['how-1'] })],
-  ['add tag', () => pickTag('🏆 인생템'), (p) => ({ photo: p, myPrice: 'ten', tags: ['how-1', 'feeling-2'] })],
-  ['remove tag', () => pickTag('🎁 선물'), (p) => ({ photo: p, myPrice: 'ten', tags: [] })],
-])('CAREER-32 AC-2 changing only %s changes only that value', async (name, change, expected) => {
+  ['photo', () => pickFile(other), () => ({ photo: other, myPrice: 'ten', tags: ['how-1'] }), 2],
+  ['price', () => pickPrice('🍡 100개'), (p) => ({ photo: p, myPrice: 'hundred', tags: ['how-1'] }), 0],
+  ['add tag', () => pickTag('🏆 인생템'), (p) => ({ photo: p, myPrice: 'ten', tags: ['how-1', 'feeling-2'] }), 1],
+  ['remove tag', () => pickTag('🎁 선물'), (p) => ({ photo: p, myPrice: 'ten', tags: [] }), 1],
+])('CAREER-32 AC-2 changing only %s changes only that value', async (name, change, expected, steps) => {
   const photo = await firstCard()
-  fireEvent.click(again())
+  await back() // ⑥ → ④
+  for (let i = 0; i < steps; i++) await back()
   change()
+  for (let i = 0; i < steps; i++) next()
   appraise.mockResolvedValueOnce({ mochi: 7, line: '둘째' })
   fireEvent.click(submit())
   await screen.findByText('모찌 7개')
@@ -199,38 +209,40 @@ const WHERE = [
   ['first', false],
   ['after a card', true],
 ]
+// [코드, 문구가 나오는 코드, 실패 화면의 버튼(invalid_input은 자동으로 ②라 없음), 아저씨 표정]
 const CODES = [
-  ['person_limit', 'person_limit'],
-  ['unavailable', 'unavailable'],
-  ['refused', 'refused'],
-  ['invalid_input', 'invalid_input'],
-  [undefined, 'unavailable'],
-  ['daily_limit', 'daily_limit'],
+  ['person_limit', 'person_limit', '조금 뒤에 다시', 'sleepy'],
+  ['unavailable', 'unavailable', '다시 감정 받기', 'sweat'],
+  ['refused', 'refused', '사진 다시 꺼내기', 'frown'],
+  ['invalid_input', 'invalid_input', null, 'base'],
+  [undefined, 'unavailable', '다시 감정 받기', 'sweat'],
+  ['daily_limit', 'daily_limit', '내일 다시 오기', null],
 ]
-test.each(WHERE.flatMap(([where, afterCard]) => CODES.map(([code, text]) => [where, code, text, afterCard])))(
+test.each(WHERE.flatMap(([where, afterCard]) => CODES.map(([code, text, button, uncle]) => [where, code, text, afterCard, button, uncle])))(
   'CAREER-32 AC-3 %s: rejected with %s',
-  async (_where, code, text, afterCard) => {
+  async (_where, code, text, afterCard, button, uncle) => {
     if (afterCard) {
       await firstCard()
-      fireEvent.click(again())
+      await back() // ⑥ → ④
     } else {
       renderApp()
-      pickFile(png())
+      walkToPrice()
       pickPrice('🍡 10개')
-      pickTag('🎁 선물')
     }
     appraise.mockRejectedValueOnce(reject(code))
     fireEvent.click(submit())
 
-    // ① 결과 화면 자리: 카드 없음, 다시 감정만
-    await screen.findByRole('button', { name: '다시 감정' })
+    // ① 실패 화면 자리: 카드 없음, 코드별 버튼만 (invalid_input은 자동으로 ②)
+    if (button) await screen.findByRole('button', { name: button, exact: true })
+    else await screen.findByTestId('appraise-error')
     expect(card()).toBeNull()
-    noInputs()
-    expect(screen.queryByRole('button', { name: '감정 받기' })).toBeNull()
+    if (button) noInputs()
+    expect(screen.queryByRole('button', { name: '감정 받기!' })).toBeNull()
     const off = code === 'daily_limit'
-    const shown = () => {
+    const shown = (onInput = false) => {
       if (off) {
-        expect(mascot().textContent).toContain('🚶 퇴근')
+        if (onInput) expect(screen.getByTestId('off-duty')).toBeTruthy() // 입력 쪽에 퇴근 문구가 남는다
+        else expect(screen.getByTestId('shop-scene').getAttribute('data-scene')).toBe('night')
         expect(within(mascot()).getByTestId('off-duty').textContent).toBe(contractText('daily_limit'))
         expect(screen.queryByTestId('appraise-error')).toBeNull()
       } else {
@@ -238,31 +250,40 @@ test.each(WHERE.flatMap(([where, afterCard]) => CODES.map(([code, text]) => [whe
         expect(screen.queryByTestId('off-duty')).toBeNull()
       }
     }
-    shown()
+    shown(!button)
     if (off) {
+      expect(face()).toBeNull()
       expect(document.activeElement).toBe(mascot())
     } else {
-      expect(mascot().textContent).toContain('대기')
+      expect(face()).toBe(uncle)
       expect(document.activeElement).toBe(screen.getByTestId('appraise-error'))
     }
 
-    // ② 다시 감정: 고른 것 그대로, 문구도 그대로. 다른 사진: 실패 문구만 사라진다
-    fireEvent.click(again())
-    expectChosen()
-    shown()
+    // ② 코드별 버튼: 고른 것 그대로, 문구도 그대로. 다른 사진: 실패 문구만 사라진다
+    if (button) fireEvent.click(screen.getByRole('button', { name: button, exact: true }))
+    shown(true) // refused · invalid_input은 ②, 나머지는 ④에서 문구가 남아 있다
+    if (code === 'refused' || code === 'invalid_input') {
+      next()
+      next()
+    }
+    await expectChosen()
+    await back() // 다른 사진은 ②에서
+    await back()
     pickFile(jpg())
-    if (off) shown()
+    if (off) shown(true)
     else expect(screen.queryByTestId('appraise-error')).toBeNull()
+    next()
+    next()
 
     // ③ 다시 누르면 갸웃에는 문구 · 퇴근이 없고, 결과에도 없다
     const { resolve } = hold()
     fireEvent.click(submit())
-    expect(mascot().textContent).toContain('갸웃')
+    expect(face()).toBe('think')
     expect(screen.queryByTestId('appraise-error')).toBeNull()
     expect(screen.queryByTestId('off-duty')).toBeNull()
     resolve({ mochi: 7, line: '둘째' })
     await screen.findByText('모찌 7개')
-    expect(mascot().textContent).toContain('🔨 도장')
+    expect(face()).toBe('happy')
     expect(screen.queryByTestId('appraise-error')).toBeNull()
     expect(screen.queryByTestId('off-duty')).toBeNull()
   },

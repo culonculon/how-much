@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { enter, next } from './shop-steps.js'
 
 // 1×1 PNG — 파일을 따로 두지 않는다
 const png = {
@@ -35,21 +36,24 @@ test('CAREER-27 AC-10 daily_limit shows off-duty and retry works', async ({ page
     },
   )
   await page.goto('/')
+  await enter(page)
   await page.getByLabel('사진 고르기').setInputFiles(png)
+  await next(page)
+  await next(page)
   await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  const submit = page.getByRole('button', { name: '감정 받기' })
+  const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
   await submit.click()
 
-  const mascot = page.getByRole('status', { name: '감정사 아저씨' })
-  await expect(mascot).toContainText('🚶 퇴근')
+  await expect(page.getByTestId('uncle')).toHaveCount(0) // 아저씨 없이 어두운 가게
+  await expect(page.getByTestId('shop-scene')).toHaveAttribute('data-scene', 'night')
   await expect(page.getByTestId('off-duty')).toHaveText(OFF_DUTY)
   await expect(page.getByTestId('appraise-error')).toHaveCount(0)
   await expect(page.getByRole('region', { name: '감정 결과' })).toHaveCount(0)
-  await page.getByRole('button', { name: '다시 감정' }).click()
+  await page.getByRole('button', { name: '내일 다시 오기', exact: true }).click()
   await expect(submit).toBeEnabled()
 
   await submit.click()
-  await expect(mascot).toContainText('갸웃')
+  await expect(page.getByTestId('uncle')).toHaveAttribute('data-face', 'think')
   await expect(page.getByTestId('off-duty')).toHaveCount(0)
 
   release()
