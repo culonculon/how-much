@@ -91,3 +91,10 @@ export function compareLine(mine, mochi) {
   if (mochi < mine) return { mark: '▼', text: '아저씨는 좀 짜게 봤다' }
   return { mark: '=', text: '자네 눈이 제법이군!' }
 }
+
+// CAREER-34 plan A1 '카드 구성' · A2 (user answers 2026-11-01). The card never shows the uncle's value (ADR-0010).
+export const CARD = { fileName: 'how-much-card.jpg', capUncle: '아저씨 감정가', hidden: '🍡 × ?', capMine: '내가 부른 값' }
+export const SHARE_TEXT = {
+  notDrawn: '공유 그림을 만들지 못했어요.',
+  useSave: '공유 창을 열지 못했어요. 저장을 눌러 주세요.',
+}

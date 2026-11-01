@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { appraise } from './appraise.js'
 import Shop from './Shop.jsx'
+import ShareRow from './ShareRow.jsx'
 import {
   BAD_FILE_TEXT, BUSY_TEXT, ERROR_TEXT, FAIL_BUTTONS, OFF_DUTY_TEXT, PRICES, REGION_NOTICE, STEPS, TAG_GROUPS, THINKING_LINE,
   compareLine,
@@ -246,7 +247,11 @@ export default function App() {
             {failureButton()}
           </>
         )}
-        {showCard && <button type="button" className="btn" onClick={another}>다른 물건 꺼내기</button>}
+        {showCard && (
+          <ShareRow photo={photo} myPrice={myPrice}>
+            <button type="button" className="btn" onClick={another}>다른 물건 꺼내기</button>
+          </ShareRow>
+        )}
 
         {view === 'door' && (
           <button type="button" className="btn" onClick={() => advance('photo')}>
