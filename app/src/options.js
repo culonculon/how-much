@@ -1,9 +1,9 @@
 // Source of truth: contracts/appraise.md §2, §3 (order matters).
 export const PRICES = [
-  { id: 'one', button: '🍡 1개', card: '모찌 1개' },
-  { id: 'ten', button: '🍡 10개', card: '모찌 10개' },
-  { id: 'hundred', button: '🍡 100개', card: '모찌 100개' },
-  { id: 'never', button: '🙅 안 팔아', card: '안 팔아' },
+  { id: 'one', button: '🍡 1개', card: '모찌 1개', mochi: 1 },
+  { id: 'ten', button: '🍡 10개', card: '모찌 10개', mochi: 10 },
+  { id: 'hundred', button: '🍡 100개', card: '모찌 100개', mochi: 100 },
+  { id: 'never', button: '🙅 안 팔아', card: '안 팔아', mochi: null },
 ]
 
 export const TAG_GROUPS = [
@@ -65,3 +65,29 @@ export const OFF_DUTY_TEXT = '아저씨 오늘 퇴근했어요. 밤 12시에 다
 
 // CAREER-32 plan A1 (U10 b) — not in contracts
 export const BUSY_TEXT = '앞 감정을 마무리하는 중이에요. 끝나면 다시 누를 수 있어요.'
+
+// CAREER-35 plan A1 '글자의 원본' (mockup-v3). `\n` is a line break (white-space: pre-line); no <br> in notices.
+export const STEPS = {
+  door: { label: '가게 문', line: '동네 감정소\n값은 아저씨 마음대로' },
+  photo: { label: '물건 꺼내기', line: '어서 오게. 뭘 가져왔나?\n꺼내 보게.' },
+  tags: { label: '사연 말하기', line: '흠, 이건 어쩌다 자네 손에 왔나?' },
+  price: { label: '내 값 부르기', line: '자네는 이걸 얼마로 치나?' },
+}
+export const THINKING_LINE = '🔍 어디 보자… 흐음…'
+export const BAD_FILE_TEXT = '사진을 다시 골라 주세요 (jpg·png)'
+
+// Failure buttons. `mark` is drawn, so it is aria-hidden; `U+FE0E` keeps iOS from turning ▶ ◀ ↻ into emoji.
+export const FAIL_BUTTONS = {
+  refused: { mark: '◀\uFE0E', text: '사진 다시 꺼내기' },
+  unavailable: { mark: '↻\uFE0E', text: '다시 감정 받기', note: '고른 사진·사연·값은 그대로 남아 있어요' },
+  person_limit: { text: '조금 뒤에 다시', fade: true },
+  daily_limit: { text: '내일 다시 오기', fade: true },
+}
+
+// Compare the uncle's mochi with the one the user called. `never` first (spec Q7).
+export function compareLine(mine, mochi) {
+  if (mine == null) return { mark: '', text: '안 판다니… 그래도 값은 매겨 봤네' }
+  if (mochi > mine) return { mark: '▲', text: '아저씨가 더 쳐줬다!' }
+  if (mochi < mine) return { mark: '▼', text: '아저씨는 좀 짜게 봤다' }
+  return { mark: '=', text: '자네 눈이 제법이군!' }
+}

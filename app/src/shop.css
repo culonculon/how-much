@@ -1,0 +1,396 @@
+/* Galmuri11 (SIL OFL 1.1, licence in public/licenses/Galmuri-OFL.txt), self-hosted — no outside address (AC-10). */
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('./fonts/Galmuri11.woff2') format('woff2');
+  font-display: swap;
+}
+
+body {
+  font-family: 'Galmuri11', 'Apple SD Gothic Neo', monospace;
+  font-synthesis: none;
+}
+
+/* CAREER-35 wooden shop — values from plan A5 (375px), the rest from mockup-v3. Nothing here moves (D1~D5 add motion later). */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: #4a2f1c repeating-linear-gradient(0deg, #4a2f1c 0 18px, #3f2817 18px 20px);
+  color: #fff4e0;
+  font-size: 14px;
+}
+
+#root {
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+p,
+h1,
+h2 {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+.shop {
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0; /* no clip: a clipped box counts as outside the viewport for toBeInViewport */
+  white-space: nowrap;
+  border: 0;
+}
+
+/* scene */
+.px {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.scene {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+  background: repeating-linear-gradient(90deg, #b07a48 0 26px, #a06c3c 26px 28px, #b9834f 28px 54px, #9a6638 54px 56px);
+  border-bottom: 4px solid #2b1a0e;
+}
+
+.scene.tall {
+  height: 340px;
+}
+
+.scene::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent 0 37px, rgba(60, 30, 10, 0.18) 37px 39px);
+}
+
+.scene.night {
+  background: repeating-linear-gradient(90deg, #5a3d24 0 26px, #4f351f 26px 28px, #5f4127 28px 54px, #4a311c 54px 56px);
+}
+
+.shelf {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 54px;
+  height: 8px;
+  background: #6b4224;
+  border-bottom: 4px solid #3b2416;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+}
+
+.items {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 18px;
+  height: 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.item {
+  width: 36px;
+}
+
+.gap {
+  flex: none;
+  width: 80px;
+}
+
+/* the uncle is centred by flex, never by translateX (half a pixel would blur the cells) */
+.uncle-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 26px;
+  display: flex;
+  justify-content: center;
+}
+
+.tall .uncle-slot {
+  bottom: 30px;
+}
+
+.uncle {
+  width: 120px;
+  height: 120px;
+}
+
+.tall .uncle {
+  width: 200px;
+  height: 200px;
+}
+
+.counter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34px;
+  background: #7a4a26;
+  border-top: 6px solid #c58a52;
+  box-shadow: inset 0 -6px 0 #5e3818;
+}
+
+.counter::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 2px;
+  background: #5e3818;
+}
+
+.sign,
+.closed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin: 0 auto;
+}
+
+.sign {
+  top: 70px;
+  background: #3b2416;
+  color: #ffd27a;
+  padding: 4px 10px;
+  border: 3px solid #c58a52;
+  font-size: 16px;
+  font-weight: normal;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.closed {
+  top: 84px;
+  transform: rotate(-3deg);
+  background: #fff4e0;
+  color: #3b2416;
+  border: 3px solid #3b2416;
+  padding: 6px 12px;
+  font-size: 15px;
+  box-shadow: 3px 3px 0 #2b1a0e;
+}
+
+.closed::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -22px;
+  width: 2px;
+  height: 20px;
+  background: #3b2416;
+}
+
+/* body */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px 0;
+}
+
+.body > [role='status']:empty {
+  position: absolute; /* stays in the accessibility tree, takes no room */
+}
+
+.win {
+  background: #fff4e0;
+  color: #3b2416;
+  border: 3px solid #3b2416;
+  box-shadow: inset 0 0 0 2px #e8b84a;
+  padding: 9px 10px;
+  line-height: 1.5;
+}
+
+[role='status'].win,
+.value,
+.win.center {
+  text-align: center;
+}
+
+#step-line {
+  white-space: pre-line;
+}
+
+.who {
+  color: #a3542a;
+  font-size: 12px;
+}
+
+.drop {
+  position: relative;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  cursor: pointer;
+}
+
+/* the file input covers the whole drop area, so it is a real, tall, tappable target (not a 1px sr-only box) */
+.drop input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.drop:focus-within {
+  outline: 3px solid #ffd27a;
+  outline-offset: 2px;
+}
+
+.drop img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.sec {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: normal;
+  color: #ffd27a;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 5px 0 10px;
+}
+
+[role='group'].chips {
+  margin: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+  font-size: 12px;
+  background: #6b4224;
+  border: 2px solid #c58a52;
+  color: #fff4e0;
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  background: #fff4e0;
+  color: #3b2416;
+  border-color: #e8b84a;
+}
+
+/* \FE0E keeps iOS from drawing ▶ as an emoji */
+.chip[aria-pressed='true'] .chip-mark::before {
+  content: '▶\FE0E ';
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 11px;
+  font-size: 16px;
+  text-align: center;
+  background: #c0503a;
+  color: #fff;
+  border: 3px solid #3b2416;
+  box-shadow: inset 0 -4px 0 #8e3626, 0 3px 0 #2b1a0e;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.fade {
+  opacity: 0.45;
+}
+
+/* the notice is read first and drawn last: DOM is notice → button, screen is button → notice */
+.note {
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.5;
+  color: #d9c2a3;
+}
+
+#region-notice {
+  order: 1;
+}
+
+#busy-note {
+  order: 2;
+}
+
+.toast {
+  background: #6b4224;
+  border: 2px dashed #ffd27a;
+  color: #ffd27a;
+  padding: 7px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.toast p {
+  display: inline;
+}
+
+.price {
+  position: relative; /* keeps the sr-only words inside this block */
+  margin: 4px 0;
+  font-size: 24px;
+  color: #a3542a;
+}
+
+.cap {
+  font-size: 12px;
+}
+
+.compare {
+  font-size: 12px;
+  color: #c0503a;
+}
+
+.bar-box {
+  padding: 5px;
+}
+
+.bar {
+  width: 60%;
+  height: 14px;
+  background: repeating-linear-gradient(90deg, #c0503a 0 10px, transparent 10px 14px);
+}
