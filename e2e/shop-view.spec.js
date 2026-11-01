@@ -193,7 +193,7 @@ test('CAREER-35 AC-9 pixels stay on whole cells', async ({ page }) => {
     })
     expect(r.width % 40, `${where} width ${r.width}`).toBe(0)
     expect(r.transformed, where).toEqual([])
-    expect(r.shape, where).toBe('crispEdges')
+    expect(r.shape.toLowerCase(), where).toBe('crispedges')
     const items = await page.getByTestId('shop-item').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width % 12))
     expect(items, where).toEqual([0, 0, 0, 0])
   }
