@@ -540,4 +540,37 @@ test.describe('reveal on the smallest iPhone', () => {
       await expect(share).toBeFocused()
     })
   }
+
+  // T9 H0: 사용자가 눈으로 볼 파일 5개. 확인 없이 저장만 한다.
+  test('CAREER-34 H0 shots', async ({ page, browser }, testInfo) => {
+    test.slow()
+    const { F1, F2 } = await makeFixtures(browser)
+    const save = (name, bytes) => writeFileSync(testInfo.outputPath(name), bytes)
+    await routeQueue(page, Array.from({ length: 4 }, () => ok(30, THIRTY)))
+    await fakeShare(page, 'notallowed')
+
+    await reveal(page, { file: F2, price: '🍡 10개' })
+    await press(page)
+    save('card-portrait.jpg', (await shared(page)).bytes)
+
+    await reveal(page, { file: F1, price: '🙅 안 팔아' })
+    await press(page)
+    save('card-landscape.jpg', (await shared(page)).bytes)
+
+    await reveal(page)
+    await enabled(page)
+    await ready(page)
+    await page.screenshot({ path: testInfo.outputPath('reveal.png') })
+    await shareOf(page).click()
+    await expect(noteOf(page)).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('reveal-note.png') })
+
+    const other = await page.context().newPage() // 글꼴이 없을 때 카드
+    await other.route('**/*.woff2', (r) => r.abort())
+    await routeQueue(other, [ok(30, THIRTY)])
+    await fakeShare(other, 'hold')
+    await reveal(other, { file: F2, price: '🍡 10개' })
+    await press(other)
+    save('card-fallback.jpg', (await shared(other)).bytes)
+  })
 })
