@@ -404,3 +404,140 @@ test(`${AC7} — font held`, async ({ page }) => {
   expect(await shareCount(page)).toBe(1)
   expect(s.active).toBe(true)
 })
+
+// ---------------------------------------------------------------- T8, T9: 가장 작은 iPhone
+
+test.describe('reveal on the smallest iPhone', () => {
+  test.use({ viewport: { width: 375, height: 548 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
+
+  // 위 · 아래 끝이 모두 화면 안 (스크롤하지 않는다)
+  async function inView(...locs) {
+    for (const l of locs) await expect(l).toBeInViewport({ ratio: 1 })
+  }
+
+  // AC-8 '요청': ⑥이 보이는 그 순간부터 공유 · 저장은 요청을 늘리지 않는다 (blob: · data:는 네트워크가 아님)
+  for (const mode of ['ok', 'abort', 'none']) {
+    test(`CAREER-34 AC-8 no requests — ${mode}`, async ({ page }) => {
+      await routeQueue(page, [ok(30, THIRTY)])
+      const posts = countPosts(page)
+      const urls = []
+      page.context().on('request', (r) => {
+        if (!/^(blob|data):/.test(r.url())) urls.push(r.url())
+      })
+      await fakeShare(page, mode)
+      await reveal(page)
+      const seen = urls.length
+      await enabled(page)
+      if (mode === 'none') await Promise.all([page.waitForEvent('download'), shareOf(page).click()])
+      else {
+        await shareOf(page).click()
+        await shared(page)
+      }
+      expect(urls.length - seen).toBe(0)
+      expect(posts()).toBe(1)
+    })
+  }
+
+  // AC-8 '자리': ⑥의 요소가 모두 화면 안, 버튼 높이 44 이상
+  test('CAREER-34 AC-8 in view', async ({ page }) => {
+    await routeQueue(page, [ok(30, THIRTY)])
+    await fakeShare(page, 'hold')
+    await reveal(page)
+    await enabled(page)
+    await ready(page)
+    const share = page.getByTestId('share-button')
+    await inView(
+      page.getByRole('group', { name: '값 공개' }),
+      page.getByTestId('appraised-shown'),
+      page.getByTestId('compare-line'),
+      share,
+      buttonOf(page, '다른 물건 꺼내기'),
+    )
+    expect((await share.boundingBox()).height).toBeGreaterThanOrEqual(44)
+  })
+
+  // AC-8 '자리': 그리기 실패 문구가 떠도 문구와 두 버튼이 화면 안
+  test('CAREER-34 AC-8 in view — note after draw failure', async ({ page }) => {
+    await fakeShare(page, 'hold')
+    await revealDrawFails(page, THIRTY)
+    await enabled(page)
+    await ready(page)
+    await shareOf(page).click()
+    await expect(noteOf(page)).toHaveText(NOT_DRAWN)
+    await inView(noteOf(page), page.getByTestId('share-button'), buttonOf(page, '다른 물건 꺼내기'))
+  })
+
+  // AC-8 '자리': 공유가 거부된 뒤 문구와 두 버튼이 화면 안
+  test('CAREER-34 AC-8 in view — note after notallowed', async ({ page }) => {
+    await routeQueue(page, [ok(30, THIRTY)])
+    await fakeShare(page, 'notallowed')
+    await reveal(page)
+    await press(page)
+    await expect(noteOf(page)).toHaveText(USE_SAVE)
+    await ready(page)
+    await inView(noteOf(page), page.getByTestId('share-button'), buttonOf(page, '다른 물건 꺼내기'))
+  })
+
+  // AC-8 history: 공유 · 취소 · 저장은 history를 바꾸지 않고, 뒤로 → ④, 앞으로 → 카드 되살림 없음
+  for (const mode of ['ok', 'abort', 'none']) {
+    test(`CAREER-34 AC-8 history — ${mode}`, async ({ page }) => {
+      await routeQueue(page, [ok(30, THIRTY)])
+      await fakeShare(page, mode)
+      await reveal(page)
+      await enabled(page)
+      const where = () => page.evaluate(() => ({ length: history.length, state: history.state }))
+      const before = await where()
+      if (mode === 'none') await Promise.all([page.waitForEvent('download'), shareOf(page).click()])
+      else {
+        await shareOf(page).click()
+        await shared(page)
+      }
+      expect(await where()).toEqual(before)
+
+      await page.goBack()
+      await expect(submitOf(page)).toBeVisible() // ④
+      await expect(buttonOf(page, '🍡 10개')).toHaveAttribute('aria-pressed', 'true')
+      await page.goForward()
+      await expect(submitOf(page)).toBeVisible()
+      await expect(page.getByRole('region', { name: '감정 결과' })).toHaveCount(0)
+    })
+  }
+
+  // AC-8 history: 공유 뒤 '다른 물건 꺼내기'는 새로 시작이다
+  test('CAREER-34 AC-8 history — another item after sharing', async ({ page }) => {
+    await routeQueue(page, [ok(30, THIRTY)])
+    await fakeShare(page, 'ok')
+    await reveal(page)
+    await press(page)
+    await shared(page)
+    await buttonOf(page, '다른 물건 꺼내기').click()
+    await expect(photoInput(page)).toBeAttached() // ②
+    await expect(page.getByRole('img', { name: '고른 사진 미리보기' })).toHaveCount(0)
+    await expect(buttonOf(page, '다음')).toBeDisabled()
+  })
+
+  // AC-8 초점: ⑥ 도착은 '감정 결과' 영역, 누른 뒤에는 버튼에 남는다. 화면에 그림 · 캔버스는 없다
+  for (const mode of ['ok', 'abort', 'none']) {
+    test(`CAREER-34 AC-8 focus — ${mode}`, async ({ page }) => {
+      await routeQueue(page, [ok(30, THIRTY)])
+      await fakeShare(page, mode)
+      await reveal(page)
+      const region = page.getByRole('region', { name: '감정 결과' })
+      await expect(region).toBeFocused()
+      await enabled(page) // 버튼이 켜진 뒤에도 그대로
+      await expect(region).toBeFocused()
+      await expect(page.locator('canvas, img')).toHaveCount(0)
+      await expect(page.getByTestId('uncle')).toHaveAttribute('aria-hidden', 'true')
+
+      const share = page.getByTestId('share-button')
+      if (mode === 'none') {
+        await Promise.all([page.waitForEvent('download'), shareOf(page).click()])
+        await expect(share).toHaveText('저장')
+      } else {
+        await shareOf(page).click()
+        await shared(page)
+      }
+      await expect(share).toBeFocused()
+    })
+  }
+})
