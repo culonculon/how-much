@@ -339,3 +339,68 @@ for (const mode of ['notallowed', 'other']) {
     await stays(page, download, bytes)
   })
 }
+
+// ---------------------------------------------------------------- T7 AC-7
+
+const AC7 = 'CAREER-34 AC-7 cancel, draw failure and font failure stay on the reveal'
+
+// AC-7 ①: 취소는 실패가 아니다. 문구 없음 · 글자 '공유' · 다시 누르면 다시 share
+test(`${AC7} — cancel`, async ({ page }) => {
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'abort')
+  const downloads = []
+  page.on('download', (d) => downloads.push(d))
+  await reveal(page)
+  await press(page)
+  await shared(page)
+  await flush(page)
+  expect(downloads).toHaveLength(0)
+  await expect(noteOf(page)).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '감정 결과' })).toBeVisible()
+  await expect(page.getByTestId('share-button')).toHaveText('공유')
+
+  await shareOf(page).click()
+  await shared(page, 2)
+  expect(await shareCount(page)).toBe(2)
+})
+
+// AC-7 ②: 그리기가 실패하면 문구만. toBlob은 어댑터가 끝난 뒤에 망가뜨린다(처음부터면 ⑥에 못 간다)
+test(`${AC7} — draw failure`, async ({ page }) => {
+  await fakeShare(page, 'hold')
+  const downloads = []
+  page.on('download', (d) => downloads.push(d))
+  await revealDrawFails(page)
+  await enabled(page)
+  await shareOf(page).click()
+
+  await expect(noteOf(page)).toHaveAttribute('role', 'alert')
+  await expect(noteOf(page)).toHaveText(NOT_DRAWN)
+  expect(await shareCount(page)).toBe(0)
+  expect(downloads).toHaveLength(0)
+  await expect(page.getByTestId('appraised-shown')).toBeVisible()
+  await expect(buttonOf(page, '다른 물건 꺼내기')).toBeVisible()
+})
+
+// AC-7 ③: 글꼴이 실패해도 눌림 안에서 share가 불린다
+test(`${AC7} — font failure`, async ({ page }) => {
+  await page.route('**/*.woff2', (r) => r.abort())
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'hold')
+  await reveal(page)
+  await press(page)
+  const s = await shared(page)
+  expect(await shareCount(page)).toBe(1)
+  expect(s.active).toBe(true)
+})
+
+// AC-7 ③: 글꼴이 오지 않고 붙잡혀도(상한 뒤) 같다
+test(`${AC7} — font held`, async ({ page }) => {
+  await page.route('**/*.woff2', () => {}) // 응답하지 않는다
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'hold')
+  await reveal(page, { fonts: false })
+  await press(page)
+  const s = await shared(page)
+  expect(await shareCount(page)).toBe(1)
+  expect(s.active).toBe(true)
+})
