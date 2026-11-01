@@ -394,3 +394,15 @@ button {
   height: 14px;
   background: repeating-linear-gradient(90deg, #c0503a 0 10px, transparent 10px 14px);
 }
+
+/* CAREER-34 plan A3: share and "another item" side by side, half width each (keeps the reveal within 548px) */
+.btn-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-row .btn {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
