@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { enter, next } from './shop-steps.js'
 
 // plan A2: 가장 작은 iPhone에서 주소창 · 도구 막대를 뺀 높이를 어림한 값. 설정 파일은 고치지 않는다.
 test.use({ viewport: { width: 375, height: 548 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
@@ -48,22 +49,31 @@ async function routeQueue(page, replies) {
 }
 
 const mascotOf = (page) => page.getByRole('status', { name: '감정사 아저씨' })
-const againOf = (page) => page.getByRole('button', { name: '다시 감정' })
+const uncleOf = (page) => page.getByTestId('uncle')
+// 실패 · 퇴근 화면의 버튼 (plan A1 '글자의 원본')
+const FAIL_BUTTON = { person_limit: '조금 뒤에 다시', unavailable: '다시 감정 받기', daily_limit: '내일 다시 오기' }
+const againOf = (page) => page.getByRole('button', { name: '다른 물건 꺼내기', exact: true })
+const failButtonOf = (page, code) => page.getByRole('button', { name: FAIL_BUTTON[code], exact: true })
 
+// ③(사연 태그)에서 멈춘다: 사진 · 태그를 고르고 ③에 있다
 async function choose(page) {
   await page.goto('/')
+  await enter(page)
   await page.getByLabel('사진 고르기').setInputFiles(png)
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await next(page)
   await page.getByRole('button', { name: '🎁 선물', exact: true }).click()
 }
 
-// '화면을 내린 상태'에서 누른다. 누른 뒤에는 화면을 움직이지 않는다(scroll · hover · tap 금지).
+// ③에서 '화면을 내린 상태'로 '다음'을 누르고, ④에서 가격을 골라 '감정 받기!'를 누른다.
+// 누른 뒤에는 화면을 움직이지 않는다(scroll · hover · tap 금지).
 async function press(page) {
-  const s = page.getByRole('button', { name: '감정 받기' })
-  await expect(s).toBeEnabled()
-  await s.evaluate((el) => el.scrollIntoView({ block: 'end' }))
+  const n = page.getByRole('button', { name: '다음', exact: true })
+  await expect(n).toBeEnabled()
+  await n.evaluate((el) => el.scrollIntoView({ block: 'end' }))
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
-  await s.click()
+  await n.click()
+  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '감정 받기!', exact: true }).click()
 }
 
 // 위 · 아래 끝이 모두 화면 안 (이 확인은 스크롤하지 않는다)
@@ -71,9 +81,11 @@ async function inView(...locs) {
   for (const l of locs) await expect(l).toBeInViewport({ ratio: 1 })
 }
 
-async function again(page) {
-  await expect(againOf(page)).toBeVisible()
-  await againOf(page).click()
+// ⑥에서 '뒤로' 둘로 ③에 간다 (같은 물건으로 다시)
+async function backToTags(page) {
+  await page.goBack()
+  await page.goBack()
+  await expect(page.getByRole('group', { name: '사연 태그' })).toBeVisible()
 }
 
 async function resultInView(page) {
@@ -97,15 +109,15 @@ test('CAREER-32 AC-4 ① thinking, card and again are in view on first and secon
   await choose(page)
 
   await press(page)
-  await expect(mascotOf(page)).toContainText('갸웃')
+  await expect(uncleOf(page)).toHaveAttribute('data-face', 'think')
   await inView(mascotOf(page))
   q.release()
   await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
   await resultInView(page)
 
-  await again(page)
+  await backToTags(page)
   await press(page)
-  await expect(mascotOf(page)).toContainText('갸웃')
+  await expect(uncleOf(page)).toHaveAttribute('data-face', 'think')
   await inView(mascotOf(page))
   q.release()
   await expect(page.getByTestId('appraised-price')).toHaveText('모찌 7개')
@@ -124,17 +136,18 @@ for (const [code, status] of [
 
     await press(page)
     await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
-    await again(page)
+    await backToTags(page)
     await press(page)
 
     if (code === 'daily_limit') {
-      await expect(mascotOf(page)).toContainText('🚶 퇴근')
+      await expect(uncleOf(page)).toHaveCount(0) // 아저씨 없이 어두운 가게
+      await expect(page.getByTestId('shop-scene')).toHaveAttribute('data-scene', 'night')
       await expect(page.getByTestId('off-duty')).toHaveText(contractText('daily_limit'))
       await expect(page.getByTestId('appraise-error')).toHaveCount(0)
-      await inView(mascotOf(page), page.getByTestId('off-duty'), againOf(page))
+      await inView(mascotOf(page), page.getByTestId('off-duty'), failButtonOf(page, code))
     } else {
       await expect(page.getByTestId('appraise-error')).toHaveText(contractText(code))
-      await inView(page.getByTestId('appraise-error'), againOf(page))
+      await inView(page.getByTestId('appraise-error'), failButtonOf(page, code))
     }
     if (code === 'person_limit') {
       // spec 글자 그대로

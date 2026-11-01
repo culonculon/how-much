@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { isPng, jpegInfo, makeFixtures } from './photo-fixtures.js'
+import { enter, next } from './shop-steps.js'
 
 // plan '테스트와 구현 사이의 약속'
 const OK = { status: 200, contentType: 'application/json; charset=utf-8', body: '{"mochi":10,"line":"흠, 손때가 제법 묻었구먼"}' }
@@ -30,9 +31,12 @@ async function intercept(page, response = OK) {
 
 async function pickAndAppraise(page, file) {
   await page.goto('/')
+  await enter(page)
   await page.getByLabel('사진 고르기').setInputFiles(file)
+  await next(page)
+  await next(page)
   await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  await page.getByRole('button', { name: '감정 받기' }).click()
+  await page.getByRole('button', { name: '감정 받기!', exact: true }).click()
 }
 const result = (page) => page.getByRole('region', { name: '감정 결과' })
 
@@ -64,12 +68,15 @@ test('AC-2 GPS and every EXIF segment are gone', async ({ page }) => {
 test('AC-3 orientation stays portrait after EXIF is removed', async ({ page }) => {
   const hits = await intercept(page)
   await page.goto('/')
+  await enter(page)
   await page.getByLabel('사진 고르기').setInputFiles(F2)
   const preview = page.getByRole('img', { name: '고른 사진 미리보기' })
   await expect(preview).toBeVisible()
   await expect.poll(() => preview.evaluate((i) => i.naturalHeight > i.naturalWidth)).toBe(true)
+  await next(page)
+  await next(page)
   await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  await page.getByRole('button', { name: '감정 받기' }).click()
+  await page.getByRole('button', { name: '감정 받기!', exact: true }).click()
   await expect(result(page)).toBeVisible()
   expect(hits).toHaveLength(1)
   const info = jpegInfo(hits[0].body)
@@ -110,24 +117,28 @@ test('AC-5 original never leaves, one request to the server entrance', async ({ 
 test('AC-6 unreadable photo is not sent, asks to pick again', async ({ page }) => {
   const hits = await intercept(page)
   await page.goto('/')
+  await enter(page)
   await page.getByLabel('사진 고르기').setInputFiles(F4)
+  await next(page)
+  await next(page)
   await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  const submit = page.getByRole('button', { name: '감정 받기' })
+  const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
   if (await submit.isEnabled()) await submit.click()
-  await expect(page.getByTestId('appraise-error')).toHaveText(INVALID_INPUT_TEXT)
+  await expect(page.getByTestId('appraise-error')).toHaveText(INVALID_INPUT_TEXT) // 안 읽히는 사진은 자동으로 ②로 돌아와 거기서 문구가 보인다
   expect(hits).toHaveLength(0)
 })
 
 test('AC-7 server rejection ends thinking and allows another try', async ({ page }) => {
   const hits = await intercept(page, REJECT)
   await pickAndAppraise(page, F1)
-  const mascot = page.getByRole('status', { name: '감정사 아저씨' })
+  const uncle = page.getByTestId('uncle')
   await expect(page.getByTestId('appraise-error')).toHaveText(INVALID_INPUT_TEXT)
-  await expect(mascot).toHaveText(/대기/)
-  await expect(mascot).not.toHaveText(/갸웃/)
-  await page.getByRole('button', { name: '다시 감정' }).click()
-  await page.getByLabel('사진 고르기').setInputFiles(F3)
-  const submit = page.getByRole('button', { name: '감정 받기' })
+  await expect(uncle).toHaveAttribute('data-face', 'base')
+  await expect(uncle).not.toHaveAttribute('data-face', 'think')
+  await page.getByLabel('사진 고르기').setInputFiles(F3) // invalid_input은 자동으로 ②
+  await next(page)
+  await next(page)
+  const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
   await expect(submit).toBeEnabled()
   await submit.click()
   await expect.poll(() => hits.length).toBe(2)

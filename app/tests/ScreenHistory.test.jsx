@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from '../src/App.jsx'
 import { appraise } from '../src/appraise.js'
 import { BUSY_TEXT } from '../src/options.js'
+import { back, face, next, walkToPrice } from './shop-steps.jsx'
 
 vi.mock('../src/appraise.js', () => ({ appraise: vi.fn(), FAKE_DELAY_MS: 800 }))
 
@@ -16,8 +17,6 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-const png = () => new File(['x'], 'cat.png', { type: 'image/png' })
-
 function renderApp() {
   return render(
     <StrictMode>
@@ -25,19 +24,14 @@ function renderApp() {
     </StrictMode>,
   )
 }
-const pickFile = (file) =>
-  fireEvent.change(screen.getByLabelText('사진 고르기'), { target: { files: [file] } })
 const priceGroup = () => within(screen.getByRole('group', { name: '마음 가격' }))
 const tagGroup = () => within(screen.getByRole('group', { name: '사연 태그' }))
 const pickPrice = (name) => fireEvent.click(priceGroup().getByRole('button', { name, exact: true }))
-const pickTag = (name) => fireEvent.click(tagGroup().getByRole('button', { name, exact: true }))
-const submit = () => screen.getByRole('button', { name: '감정 받기' })
+const submit = () => screen.getByRole('button', { name: '감정 받기!' })
 const preview = () => screen.queryByRole('img', { name: '고른 사진 미리보기' })
-const mascot = () => screen.getByRole('status', { name: '감정사 아저씨' })
 const reject = (code) => Object.assign(new Error('x'), code ? { code } : {})
 const card = () => screen.queryByRole('region', { name: '감정 결과' })
-const again = () => screen.getByRole('button', { name: '다시 감정' })
-const popstate = () => act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+const popstate = () => back() // 진짜 history.back(): 6단계에서는 칸 숫자가 줄어야 앞 화면으로 간다 (ADR-0009)
 
 // 답을 테스트가 풀어 줄 때까지 붙잡는다
 function hold() {
@@ -53,9 +47,8 @@ function hold() {
 
 function choose() {
   renderApp()
-  pickFile(png())
+  walkToPrice() // ④까지
   pickPrice('🍡 10개')
-  pickTag('🎁 선물')
 }
 
 // 첫 결과(모찌 3개)까지 간다
@@ -66,12 +59,16 @@ async function firstCard() {
   await screen.findByText('모찌 3개')
 }
 
-// 입력 화면이고 고른 것이 그대로
-function expectInputWithChoices() {
+// ④에서 시작해 고른 것이 그대로: ④ 값 / 뒤로 ③ 태그 / 뒤로 ② 사진 · 미리보기, 다음 둘로 ④로 돌아온다
+async function expectInputWithChoices() {
+  expect(priceGroup().getByRole('button', { name: '🍡 10개' }).getAttribute('aria-pressed')).toBe('true')
+  await back()
+  expect(tagGroup().getByRole('button', { name: '🎁 선물' }).getAttribute('aria-pressed')).toBe('true')
+  await back()
   expect(screen.getByLabelText('사진 고르기')).toBeTruthy()
   expect(preview()).not.toBeNull()
-  expect(priceGroup().getByRole('button', { name: '🍡 10개' }).getAttribute('aria-pressed')).toBe('true')
-  expect(tagGroup().getByRole('button', { name: '🎁 선물' }).getAttribute('aria-pressed')).toBe('true')
+  next()
+  next()
 }
 
 // CAREER-32 AC-5 ⑤ (U10 b): 갸웃 중 popstate → 입력 화면, 감정 받기는 꺼짐, 늦은 성공은 버린다
@@ -80,14 +77,14 @@ test('CAREER-32 AC-5 popstate while thinking returns to input and drops the late
   const { resolve } = hold()
   choose()
   fireEvent.click(submit())
-  popstate()
+  await popstate()
 
-  expectInputWithChoices()
   expect(submit().disabled).toBe(true)
   expect(screen.getByText(BUSY_TEXT).id).toBe('busy-note')
   expect(submit().getAttribute('aria-describedby')).toBe('region-notice busy-note')
-  expect(document.activeElement.id).toBe('busy-note')
-  expect(mascot().textContent).not.toContain('갸웃')
+  expect(document.activeElement.id).toBe('busy-note') // 초점은 다른 곳으로 가기 전에 본다
+  expect(face()).not.toBe('think')
+  await expectInputWithChoices()
 
   await act(async () => resolve({ mochi: 3, line: 'x' }))
   expect(card()).toBeNull()
@@ -102,11 +99,11 @@ test('CAREER-32 AC-5 popstate while thinking drops a late daily_limit too', asyn
   const { reject: rejectLate } = hold()
   choose()
   fireEvent.click(submit())
-  popstate()
-  expectInputWithChoices()
+  await popstate()
+  await expectInputWithChoices()
 
   await act(async () => rejectLate(reject('daily_limit')))
-  expect(mascot().textContent).not.toContain('🚶 퇴근')
+  expect(face()).not.toBeNull() // 퇴근(아저씨 없음)으로 바뀌지 않음
   expect(screen.queryByTestId('off-duty')).toBeNull()
   expect(screen.queryByTestId('appraise-error')).toBeNull()
   expect(submit().disabled).toBe(false)
@@ -115,28 +112,28 @@ test('CAREER-32 AC-5 popstate while thinking drops a late daily_limit too', asyn
 
 // CAREER-32 AC-5 ④: 몇 번을 감정해도 history는 한 칸만 늘고, 그 칸에 우리 표시가 있다
 test('CAREER-32 AC-5 history grows by at most one entry over many appraisals', async () => {
-  const before = history.length
   appraise.mockResolvedValueOnce({ mochi: 3, line: 'a' })
   appraise.mockResolvedValueOnce({ mochi: 7, line: 'b' })
   appraise.mockResolvedValueOnce({ mochi: 9, line: 'c' })
   choose()
+  const before = history.length // ④까지 걸어간 뒤
   for (const text of ['모찌 3개', '모찌 7개', '모찌 9개']) {
     fireEvent.click(submit())
     await screen.findByText(text)
-    if (text !== '모찌 9개') fireEvent.click(again())
+    if (text !== '모찌 9개') await back() // ⑥ → ④
   }
   expect(history.length).toBeLessThanOrEqual(before + 1)
-  expect(history.state).toEqual({ howMuch: 'out' })
+  expect(history.state).toEqual({ howMuch: 4 })
 })
 
 // CAREER-32 AC-5 ① + plan A1 초점: 결과에서 popstate → 입력 화면, 초점은 감정 받기
 test('CAREER-32 AC-5 popstate on a result returns to input with focus on submit', async () => {
   await firstCard()
-  popstate()
+  await popstate()
 
-  expectInputWithChoices()
   expect(card()).toBeNull()
   expect(document.activeElement).toBe(submit())
+  await expectInputWithChoices()
 })
 
 // CAREER-32 R1 ①: 갸웃 중 popstate 뒤 늦은 답(성공·실패)이 와서 busy-note가 사라져도 초점은 감정 받기로 간다
@@ -147,7 +144,7 @@ test.each([
   const h = hold()
   choose()
   fireEvent.click(submit())
-  popstate()
+  await popstate()
   expect(document.activeElement.id).toBe('busy-note')
 
   await act(async () => settle(h))
@@ -160,7 +157,7 @@ test('CAREER-32 R1 late answer leaves focus alone when it is elsewhere', async (
   const h = hold()
   choose()
   fireEvent.click(submit())
-  popstate()
+  await popstate()
   const other = priceGroup().getByRole('button', { name: '🍡 10개' })
   act(() => other.focus())
 

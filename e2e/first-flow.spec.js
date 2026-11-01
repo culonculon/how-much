@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { enter, next } from './shop-steps.js'
 
 // 1×1 PNG — 파일을 따로 두지 않는다
 const png = {
@@ -29,21 +30,13 @@ test('first flow end to end (AC-1,3,4,5,6,7,8, CAREER-26 AC-5)', async ({ page }
 
   await page.goto('/')
   await expect(page.locator(FREE_TEXT)).toHaveCount(0) // AC-5
-  const submit = page.getByRole('button', { name: '감정 받기' })
-  await expect(submit).toBeDisabled() // AC-6(a)
+  await enter(page) // ② 사진
+  await expect(page.getByRole('button', { name: '다음', exact: true })).toBeDisabled() // AC-6(a) 사진 전에는 못 넘어감
 
   // AC-1
   await page.getByLabel('사진 고르기').setInputFiles(png)
   await expect(page.getByRole('img', { name: '고른 사진 미리보기' })).toBeVisible()
-  await expect(submit).toBeDisabled() // AC-6(b)
-
-  // AC-3
-  const prices = page.getByRole('group', { name: '마음 가격' }).getByRole('button')
-  await expect(prices).toHaveCount(4)
-  await page.getByRole('button', { name: '🍡 1개', exact: true }).click()
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('🍡 10개')
-  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveCount(1)
+  await next(page) // ③ 사연 태그
 
   // AC-4
   const tags = page.getByRole('group', { name: '사연 태그' })
@@ -59,16 +52,27 @@ test('first flow end to end (AC-1,3,4,5,6,7,8, CAREER-26 AC-5)', async ({ page }
   await expect(a).toHaveAttribute('aria-pressed', 'false')
   await expect(b).toHaveAttribute('aria-pressed', 'true')
   await expect(tags.locator('[aria-pressed="true"]')).toHaveCount(1)
+  await next(page) // ④ 마음 가격
+  const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
+  await expect(submit).toBeDisabled() // AC-6(b) 가격 전에는 못 누름
+
+  // AC-3
+  const prices = page.getByRole('group', { name: '마음 가격' }).getByRole('button')
+  await expect(prices).toHaveCount(4)
+  await page.getByRole('button', { name: '🍡 1개', exact: true }).click()
+  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('🍡 10개')
+  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveCount(1)
 
   // AC-6 → AC-7
   await expect(submit).toBeEnabled()
   await submit.click()
-  const mascot = page.getByRole('status', { name: '감정사 아저씨' })
-  await expect(mascot).toHaveText(/갸웃/)
+  const uncle = page.getByTestId('uncle')
+  await expect(uncle).toHaveAttribute('data-face', 'think')
   await expect(submit).toHaveCount(0)
 
   // AC-8
-  await expect(mascot).toHaveText(/도장/)
+  await expect(uncle).toHaveAttribute('data-face', 'happy')
   await expect(page.getByTestId('appraised-price')).toHaveText(/^모찌 \d+개$/)
   await expect(page.getByTestId('my-price')).toHaveText('모찌 10개')
   await expect(page.getByTestId('mascot-line')).toHaveText(/\S/)
@@ -87,10 +91,10 @@ test('first flow end to end (AC-1,3,4,5,6,7,8, CAREER-26 AC-5)', async ({ page }
 
 test('rejects non-image file (AC-2)', async ({ page }) => {
   await page.goto('/')
+  await enter(page)
   await page.getByLabel('사진 고르기').setInputFiles(png)
   await page.getByLabel('사진 고르기').setInputFiles(txt)
   await expect(page.getByRole('img', { name: '고른 사진 미리보기' })).toHaveCount(0)
   await expect(page.getByRole('alert')).toContainText('다시 골라')
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  await expect(page.getByRole('button', { name: '감정 받기' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '다음', exact: true })).toBeDisabled() // 사진 없이 못 간다
 })

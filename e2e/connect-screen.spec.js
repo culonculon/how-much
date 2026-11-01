@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { enter, next } from './shop-steps.js'
 
 // 1×1 PNG — 파일을 따로 두지 않는다
 const png = {
@@ -14,18 +15,22 @@ const REGION = '사진은 감정하는 동안 서울 밖 아시아 리전에서 
 const UNAVAILABLE = "감정이 잘 안 됐어요. 잠시 뒤 '감정 받기'를 다시 눌러 주세요."
 
 async function expectRegionNotice(page) {
-  const submit = page.getByRole('button', { name: '감정 받기' })
+  const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
   await expect(page.getByText(REGION, { exact: true })).toBeVisible()
   await expect(submit).toHaveAccessibleDescription(REGION)
-  await expect(page.locator('#region-notice + button')).toHaveText('감정 받기')
+  await expect(page.locator('#region-notice + button')).toHaveText('감정 받기!')
 }
 
+// 이름은 그대로: 사진은 ②에서 고르고 나가기 전에 안내가 보인다(④). 6단계라 ④에서 가격을 고르기 전 · 고른 뒤를 본다 (plan 'spec 메모')
 test('CAREER-29 AC-2 region notice shows before and after picking', async ({ page }) => {
   await page.goto('/')
-  await expectRegionNotice(page)
+  await enter(page)
   await page.getByLabel('사진 고르기').setInputFiles(png)
+  await next(page)
+  await next(page)
+  await expectRegionNotice(page) // 가격을 고르기 전
   await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  await expect(page.getByRole('button', { name: '감정 받기' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: '감정 받기!', exact: true })).toBeEnabled()
   await expectRegionNotice(page) // 누르기 전
 })
 
@@ -43,14 +48,17 @@ test('CAREER-29 AC-3 unavailable returns to idle and retry works', async ({ page
           }),
   )
   await page.goto('/')
+  await enter(page)
   await page.getByLabel('사진 고르기').setInputFiles(png)
+  await next(page)
+  await next(page)
   await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  const submit = page.getByRole('button', { name: '감정 받기' })
+  const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
   await submit.click()
 
   await expect(page.getByTestId('appraise-error')).toHaveText(UNAVAILABLE)
-  await expect(page.getByRole('status', { name: '감정사 아저씨' })).toHaveText(/대기/)
-  await page.getByRole('button', { name: '다시 감정' }).click()
+  await expect(page.getByTestId('uncle')).toHaveAttribute('data-face', 'sweat')
+  await page.getByRole('button', { name: '다시 감정 받기', exact: true }).click()
   await expect(submit).toBeEnabled()
 
   await submit.click()
