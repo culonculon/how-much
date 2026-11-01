@@ -217,3 +217,52 @@ test('CAREER-34 AC-3 card bytes ignore mochi and compare line', async ({ page })
     expect(JSON.stringify(s.keys)).not.toContain('30')
   }
 })
+
+// ---------------------------------------------------------------- T4 AC-4
+
+// AC-4: 카드는 지금 결과의 내용이다 (앞 감정이 남지 않음)
+test('CAREER-34 AC-4 card shows only the current result', async ({ page, browser }) => {
+  test.slow()
+  const { F3 } = await makeFixtures(browser)
+  await routeQueue(page, Array.from({ length: 10 }, () => ok(30)))
+  await fakeShare(page, 'hold')
+  const card = async () => {
+    await press(page)
+    return (await shared(page)).bytes
+  }
+  const fresh = async (opts) => {
+    await reveal(page, opts)
+    return card()
+  }
+
+  const d1 = await fresh({ file: png, price: '🍡 1개' })
+  const d2 = await fresh({ file: F3, price: '🍡 100개' })
+  const own10 = await fresh({ file: png, price: '🍡 10개' })
+  const own100 = await fresh({ file: png, price: '🍡 100개' })
+
+  // ㄱ 첫 감정 뒤 뒤로 → 다른 마음 가격
+  await reveal(page, { file: png, price: '🍡 10개' })
+  await page.goBack()
+  await expect(submitOf(page)).toBeVisible() // ④
+  await pickPrice(page, '🍡 1개')
+  await submitOf(page).click()
+  await expect(page.getByTestId('mascot-line')).toBeVisible()
+  const a = await card()
+
+  // ㄴ 첫 감정 뒤 '다른 물건 꺼내기' → 다른 사진 · 다른 마음 가격
+  await reveal(page, { file: png, price: '🍡 10개' })
+  await buttonOf(page, '다른 물건 꺼내기').click()
+  await photoInput(page).setInputFiles(F3)
+  await next(page)
+  await page.getByRole('button', { name: '🎁 선물', exact: true }).click()
+  await next(page)
+  await pickPrice(page, '🍡 100개')
+  await submitOf(page).click()
+  await expect(page.getByTestId('mascot-line')).toBeVisible()
+  const b = await card()
+
+  expect(a.equals(d1)).toBe(true)
+  expect(b.equals(d2)).toBe(true)
+  expect(d1.equals(own10)).toBe(false) // 내가 부른 값이 들어간다
+  expect(own100.equals(d2)).toBe(false) // 사진이 들어간다
+})
