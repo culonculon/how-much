@@ -266,3 +266,19 @@ test('CAREER-34 AC-4 card shows only the current result', async ({ page, browser
   expect(d1.equals(own10)).toBe(false) // 내가 부른 값이 들어간다
   expect(own100.equals(d2)).toBe(false) // 사진이 들어간다
 })
+
+// ---------------------------------------------------------------- T5 AC-5
+
+// AC-5: GPS가 든 큰 JPEG를 골라도 카드에는 위치 정보가 없다
+test('CAREER-34 AC-5 card has no location data', async ({ page, browser }) => {
+  const { F1 } = await makeFixtures(browser)
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'hold')
+  await reveal(page, { file: F1 })
+  await press(page)
+  const { bytes } = await shared(page)
+
+  expect(jpegInfo(bytes)).toMatchObject({ isJpeg: true, hasExif: false, width: 1080, height: 1350 })
+  expect(bytes.includes(F1.buffer.subarray(0, 4096))).toBe(false)
+  expect(bytes.includes(Buffer.from('how-much\0'))).toBe(false) // F1 EXIF 글자
+})
