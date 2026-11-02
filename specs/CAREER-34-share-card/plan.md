@@ -1,4 +1,4 @@
-[CAREER-34](https://culonculon98.atlassian.net/browse/CAREER-34) · spec: [spec.md](spec.md) · 작업: [tasks.md](tasks.md) · 결정: [ADR-0010](../../docs/adr/0010-share-card-drawn-without-value.md)(제안) · 약속: contracts 바꾸지 않음
+[CAREER-34](https://culonculon98.atlassian.net/browse/CAREER-34) · spec: [spec.md](spec.md) · 작업: [tasks.md](tasks.md) · 결정: [ADR-0010](../../docs/adr/0010-share-card-drawn-without-value.md)(확정) · 약속: contracts 바꾸지 않음
 
 상태: 승인됨 (2026-11-01)
 <!-- 이 글을 쓴 세션은 코드 · 빌드 · 브라우저 · 네트워크를 돌리지 않았다(읽기와 grep만). '계산값' · '확인 못 함'은 그 뜻이다. Safari 동작은 알고 있는 지식이고 기기에서 본 적이 없다. -->

@@ -2,7 +2,7 @@
 
 - 날짜: 2026-11-01
 - 상태: 확정 (2026-11-01, 사용자 승인)
-- 정한 사람: architect 제안 — 사용자 승인 대기 (CAREER-34 plan A1)
+- 정한 사람: architect 제안 → 사용자 승인 (2026-11-01, CAREER-34 plan A1)
 - Refs: CAREER-34
 
 ## 상황

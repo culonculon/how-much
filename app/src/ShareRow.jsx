@@ -8,6 +8,7 @@ export default function ShareRow({ photo, myPrice, children }) {
   const [saving, setSaving] = useState(false) // true: the button saves instead of sharing
   const [note, setNote] = useState(null)
   const sheetOpen = useRef(false)
+  const savedAt = useRef(0)
 
   useEffect(() => {
     let alive = true
@@ -27,6 +28,8 @@ export default function ShareRow({ photo, myPrice, children }) {
     if (card === 'failed') return setNote(SHARE_TEXT.notDrawn)
     const data = { files: [card] }
     if (saving || !navigator.share || !navigator.canShare?.(data)) {
+      if (Date.now() - savedAt.current < 600) return // double press: one download; a later press saves again
+      savedAt.current = Date.now()
       saveCard(card)
       setSaving(true)
       setNote(null)
