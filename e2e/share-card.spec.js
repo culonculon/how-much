@@ -369,6 +369,22 @@ for (const mode of ['none', 'notallowed']) {
   })
 }
 
+// CAREER-36: 연타 막음(600ms)이 지나면 '저장'은 다시 내려받는다 — 막음이 영구히 막는 것이 아님을 확인
+test('CAREER-36 save again after the double press guard', async ({ page }) => {
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'none')
+  const downloads = []
+  page.on('download', (d) => downloads.push(d))
+  await reveal(page)
+  await enabled(page)
+  await shareOf(page).click()
+  await expect.poll(() => downloads.length).toBe(1)
+  await expect(page.getByTestId('share-button')).toHaveText('저장')
+  await page.waitForTimeout(700) // 고정 대기는 여기만: 막음 시간(ShareRow.jsx 600ms)이 지나야 한다
+  await page.getByTestId('share-button').click()
+  await expect.poll(() => downloads.length).toBe(2)
+})
+
 // ---------------------------------------------------------------- T7 AC-7
 
 const AC7 = 'CAREER-34 AC-7 cancel, draw failure and font failure stay on the reveal'
@@ -393,7 +409,7 @@ test(`${AC7} — cancel`, async ({ page }) => {
   expect(await shareCount(page)).toBe(2)
 })
 
-// AC-7 ②: 그리기가 실패하면 문구만. toBlob은 어댑터가 끝난 뒤에 망가뜨린다(처음부터면 ⑥에 못 간다)
+// AC-7 ②: 그리기가 실패하면 문구만. toBlob 흉내는 카드 캔버스(1080×1350)만 망가뜨리고 사진 준비(최대 1024px)는 통과시킨다
 test(`${AC7} — draw failure`, async ({ page }) => {
   await fakeShare(page, 'hold')
   const downloads = []
