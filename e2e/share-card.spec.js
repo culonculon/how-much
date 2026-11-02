@@ -133,7 +133,7 @@ async function shared(page, n = 1) {
 // 두 프레임이 지나갈 때까지 (고정 시간을 기다리지 않는다)
 const flush = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
 
-// 요청 뒤(= 어댑터 다시 그리기 끝)에 toBlob을 망가뜨리고 답을 푼다 → 그리기가 실패하는 ⑥
+// 카드(1080×1350 캔버스)의 toBlob만 null을 준다 → 사진 준비는 통과하고 shareCard의 'card not drawn'까지 닿는다
 async function revealDrawFails(page, line = LINE) {
   const q = await routeQueue(page, ['hold', ok(30, line)])
   const asked = page.waitForRequest((r) => new URL(r.url()).pathname === '/api/appraise')
@@ -142,8 +142,10 @@ async function revealDrawFails(page, line = LINE) {
   await submitOf(page).click()
   await asked
   await page.evaluate(() => {
-    HTMLCanvasElement.prototype.toBlob = function (cb) {
-      cb(null)
+    const toBlob = HTMLCanvasElement.prototype.toBlob
+    HTMLCanvasElement.prototype.toBlob = function (cb, ...rest) {
+      if (this.width === 1080 && this.height === 1350) return cb(null) // 카드만. 사진 준비는 통과
+      return toBlob.call(this, cb, ...rest)
     }
   })
   q.release()
@@ -299,9 +301,13 @@ for (const mode of ['none', 'nocanshare', 'cantshare']) {
   test(`CAREER-34 AC-6 falls back to download — ${mode}`, async ({ page }) => {
     await routeQueue(page, [ok(30)])
     await fakeShare(page, mode)
+    const downloads = []
+    page.on('download', (d) => downloads.push(d))
     await reveal(page)
     await enabled(page)
     const [download] = await Promise.all([page.waitForEvent('download'), shareOf(page).click()])
+    await flush(page)
+    expect(downloads).toHaveLength(1) // 내려받기 정확히 1번
     await expect(page.getByTestId('share-button')).toHaveText('저장')
     await expect(noteOf(page)).toHaveCount(0)
     const bytes = readFileSync(await download.path())
@@ -333,10 +339,33 @@ for (const mode of ['notallowed', 'other']) {
     expect(downloads).toHaveLength(0)
 
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('share-button').click()])
+    await flush(page)
+    expect(downloads).toHaveLength(1) // 내려받기 정확히 1번
     await expect(noteOf(page)).toHaveCount(0)
     const bytes = readFileSync(await download.path())
     expect(bytes.equals(s.bytes)).toBe(true)
     await stays(page, download, bytes)
+  })
+}
+
+// CAREER-36: '저장' 상태에서 연타해도 내려받기는 1번 (공유 창이 없을 때 · 거부된 뒤)
+for (const mode of ['none', 'notallowed']) {
+  test(`CAREER-36 save double press downloads once — ${mode}`, async ({ page }) => {
+    await routeQueue(page, [ok(30)])
+    await fakeShare(page, mode)
+    const downloads = []
+    page.on('download', (d) => downloads.push(d))
+    await reveal(page)
+    await enabled(page)
+    if (mode === 'notallowed') {
+      await shareOf(page).click()
+      await expect(page.getByTestId('share-button')).toHaveText('저장')
+      expect(downloads).toHaveLength(0)
+    }
+    await page.getByTestId('share-button').dblclick()
+    await expect.poll(() => downloads.length).toBeGreaterThan(0)
+    await flush(page) // 늦게 오는 2번째를 기다린다
+    expect(downloads).toHaveLength(1)
   })
 }
 
@@ -415,25 +444,29 @@ test.describe('reveal on the smallest iPhone', () => {
     for (const l of locs) await expect(l).toBeInViewport({ ratio: 1 })
   }
 
-  // AC-8 '요청': ⑥이 보이는 그 순간부터 공유 · 저장은 요청을 늘리지 않는다 (blob: · data:는 네트워크가 아님)
+  // AC-8 '요청': 감정 받기 직전부터 공유 · 저장까지 /api/appraise POST 1번 말고 요청이 없다 (blob: · data:는 네트워크가 아님)
   for (const mode of ['ok', 'abort', 'none']) {
     test(`CAREER-34 AC-8 no requests — ${mode}`, async ({ page }) => {
       await routeQueue(page, [ok(30, THIRTY)])
       const posts = countPosts(page)
-      const urls = []
-      page.context().on('request', (r) => {
-        if (!/^(blob|data):/.test(r.url())) urls.push(r.url())
-      })
       await fakeShare(page, mode)
-      await reveal(page)
-      const seen = urls.length
+      await toSubmit(page)
+      // '감정 받기!' 누르기 전부터 센다. /api/appraise POST 1번만 빼고 요청은 0개
+      const others = []
+      page.context().on('request', (r) => {
+        const appraise = r.method() === 'POST' && new URL(r.url()).pathname === '/api/appraise'
+        if (!appraise && !/^(blob|data):/.test(r.url())) others.push(r.url())
+      })
+      await submitOf(page).click()
+      await expect(page.getByTestId('mascot-line')).toBeVisible()
       await enabled(page)
       if (mode === 'none') await Promise.all([page.waitForEvent('download'), shareOf(page).click()])
       else {
         await shareOf(page).click()
         await shared(page)
       }
-      expect(urls.length - seen).toBe(0)
+      await flush(page)
+      expect(others).toEqual([])
       expect(posts()).toBe(1)
     })
   }
