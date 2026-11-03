@@ -26,7 +26,8 @@ export default function ShareRow({ photo, myPrice, children }) {
   function press() {
     if (sheetOpen.current) return
     if (card === 'failed') return setNote(SHARE_TEXT.notDrawn)
-    const data = { files: [card] }
+    // Same object for canShare and share; url comes from location, like the card's address text.
+    const data = { files: [card], url: location.origin + '/' }
     if (saving || !navigator.share || !navigator.canShare?.(data)) {
       if (Date.now() - savedAt.current < 600) return // double press: one download; a later press saves again
       savedAt.current = Date.now()
