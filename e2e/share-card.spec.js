@@ -12,6 +12,7 @@ const USE_SAVE = '공유 창을 열지 못했어요. 저장을 눌러 주세요.
 const THIRTY = '가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나'
 
 // goto 전에 건다. mode: ok · hold · abort · notallowed · other · none · nocanshare · cantshare
+// CAREER-37: cantshareurl — canShare false only when url is in the data
 async function fakeShare(page, mode) {
   await page.addInitScript((mode) => {
     Reflect.deleteProperty(Navigator.prototype, 'share')
@@ -27,11 +28,16 @@ async function fakeShare(page, mode) {
 
     const rec = { order: [], canFiles: [], calls: [] }
     window.__share = rec
+    rec.can = [] // CAREER-37: what canShare was asked, as plain values
+    let lastCan = null
     if (mode !== 'none') {
       if (mode !== 'nocanshare') {
         put('canShare', function (d) {
+          lastCan = d
+          rec.can.push({ keys: Object.keys(d ?? {}), nfiles: d?.files?.length ?? 0, url: d?.url ?? null })
           rec.order.push('canShare')
           rec.canFiles.push(d?.files?.length ?? 0)
+          if (mode === 'cantshareurl' && d && 'url' in d) return false
           return mode !== 'cantshare'
         })
       }
@@ -44,6 +50,8 @@ async function fakeShare(page, mode) {
           nfiles: d.files?.length ?? 0,
           done: false,
         }
+        entry.url = d.url ?? null
+        entry.sameFile = !!d.files?.[0] && d.files[0] === lastCan?.files?.[0]
         rec.order.push('share')
         rec.calls.push(entry)
         const file = d.files?.[0]
@@ -172,7 +180,7 @@ test('CAREER-34 AC-2 share passes one image file', async ({ page }) => {
   expect(canFiles[0]).toBe(1) // 그 파일을 담은 인자로 물었다
   expect(s.active).toBe(true)
   expect(s.toBlobs).toBe(before) // 눌렀을 때 그리지 않았다
-  expect(s.keys).toEqual(['files'])
+  expect(s.keys).toEqual(['files', 'url']) // CAREER-37: the site url is shared too
   expect(s.nfiles).toBe(1)
   expect(s.type.startsWith('image/')).toBe(true)
   expect(s.width).toBeGreaterThan(0)
@@ -182,6 +190,57 @@ test('CAREER-34 AC-2 share passes one image file', async ({ page }) => {
 
 // AC-2: 잇달아 2번 눌러도 1번 (끝나지 않는 공유 창)
 test('CAREER-34 AC-2 share passes one image file — double press', async ({ page }) => {
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'hold')
+  await reveal(page)
+  await enabled(page)
+
+  await shareOf(page).dblclick()
+  await shared(page)
+  await flush(page)
+  expect(await shareCount(page)).toBe(1)
+})
+
+// CAREER-37 AC-1 주어진: 가짜 share(hold) / 할 때: '공유' / 그러면: 같은 인자로 canShare → share 1번, files 1개 + url(origin + '/')
+test('CAREER-37 AC-1 share passes the card and the site url', async ({ page }) => {
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'hold')
+  const downloads = []
+  page.on('download', (d) => downloads.push(d))
+  await reveal(page)
+
+  const before = await press(page)
+  const s = await shared(page)
+  const order = await page.evaluate(() => window.__share.order)
+  const can = await page.evaluate(() => window.__share.can)
+  const origin = await page.evaluate(() => location.origin)
+  const host = await page.evaluate(() => location.host)
+
+  expect(order.slice(0, 2)).toEqual(['canShare', 'share'])
+  expect(order.filter((x) => x === 'share')).toHaveLength(1)
+  expect(can[0].keys).toEqual(s.keys) // canShare가 share와 같은 키 · 값으로 불렸다
+  expect(can[0].url).toBe(s.url)
+  expect(can[0].nfiles).toBe(1)
+  expect(s.sameFile).toBe(true)
+  expect(s.keys).toEqual(['files', 'url'])
+  expect(s.url).toBe(origin + '/')
+  const u = new URL(s.url)
+  expect(u.pathname).toBe('/')
+  expect(u.search).toBe('')
+  expect(u.hash).toBe('')
+  expect(u.host).toBe(host)
+  expect(s.nfiles).toBe(1)
+  expect(s.name).toBe(CARD_NAME)
+  expect(s.type).toBe('image/jpeg')
+  expect(s.width).toBeGreaterThan(0)
+  expect(s.height).toBeGreaterThan(0)
+  expect(s.active).toBe(true)
+  expect(s.toBlobs).toBe(before)
+  expect(downloads).toHaveLength(0)
+})
+
+// CAREER-37 AC-1: 잇달아 2번 눌러도 1번
+test('CAREER-37 AC-1 share passes the card and the site url — double press', async ({ page }) => {
   await routeQueue(page, [ok(30)])
   await fakeShare(page, 'hold')
   await reveal(page)
@@ -322,6 +381,34 @@ for (const mode of ['none', 'nocanshare', 'cantshare']) {
     expect(bytes.equals((await shared(other)).bytes)).toBe(true)
   })
 }
+
+// CAREER-37 AC-3 ④: url이 든 인자에만 canShare가 false → 한 번만 묻고 share 없이 내려받는다 (files만 · url만으로 다시 묻지 않음)
+test('CAREER-37 AC-3 falls back to download when files with url cannot be shared', async ({ page }) => {
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'cantshareurl')
+  const downloads = []
+  page.on('download', (d) => downloads.push(d))
+  await reveal(page)
+  await enabled(page)
+  const [download] = await Promise.all([page.waitForEvent('download'), shareOf(page).click()])
+  await flush(page)
+  expect(downloads).toHaveLength(1)
+  await expect(page.getByTestId('share-button')).toHaveText('저장')
+  await expect(noteOf(page)).toHaveCount(0)
+  expect(await shareCount(page)).toBe(0)
+  const can = await page.evaluate(() => window.__share.can)
+  expect(can).toHaveLength(1)
+  expect(can[0].keys).toEqual(['files', 'url'])
+  const bytes = readFileSync(await download.path())
+  await stays(page, download, bytes)
+
+  const other = await page.context().newPage()
+  await routeQueue(other, [ok(30)])
+  await fakeShare(other, 'hold')
+  await reveal(other)
+  await press(other)
+  expect(bytes.equals((await shared(other)).bytes)).toBe(true)
+})
 
 // AC-6 ④⑤: 공유가 거부되면 저절로 내려받지 않고 문구 + '저장', 한 번 더 누르면 내려받는다
 for (const mode of ['notallowed', 'other']) {
