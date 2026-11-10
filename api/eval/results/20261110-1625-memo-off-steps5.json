@@ -1,0 +1,126 @@
+{
+  "memo": "off",
+  "rounds": 5,
+  "rows": [
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 1,
+      "grade": 1,
+      "step": 1,
+      "mochi": 1,
+      "line": "플라스틱 재질이라 흔한 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 1067,
+      "memo": "off"
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 2,
+      "grade": 1,
+      "step": 1,
+      "mochi": 1,
+      "line": "플라스틱 물동이 새것 같네.",
+      "refused": false,
+      "code": null,
+      "ms": 998,
+      "memo": "off"
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 3,
+      "grade": 1,
+      "step": 1,
+      "mochi": 1,
+      "line": "플라스틱 물동이 새것 같네.",
+      "refused": false,
+      "code": null,
+      "ms": 973,
+      "memo": "off"
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 4,
+      "grade": 1,
+      "step": 1,
+      "mochi": 1,
+      "line": "플라스틱 물동이 새것 같네.",
+      "refused": false,
+      "code": null,
+      "ms": 991,
+      "memo": "off"
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 5,
+      "grade": 1,
+      "step": 1,
+      "mochi": 1,
+      "line": "플라스틱 물동이 새것 같네.",
+      "refused": false,
+      "code": null,
+      "ms": 945,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 1,
+      "grade": 3,
+      "step": 5,
+      "mochi": 59,
+      "line": "오래된 테디베어 인형이군. 잘 보관했구나.",
+      "refused": false,
+      "code": null,
+      "ms": 712,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 2,
+      "grade": 4,
+      "step": 5,
+      "mochi": 199,
+      "line": "오래된 테디베어 보기 드물구나.",
+      "refused": false,
+      "code": null,
+      "ms": 781,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 3,
+      "grade": 3,
+      "step": 5,
+      "mochi": 59,
+      "line": "오래된 테디베어 인형이군. 괜찮네.",
+      "refused": false,
+      "code": null,
+      "ms": 643,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 4,
+      "grade": 3,
+      "step": 5,
+      "mochi": 59,
+      "line": "오래된 테디베어 인형이군. 괜찮네.",
+      "refused": false,
+      "code": null,
+      "ms": 642,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 5,
+      "grade": 3,
+      "step": 5,
+      "mochi": 59,
+      "line": "오래된 테디베어 인형이군. 괜찮네.",
+      "refused": false,
+      "code": null,
+      "ms": 677,
+      "memo": "off"
+    }
+  ]
+}

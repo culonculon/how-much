@@ -53,7 +53,7 @@ beforeAll(async () => {
 });
 afterAll(() => new Promise((resolve) => server.close(resolve)));
 beforeEach(() => {
-  send = vi.fn(async () => converseReply(JSON.stringify({ grade: 3, line: '흠, 손때가 제법 묻었구먼' })));
+  send = vi.fn(async () => converseReply(JSON.stringify({ grade: 3, step: 2, line: '흠, 손때가 제법 묻었구먼' })));
 });
 
 const LOG_KEYS = ['outcome', 'ms', 'attempts', 'inputTokens', 'outputTokens'];
@@ -91,13 +91,14 @@ const INVALID = { code: 'invalid_input' };
 describe('AC-1 등급 → 표 → { mochi, line }', () => {
   test.each([1, 2, 3, 4, 5])('AC-1 등급 %i', async (g) => {
     const line = `등급 ${g}이구먼`;
-    send = vi.fn(async () => converseReply(JSON.stringify({ grade: g, line })));
+    send = vi.fn(async () => converseReply(JSON.stringify({ grade: g, step: 2, line })));
     const body = makeJpeg();
     const r = await call({ query: 'myPrice=hundred&tags=how-1&tags=now-2', body });
 
     expect(r.status).toBe(200);
     expect(Object.keys(r.json).sort()).toEqual(['line', 'mochi']);
-    expect(r.json).toEqual({ mochi: mochiOf(g), line });
+    // 모델 칸 2 + 태그 두 묶음(how · now) = 칸 4 (CAREER-41 §6)
+    expect(r.json).toEqual({ mochi: mochiOf(g, 4), line });
     expect(send).toHaveBeenCalledTimes(1);
 
     const input = send.mock.calls[0][0].input;
@@ -112,7 +113,7 @@ describe('AC-1 등급 → 표 → { mochi, line }', () => {
     const withoutBytes = JSON.stringify(input, (k, v) => (k === 'bytes' ? undefined : v));
     expect(withoutBytes).not.toContain('hundred');
 
-    expect(r.entry).toMatchObject({ outcome: 'ok', attempts: 1, inputTokens: 1520, outputTokens: 31, grade: g });
+    expect(r.entry).toMatchObject({ outcome: 'ok', attempts: 1, inputTokens: 1520, outputTokens: 31, grade: g, step: 2, mochi: mochiOf(g, 4) });
   });
 });
 
@@ -173,6 +174,14 @@ describe('실패 모양 (contracts/appraise-http.md §5)', () => {
     expect(r.entry.reason).toBe('not_json');
   });
 
+  test.each([0, 6, 2.5, '3', null])('CAREER-41 모델 칸(step)이 %j → 503 unavailable · 가까운 칸으로 맞추지 않음', async (step) => {
+    send = vi.fn(async () => converseReply(JSON.stringify({ grade: 3, step, line: '흠, 손때가 제법 묻었구먼' })));
+    const r = await call();
+    expect(r.status).toBe(503);
+    expect(r.json).toEqual({ code: 'unavailable' });
+    expect(r.entry.reason).toBe('bad_step');
+  });
+
   test('{"refuse":true} → 422 refused', async () => {
     send = vi.fn(async () => converseReply(JSON.stringify({ refuse: true })));
     const r = await call();
@@ -198,7 +207,7 @@ describe('실패 모양 (contracts/appraise-http.md §5)', () => {
     expect(r.json).toEqual({ code: 'unavailable' });
     expect(r.entry.reason).toBe('internal');
 
-    send = vi.fn(async () => converseReply(JSON.stringify({ grade: 2, line: '쓸 만하구먼' })));
+    send = vi.fn(async () => converseReply(JSON.stringify({ grade: 2, step: 2, line: '쓸 만하구먼' })));
     const next = await call();
     expect(next.status).toBe(200);
   });
@@ -261,7 +270,7 @@ describe('AC-2(f) 거절 뒤 남은 업로드 (plan 거절 뒤 남은 업로드 
 
   async function own() {
     const lines = [];
-    let send = vi.fn(async () => converseReply(JSON.stringify({ grade: 2, line: '쓸 만하구먼' })));
+    let send = vi.fn(async () => converseReply(JSON.stringify({ grade: 2, step: 2, line: '쓸 만하구먼' })));
     const sockets = [];
     const s = createServer({ send: (...a) => send(...a), log: (l) => lines.push(l), memo: createMemo({ maxEntries: 0 }), dailyLimit: daily.dailyLimit, personLimit: testPersonLimit() });
     s.on('connection', (sock) => sockets.push(sock));

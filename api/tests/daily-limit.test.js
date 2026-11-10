@@ -15,7 +15,7 @@ const FAKE_SECRET = 'howmuch-fake-secret-c27-value';
 process.env.AWS_SECRET_ACCESS_KEY = FAKE_SECRET;
 
 const NOON = Date.parse('2026-11-08T12:00:00+09:00');
-const OK_REPLY = () => converseReply('{"grade":3,"line":"흠"}');
+const OK_REPLY = () => converseReply('{"grade":3,"step":2,"line":"흠"}');
 const throttle = () => Object.assign(new Error('x'), { name: 'ThrottlingException', $metadata: { httpStatusCode: 429 } });
 const photo = (i) => makeJpeg({ width: 100 + i });
 

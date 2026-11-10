@@ -1,6 +1,6 @@
 // 모델 출력 검사 — 원본: contracts/appraise-http.md §4·§7.
 // 정해진 모양이 아니면 모두 OutputError(→ unavailable). 빈 성공·기본값으로 바꾸지 않는다(AC-3).
-import { LINE_MAX_CHARS, MAX_OUTPUT_CHARS } from './config.js';
+import { LINE_MAX_CHARS, MAX_OUTPUT_CHARS, STEPS } from './config.js';
 
 export class OutputError extends Error {
   constructor(reason) {
@@ -27,7 +27,7 @@ export function checkLine(line) {
 // ```json … ``` 울타리 한 겹만 벗긴다
 const FENCE = /^```(?:json)?[ \t]*\n([\s\S]*?)\n?```$/;
 
-export function parseModelOutput(text, stopReason) {
+export function parseModelOutput(text, stopReason, steps = STEPS) {
   if (typeof text !== 'string') throw new OutputError('not_json');
   if (countChars(text) > MAX_OUTPUT_CHARS) throw new OutputError('output_too_long');
   if (stopReason === 'max_tokens') throw new OutputError('max_tokens');
@@ -51,12 +51,16 @@ export function parseModelOutput(text, stopReason) {
     if (value.refuse === true) return { refused: true };
     throw new OutputError('bad_shape');
   }
-  if (keys !== 'grade,line') throw new OutputError('bad_shape');
+  if (keys !== 'grade,line,step') throw new OutputError('bad_shape');
 
-  const { grade, line } = value;
+  const { grade, step, line } = value;
   if (typeof grade !== 'number' || !Number.isInteger(grade) || grade < 1 || grade > 5) {
     throw new OutputError('bad_grade');
   }
+  // 칸(CAREER-41 §7): 범위 밖이면 가까운 칸으로 맞추지 않는다
+  if (typeof step !== 'number' || !Number.isInteger(step) || step < 1 || step > steps) {
+    throw new OutputError('bad_step');
+  }
   checkLine(line);
-  return { grade, line };
+  return { grade, step, line };
 }

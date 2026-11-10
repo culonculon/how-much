@@ -6,23 +6,25 @@
       "photo": "01-mug.jpg",
       "round": 1,
       "grade": 3,
-      "mochi": 10,
+      "mochi": 20,
       "line": "흠, 손때가 제법 묻었구먼",
       "refused": false,
       "code": null,
       "ms": 1801,
-      "memo": "miss"
+      "memo": "miss",
+      "step": 1
     },
     {
       "photo": "01-mug.jpg",
       "round": 2,
       "grade": 3,
-      "mochi": 10,
+      "mochi": 20,
       "line": "흠, 손때가 제법 묻었구먼",
       "refused": false,
       "code": null,
       "ms": 1802,
-      "memo": "hit"
+      "memo": "hit",
+      "step": 1
     },
     {
       "photo": "02-screenshot.jpg",
@@ -33,7 +35,8 @@
       "refused": true,
       "code": "refused",
       "ms": 900,
-      "memo": "miss"
+      "memo": "miss",
+      "step": null
     },
     {
       "photo": "02-screenshot.jpg",
@@ -44,29 +47,32 @@
       "refused": true,
       "code": "refused",
       "ms": 900,
-      "memo": "hit"
+      "memo": "hit",
+      "step": null
     },
     {
       "photo": "03-note.jpg",
       "round": 1,
       "grade": 5,
-      "mochi": 100,
+      "mochi": 200,
       "line": "쪽지는 몰라도 펜은 괜찮군",
       "refused": false,
       "code": null,
       "ms": 1801,
-      "memo": "miss"
+      "memo": "miss",
+      "step": 1
     },
     {
       "photo": "03-note.jpg",
       "round": 2,
       "grade": 5,
-      "mochi": 100,
+      "mochi": 200,
       "line": "쪽지는 몰라도 펜은 괜찮군",
       "refused": false,
       "code": null,
       "ms": 1802,
-      "memo": "hit"
+      "memo": "hit",
+      "step": 1
     }
   ]
 }

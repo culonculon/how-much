@@ -38,7 +38,7 @@ async function load(rel) {
 
 async function serve(dailyLimit) {
   const { lines, log } = collectLog();
-  const send = vi.fn(async () => converseReply('{"grade":3,"line":"흠"}'));
+  const send = vi.fn(async () => converseReply('{"grade":3,"step":2,"line":"흠"}'));
   const server = createServer({
     send: (...a) => send(...a),
     log,
