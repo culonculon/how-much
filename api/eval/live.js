@@ -2,14 +2,14 @@
 // 프롬프트·출력 검사·등급 표를 복사하지 않는다. AWS는 서버 안의 send만 부른다.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { gradeOf } from '../src/grades.js';
+import { placeOf } from '../src/grades.js';
 import { createServer } from '../src/server.js';
 
 // 모든 사진을 같은 입력으로: 내 값 10개, 태그 없음
 const QUERY = 'myPrice=ten';
 
 const emptyRow = (photo, round, ms) => ({
-  photo, round, grade: null, mochi: null, line: null, refused: false, code: null, ms, memo: null,
+  photo, round, grade: null, step: null, mochi: null, line: null, refused: false, code: null, ms, memo: null,
 });
 
 export async function runLive({ send, cases, photosDir, rounds, memo, dailyLimit, personLimit, log = () => {}, onRow = () => {} }) {
@@ -41,7 +41,7 @@ export async function runLive({ send, cases, photosDir, rounds, memo, dailyLimit
 
         if (res.status === 200) {
           try {
-            Object.assign(row, { grade: gradeOf(body.mochi), mochi: body.mochi, line: body.line });
+            Object.assign(row, { ...placeOf(body.mochi), mochi: body.mochi, line: body.line });
           } catch {
             row.code = 'bad_mochi';
           }

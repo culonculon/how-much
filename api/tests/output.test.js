@@ -38,6 +38,7 @@ describe('AC-3 모델 출력 검사 (contracts/appraise-http.md §7)', () => {
   test('정상 감정', () => {
     expect(parseModelOutput(json({ grade: 3, step: 2, line: '흠, 손때가 제법 묻었구먼' }), 'end_turn')).toEqual({
       grade: 3,
+      step: 2,
       line: '흠, 손때가 제법 묻었구먼',
     });
   });
@@ -77,7 +78,7 @@ describe('AC-3 모델 출력 검사 (contracts/appraise-http.md §7)', () => {
 
   test('```json 울타리 한 겹은 벗긴다', () => {
     const text = '```json\n' + json({ grade: 2, step: 2, line: '쓸 만하구먼' }) + '\n```';
-    expect(parseModelOutput(text, 'end_turn')).toEqual({ grade: 2, line: '쓸 만하구먼' });
+    expect(parseModelOutput(text, 'end_turn')).toEqual({ grade: 2, step: 2, line: '쓸 만하구먼' });
   });
 
   test('앞뒤에 다른 말 → not_json', () => {

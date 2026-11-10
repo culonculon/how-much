@@ -262,8 +262,9 @@ describe('AC-17 HTTP', () => {
     const first = await r1;
     calls[1].resolve(reply(4));
     const second = await r2;
-    expect(first.body.mochi).toBe(mochiOf(2, 2));
-    expect(second.body.mochi).toBe(mochiOf(2, 2));
+    // 모델 칸 2 + 태그 묶음 둘(TAGS_QUERY) = 칸 4 (CAREER-41 §6)
+    expect(first.body.mochi).toBe(mochiOf(2, 4));
+    expect(second.body.mochi).toBe(mochiOf(2, 4));
     expect(s.entries().map((e) => e.memo).sort()).toEqual(['miss', 'raced']);
     expect(memo.entries()).toHaveLength(1);
   });

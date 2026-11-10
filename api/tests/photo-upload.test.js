@@ -52,7 +52,7 @@ afterAll(async () => {
 });
 
 beforeEach(() => {
-  send = vi.fn(async () => converseReply('{"grade":3,"line":"흠"}'));
+  send = vi.fn(async () => converseReply('{"grade":3,"step":2,"line":"흠"}'));
 });
 
 async function post(body, { type = 'image/jpeg' } = {}) {
