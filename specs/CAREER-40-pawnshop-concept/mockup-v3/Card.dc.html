@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>공유 카드 — 전당표</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Galmuri11';src:url('/_blob/95bc4046d2758508ddf385691c9f59d9') format('woff2');font-display:swap}
+body{margin:0}
+.paper{background:#fff4e0;box-shadow:0 -6px 0 0 #2b1a0e,0 6px 0 0 #2b1a0e,-6px 0 0 0 #2b1a0e,6px 0 0 0 #2b1a0e,12px 12px 0 0 #2b1a0e}
+.pb{background:#fffaf2;box-shadow:0 -3px 0 0 #3b2416,0 3px 0 0 #3b2416,-3px 0 0 0 #3b2416,3px 0 0 0 #3b2416}
+.wood{background:#4a2f1c;color:#ffd27a;box-shadow:0 -3px 0 0 #2b1a0e,0 3px 0 0 #2b1a0e,-3px 0 0 0 #2b1a0e,3px 0 0 0 #2b1a0e,inset 0 3px 0 0 #6b4224,inset 0 -3px 0 0 #3b2416}
+.stamp{color:#c0503a;box-shadow:0 -6px 0 0 #c0503a,0 6px 0 0 #c0503a,-6px 0 0 0 #c0503a,6px 0 0 0 #c0503a}
+.chip{background:#3b2416;color:#fff4e0}
+.lead{flex-grow:1;height:3px;margin:0 6px 4px;background:repeating-linear-gradient(90deg,#c58a52 0 3px,transparent 3px 6px)}
+</style>
+</helmet>
+<div style="width: 540px; height: 675px; box-sizing: border-box; padding: 33px 36px 36px 30px; background: #4a2f1c; background-image: repeating-linear-gradient(0deg, #4a2f1c 0 18px, #3f2817 18px 21px); font-family: 'Galmuri11', monospace; -webkit-font-smoothing: none; color: #3b2416; display: flex; position: relative;">
+<div aria-hidden="true" style="position: absolute; left: 12px; top: 9px; width: 3px; height: 9px; background: #ffd27a; box-shadow: -3px 3px 0 0 #ffd27a, 3px 3px 0 0 #ffd27a;"></div>
+<div aria-hidden="true" style="position: absolute; right: 18px; top: 24px; width: 3px; height: 9px; background: #ffd27a; box-shadow: -3px 3px 0 0 #ffd27a, 3px 3px 0 0 #ffd27a;"></div>
+<div aria-hidden="true" style="position: absolute; left: 15px; bottom: 60px; width: 3px; height: 9px; background: #ffd27a; box-shadow: -3px 3px 0 0 #ffd27a, 3px 3px 0 0 #ffd27a;"></div>
+<div class="paper" style="position: relative; flex-grow: 1; display: flex; flex-direction: column; overflow: visible;">
+<div aria-hidden="true" style="position: relative; height: 30px; overflow: hidden;">
+<sc-for list="{{stripes}}" as="s" hint-placeholder-count="13">
+<div style="{{s.st}}"></div>
+</sc-for>
+</div>
+<div aria-hidden="true" style="position: absolute; left: -12px; top: 330px; width: 12px; height: 24px; background: #4a2f1c; box-shadow: 0 -3px 0 0 #2b1a0e, 0 3px 0 0 #2b1a0e, 3px 0 0 0 #2b1a0e;"></div>
+<div aria-hidden="true" style="position: absolute; right: -12px; top: 330px; width: 12px; height: 24px; background: #4a2f1c; box-shadow: 0 -3px 0 0 #2b1a0e, 0 3px 0 0 #2b1a0e, -3px 0 0 0 #2b1a0e;"></div>
+<div style="padding: 12px 24px 0; display: flex; justify-content: space-between; align-items: center;">
+<div class="chip" style="padding: 3px 9px; font-size: 12px; line-height: 18px;">No. 0023</div>
+<div style="font-size: 12px; line-height: 18px; color: #a3542a;">이동식 전당포 HOW-MUCH</div>
+<div class="chip" style="padding: 3px 9px; font-size: 12px; line-height: 18px;">11.09</div>
+</div>
+<div style="text-align: center; padding-top: 9px;">
+<div style="font-size: 36px; line-height: 42px; letter-spacing: 18px; padding-left: 18px;">전당표</div>
+<div aria-hidden="true" style="margin: 6px auto 0; width: 168px; height: 3px; background: #3b2416; box-shadow: 0 6px 0 0 #e8b84a;"></div>
+</div>
+<div style="padding: 21px 24px 0; display: flex; gap: 21px; align-items: flex-start;">
+<div style="position: relative; flex-shrink: 0;">
+<div class="pb" style="width: 156px; height: 156px; background: #e8dccb; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #6b5440; text-align: center;">[ 맡긴 물건 사진 ]</div>
+<div aria-hidden="true" style="position: absolute; right: -12px; top: 117px; width: 3px; height: 12px; background: #3b2416;"></div>
+<div style="position: absolute; right: -27px; top: 129px; width: 33px; padding: 3px 0; background: #ffd27a; box-shadow: 0 -3px 0 0 #3b2416, 0 3px 0 0 #3b2416, -3px 0 0 0 #3b2416, 3px 0 0 0 #3b2416; font-size: 12px; line-height: 12px; text-align: center;">23</div>
+</div>
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 12px; font-size: 12px; line-height: 18px; padding-top: 3px;">
+<div style="display: flex; align-items: flex-end;"><span style="color: #a3542a;">맡긴 물건</span><span class="lead"></span><span>[ 사진 속 물건 ]</span></div>
+<div style="display: flex; align-items: flex-end;"><span style="color: #a3542a;">사연</span><span class="lead"></span><span>#선물 #상자째</span></div>
+<div style="display: flex; align-items: flex-end;"><span style="color: #a3542a;">내가 부른 값</span><span class="lead"></span><span>한정선 7개</span></div>
+<div style="display: flex; align-items: flex-end;"><span style="color: #a3542a;">감정사</span><span class="lead"></span><span>동네 아저씨</span></div>
+</div>
+</div>
+<div class="wood" style="margin: 27px 24px 0; padding: 12px 15px; display: flex; align-items: center; gap: 12px;">
+<div style="display: flex; align-items: flex-end;">
+<svg aria-hidden="true" width="48" height="40" viewBox="0 0 12 10" style="shape-rendering: crispEdges;"><path d="M3 1h6v1H3z M2 2h1v1H2z M9 2h1v1H9z M1 3h1v5H1z M10 3h1v5h-1z M2 8h1v1H2z M9 8h1v1H9z M3 9h6v1H3z" fill="#2b1a0e"></path><path d="M3 2h6v1H3z M2 3h8v5H2z" fill="#fffaf2"></path><path d="M3 8h6v1H3z" fill="#e9dccb"></path><path d="M4 3h1v1H4z M7 4h1v1H7z M5 6h1v1H5z" fill="#f6b7c3"></path></svg>
+<svg aria-hidden="true" width="36" height="30" viewBox="0 0 12 10" style="shape-rendering: crispEdges; margin-left: -9px;"><path d="M3 1h6v1H3z M2 2h1v1H2z M9 2h1v1H9z M1 3h1v5H1z M10 3h1v5h-1z M2 8h1v1H2z M9 8h1v1H9z M3 9h6v1H3z" fill="#2b1a0e"></path><path d="M3 2h6v1H3z M2 3h8v5H2z" fill="#fffaf2"></path><path d="M3 8h6v1H3z" fill="#e9dccb"></path><path d="M4 3h1v1H4z M7 4h1v1H7z M5 6h1v1H5z" fill="#f6b7c3"></path></svg>
+</div>
+<div style="flex-grow: 1;">
+<div style="font-size: 12px; line-height: 18px; color: #e8d3b4;">아저씨 감정가</div>
+<div style="font-size: 36px; line-height: 42px; color: #ffd27a;">한정선 23개</div>
+</div>
+<div style="font-size: 12px; line-height: 18px; color: #fff4e0; text-align: right;">내 값보다<br><span style="color: #ff9c7a;">▲ 16개</span></div>
+</div>
+<div style="margin-top: auto; padding: 0 24px 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+<div style="display: flex; align-items: flex-end; gap: 9px;">
+<svg aria-hidden="true" width="72" height="72" viewBox="0 0 40 40" style="shape-rendering: crispEdges; margin-bottom: -15px;">
+<path d="{{u.O}}" fill="#3b2416"></path><path d="{{u.H}}" fill="#ece8e0"></path><path d="{{u.h}}" fill="#8f8a82"></path><path d="{{u.S}}" fill="#ffd9b0"></path><path d="{{u.s}}" fill="#f0b98a"></path><path d="{{u.W}}" fill="#ffffff"></path><path d="{{u.E}}" fill="#2a1a10"></path><path d="{{u.G}}" fill="#e8b84a"></path><path d="{{u.P}}" fill="#ff9c9c"></path><path d="{{u.M}}" fill="#c9c3b9"></path><path d="{{u.V}}" fill="#5b8a52"></path><path d="{{u.v}}" fill="#46703f"></path><path d="{{u.T}}" fill="#fff4e0"></path><path d="{{u.B}}" fill="#d0503f"></path><path d="{{u.b}}" fill="#a33a2c"></path><path d="{{u.K}}" fill="#6b4224"></path>
+</svg>
+<div style="font-size: 12px; line-height: 18px; color: #5a4330; padding-bottom: 3px;">"추억 값까지<br>쳐 줬구먼!"<br><span style="color: #a3542a;">내 물건도 감정받기 ▶ how-much</span></div>
+</div>
+<div class="stamp" aria-hidden="true" style="margin: 0 6px 6px 0; padding: 9px; font-size: 24px; line-height: 27px; text-align: center; background: rgba(192,80,58,0.06);">감정<br>필</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":540,"height":675}}'>
+class Component extends DCLogic {
+renderVals() {
+const happy = ["........................................","........................................","................OOOOOOOO................","..............OOHHHHHHHHOO..............",".............OHHHHHHHHHHHHO.............",".......OOO..OHHHHHHHHHHHHHHO..OOO.......","......OHHHOOSSSSSSSSSSSSSSSSOOHHHO......",".....OHHHHHSSSSSWWSSSSSSSSSSSHHHHHO.....","....OHHHHHHHSSSSWSSSSSSSSSSSHHHHHHHO....","....OHHHHHHHSSSSSSSSSSSSSSSSHHHHHHHO....","....OHHHHHHHSSSSSSSSSSSSSSSSHHHHHHHO....","....OHHHHHHHSSSSSSSSSSSSSSSSHHHHHHHO....","....OHHHHHHHhhhSSSSSSSSSGGGGGHHHHHHO....","....OHHHHHHHSSSSSSSSSSSGSSSSHGHHHHHO....",".....OHHHHHSSSSSSSSSSSGSSSSSSHGHHHO.....","....OSSHHHSSSESSSSSSSSGSSSESSSGHHssO....","....OSSSSSSSESESSSSSSSGSSESESSGssssO....","....OSSSSSSSSSSSSSSSSSGSSSSSSSGssssO....","....OSSSSSSSSSSSSSSSSSSGSSSSSGSssssO....",".....OSSSSSSSSSSSSSssSSSGGGGGSGsssO.....","......OOSPPPSSSSSSSssSSSSSSSPPPGOO......",".......OSSPSSSSSMMMMMMMMSSSSSPSGO.......","........OSSSSSMMMMMMMMMMMMSSSSSOGO......",".........OSSSMSSSESSSSESSSMSSSOOGO......","..........OsssssssEEEEsssssssOOGO.......","...........OssssssssssssssssO..O........","............OOssssssssssssOO............",".............OOOssssssssOOO.............","...........OOVVVVTTTTTTVVVVOO...........","..........OVVVVVBBBbbBBBVVVvvO..........","........OOVVVVVVBBBbbBBBVVVvvvOO........",".......OVVVVVVVVVTTTTTTVVVVvvvvvO.......","......OVVVVVVVVVVTTTTTTVVVVvvvvvvO......",".....OVVVVVVVVVVKTTTTTTVVVVvvvvvvvO.....",".....OVVVVVVVVVVVTTTTTTVVVVvvvvvvvO.....","......OVVVVVVVVVVTTTTTTVVVVvvvvvvO......","......OVVVVVVVVVKTTTTTTVVVVvvvvvvO......","......OVVVVVVVVVVTTTTTTVVVVvvvvvvO......",".......OVVVVVVVVVTTTTTTVVVVvvvvvO.......",".......OVVVVVVVVVTTTTTTVVVVvvvvvO......."];
+const KEYS = 'OHhSsWEGPMVvTBbK';
+const u = {};
+for (const k of KEYS) u[k] = '';
+happy.forEach((row, y) => {
+let x = 0;
+while (x < row.length) {
+const k = row[x];
+let n = 1;
+while (x + n < row.length && row[x + n] === k) n++;
+if (KEYS.indexOf(k) >= 0) u[k] += 'M' + x + ' ' + y + 'h' + n + 'v1h-' + n + 'z';
+x += n;
+}
+});
+for (const k of KEYS) if (!u[k]) u[k] = 'M0 0';
+const stripes = [];
+for (let i = 0; i < 14; i++) {
+const c = i % 2 === 0 ? '#c0503a' : '#fff4e0';
+const x = i * 36;
+stripes.push({ st: 'position:absolute;left:' + x + 'px;top:0;width:36px;height:18px;background:' + c });
+stripes.push({ st: 'position:absolute;left:' + (x + 3) + 'px;top:18px;width:30px;height:3px;background:' + c });
+stripes.push({ st: 'position:absolute;left:' + (x + 6) + 'px;top:21px;width:24px;height:3px;background:' + c });
+stripes.push({ st: 'position:absolute;left:' + (x + 3) + 'px;top:21px;width:3px;height:3px;background:#2b1a0e' });
+stripes.push({ st: 'position:absolute;left:' + (x + 30) + 'px;top:21px;width:3px;height:3px;background:#2b1a0e' });
+stripes.push({ st: 'position:absolute;left:' + (x + 6) + 'px;top:24px;width:24px;height:3px;background:#2b1a0e' });
+}
+stripes.push({ st: 'position:absolute;left:0;top:15px;width:100%;height:3px;background:rgba(43,26,14,0.12)' });
+return { u, stripes };
+}
+}
+</script>
+</body>
+</html>
