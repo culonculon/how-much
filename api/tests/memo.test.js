@@ -9,7 +9,7 @@ import { testPersonLimit } from './test-person-limit.js';
 // AC-17 같은 사진 · 같은 태그면 기억한 결과를 돌려준다 (spec 10/22 결정 1·2, plan '열린 질문 8 답')
 
 const TAGS_QUERY = 'tags=how-1&tags=now-2';
-const reply = (grade, line = `등급 ${grade}이구먼`) => converseReply(JSON.stringify({ grade, line }));
+const reply = (grade, line = `등급 ${grade}이구먼`) => converseReply(JSON.stringify({ grade, step: 2, line }));
 
 const servers = [];
 const temps = []; // CAREER-27: 테스트마다 따로 쓰는 하루 셈
@@ -236,7 +236,7 @@ describe('AC-17 HTTP', () => {
     expect(entries).toHaveLength(2);
     for (const [key, value] of entries) {
       expect(key).toMatch(/^[0-9a-f]{64}\|[a-z0-9,-]*$/);
-      expect([['grade', 'line'], ['refused']]).toContainEqual(Object.keys(value).sort());
+      expect([['grade', 'line', 'step'], ['refused']]).toContainEqual(Object.keys(value).sort());
     }
     const dump = JSON.stringify(entries);
     const mark = Buffer.from(PHOTO_MARK, 'latin1');
@@ -262,8 +262,8 @@ describe('AC-17 HTTP', () => {
     const first = await r1;
     calls[1].resolve(reply(4));
     const second = await r2;
-    expect(first.body.mochi).toBe(mochiOf(2));
-    expect(second.body.mochi).toBe(mochiOf(2));
+    expect(first.body.mochi).toBe(mochiOf(2, 2));
+    expect(second.body.mochi).toBe(mochiOf(2, 2));
     expect(s.entries().map((e) => e.memo).sort()).toEqual(['miss', 'raced']);
     expect(memo.entries()).toHaveLength(1);
   });
