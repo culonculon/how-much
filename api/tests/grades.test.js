@@ -12,13 +12,6 @@ const TABLE = {
     [60, 95, 130, 164, 199],
     [200, 400, 600, 799, 999],
   ],
-  3: [
-    [1, 3, 5],
-    [6, 13, 19],
-    [20, 40, 59],
-    [60, 130, 199],
-    [200, 600, 999],
-  ],
 };
 
 describe('CAREER-41 AC-1 등급 범위 (§6-1)', () => {
@@ -42,17 +35,17 @@ describe('CAREER-41 AC-1 등급 범위 (§6-1)', () => {
 });
 
 describe('CAREER-41 AC-1 칸 → 숫자 (§6-3)', () => {
-  test.each([5, 3])('%i칸 표가 계약 표와 같다', (steps) => {
+  test.each([5])('%i칸 표가 계약 표와 같다', (steps) => {
     const got = GRADES.map((g) => Array.from({ length: steps }, (_, i) => mochiOf(g.grade, i + 1, steps)));
     expect(got).toEqual(TABLE[steps]);
   });
 
-  test.each([5, 3])('%i칸: 모든 숫자가 서로 다르고 오름차순', (steps) => {
+  test.each([5])('%i칸: 모든 숫자가 서로 다르고 오름차순', (steps) => {
     const all = TABLE[steps].flat();
     for (let i = 1; i < all.length; i += 1) expect(all[i]).toBeGreaterThan(all[i - 1]);
   });
 
-  test.each([5, 3])('%i칸: placeOf(mochiOf(g, s)) === { g, s }', (steps) => {
+  test.each([5])('%i칸: placeOf(mochiOf(g, s)) === { g, s }', (steps) => {
     for (const { grade } of GRADES) {
       for (let step = 1; step <= steps; step += 1) {
         expect(placeOf(mochiOf(grade, step, steps), steps)).toEqual({ grade, step });
@@ -68,12 +61,13 @@ describe('CAREER-41 AC-1 칸 → 숫자 (§6-3)', () => {
     expect(() => mochiOf(3, 6, 5)).toThrow(RangeError);
     expect(() => mochiOf(3, 1.5, 5)).toThrow(RangeError);
     expect(() => mochiOf(3, 1, 4)).toThrow(RangeError);
+    expect(() => mochiOf(3, 1, 3)).toThrow(RangeError); // 3칸은 재 보고 버림(11/10)
   });
 
-  test('설정 칸 수 STEPS는 3 또는 5이고, 칸 뜻이 그 수만큼 있다', () => {
-    expect([3, 5]).toContain(STEPS);
+  test('설정 칸 수 STEPS는 5이고(11/10 사용자), 칸 뜻이 5개 있다', () => {
+    expect(STEPS).toBe(5);
+    expect(Object.keys(STEP_MEANINGS)).toEqual(['5']);
     expect(STEP_MEANINGS[5]).toHaveLength(5);
-    expect(STEP_MEANINGS[3]).toHaveLength(3);
   });
 });
 
@@ -95,7 +89,6 @@ describe('CAREER-41 AC-1 사연 태그 묶음마다 한 칸 · 최대 두 칸 (�
     expect(finalStep(1, ['how-1', 'now-1'], 5)).toBe(3);
     expect(finalStep(4, ['how-1', 'now-1'], 5)).toBe(5);
     expect(finalStep(5, ['how-1'], 5)).toBe(5);
-    expect(finalStep(3, ['how-1', 'now-1', 'feeling-1'], 3)).toBe(3);
   });
 
   test('모델 칸이 범위 밖이면 던진다(맞춰 넣지 않음)', () => {
