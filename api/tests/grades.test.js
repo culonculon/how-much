@@ -1,7 +1,7 @@
 // CAREER-41 등급 · 칸 · 숫자 표 — 원본: contracts/appraise-http.md §6 (6-1 · 6-3) · §7-1
 import { describe, expect, test } from 'vitest';
 import { STEPS } from '../src/config.js';
-import { finalStep, GRADES, gradeOf, mochiOf, placeOf, STEP_MEANINGS, tagBump } from '../src/grades.js';
+import { finalStep, GRADES, mochiOf, placeOf, STEP_MEANINGS, tagBump } from '../src/grades.js';
 
 // 계약 6-3 결과 표 그대로
 const TABLE = {
@@ -49,7 +49,6 @@ describe('CAREER-41 AC-1 칸 → 숫자 (§6-3)', () => {
     for (const { grade } of GRADES) {
       for (let step = 1; step <= steps; step += 1) {
         expect(placeOf(mochiOf(grade, step, steps), steps)).toEqual({ grade, step });
-        expect(gradeOf(mochiOf(grade, step, steps), steps)).toBe(grade);
       }
     }
   });

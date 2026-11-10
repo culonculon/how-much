@@ -69,7 +69,3 @@ export function placeOf(mochi, steps = STEPS) {
   }
   throw new RangeError(`표에 없는 mochi: ${mochi}`);
 }
-
-export function gradeOf(mochi, steps = STEPS) {
-  return placeOf(mochi, steps).grade;
-}

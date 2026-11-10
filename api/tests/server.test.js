@@ -174,6 +174,14 @@ describe('실패 모양 (contracts/appraise-http.md §5)', () => {
     expect(r.entry.reason).toBe('not_json');
   });
 
+  test.each([0, 6, 2.5, '3', null])('CAREER-41 모델 칸(step)이 %j → 503 unavailable · 가까운 칸으로 맞추지 않음', async (step) => {
+    send = vi.fn(async () => converseReply(JSON.stringify({ grade: 3, step, line: '흠, 손때가 제법 묻었구먼' })));
+    const r = await call();
+    expect(r.status).toBe(503);
+    expect(r.json).toEqual({ code: 'unavailable' });
+    expect(r.entry.reason).toBe('bad_step');
+  });
+
   test('{"refuse":true} → 422 refused', async () => {
     send = vi.fn(async () => converseReply(JSON.stringify({ refuse: true })));
     const r = await call();
