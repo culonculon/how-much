@@ -22,16 +22,16 @@ test('CAREER-35 AC-7 entries never exceed five over many appraisals', async () =
   renderApp()
   const before = history.length
   walkToPrice()
-  pickPrice('🍡 10개')
-  for (const text of ['모찌 3개', '모찌 7개', '모찌 9개']) {
+  pickPrice('10개')
+  for (const text of ['한정선 모찌 3개', '한정선 모찌 7개', '한정선 모찌 9개']) {
     fireEvent.click(submit())
     await screen.findByText(text)
-    if (text !== '모찌 9개') {
+    if (text !== '한정선 모찌 9개') {
       fireEvent.click(screen.getByRole('button', { name: '다른 물건 꺼내기' }))
       pickFile(png()) // ② → ④ 다시 걸어가기
       next()
       next()
-      pickPrice('🍡 10개')
+      pickPrice('10개')
     }
   }
   expect(history.length).toBeLessThanOrEqual(before + 4)

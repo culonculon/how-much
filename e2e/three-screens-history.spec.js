@@ -78,14 +78,14 @@ async function choose(page) {
   await next(page)
   await page.getByRole('button', { name: '🎁 선물', exact: true }).click()
   await next(page)
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
 }
 
 // ④에서 시작해 고른 것이 그대로: ④ 가격 / 뒤로 ③ 태그 / 뒤로 ② 미리보기, 다음 둘로 ④로 돌아온다
 async function expectChosen(page) {
   const price = page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')
   await expect(price).toHaveCount(1)
-  await expect(price).toHaveText('🍡 10개')
+  await expect(price).toHaveText('10개')
   await page.goBack()
   const tag = page.locator('[aria-label="사연 태그"] [aria-pressed="true"]')
   await expect(tag).toHaveCount(1)
@@ -115,7 +115,7 @@ test('CAREER-32 AC-5 ① back from a result keeps choices, then ③ forward show
   expectRoot(page)
 
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
   expectRoot(page)
 
   await page.goBack()
@@ -129,7 +129,7 @@ test('CAREER-32 AC-5 ① back from a result keeps choices, then ③ forward show
   await expect(uncleOf(page)).toHaveAttribute('data-face', 'think')
   expectRoot(page)
   q.release()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 7개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 7개')
   expect(posts()).toBe(2)
   expectRoot(page)
 
@@ -137,7 +137,7 @@ test('CAREER-32 AC-5 ① back from a result keeps choices, then ③ forward show
   await expect(submitOf(page)).toBeVisible()
   await page.goForward()
   expectRoot(page)
-  await expect(page.getByText('모찌 3개')).toHaveCount(0)
+  await expect(page.getByText('한정선 모찌 3개')).toHaveCount(0)
   expect(posts()).toBe(2)
 })
 
@@ -147,7 +147,7 @@ test('CAREER-32 AC-5 ③ forward right after back shows no card', async ({ page 
   const posts = countPosts(page)
   await choose(page)
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
 
   await page.goBack()
   expectRoot(page)
@@ -187,13 +187,13 @@ test('CAREER-32 AC-5 ④ after three appraisals back never shows an old card', a
   const posts = countPosts(page)
   await choose(page)
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
   await page.goBack() // ⑥ → ④
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 7개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 7개')
   await page.goBack()
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 9개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 9개')
   expectRoot(page)
 
   await page.goBack()
@@ -247,7 +247,7 @@ for (const where of ['thinking', 'result', 'person_limit', 'daily_limit']) {
     await choose(page)
     await submitOf(page).click()
     if (where === 'thinking') await expect(uncleOf(page)).toHaveAttribute('data-face', 'think')
-    else if (where === 'result') await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+    else if (where === 'result') await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
     else if (where === 'person_limit') await expect(page.getByTestId('appraise-error')).toBeVisible()
     else await expect(page.getByTestId('off-duty')).toBeVisible()
     expectRoot(page)
@@ -268,7 +268,7 @@ test('CAREER-32 AC-5 ⑥ opening the result address in a new tab starts empty', 
   const posts = countPosts(page)
   await choose(page)
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
   const url = page.url()
 
   const p2 = await page.context().newPage()

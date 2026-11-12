@@ -22,11 +22,11 @@ const LESS = '▼ 아저씨는 좀 짜게 봤다'
 const SAME = '= 자네 눈이 제법이군!'
 const NEVER = '안 판다니… 그래도 값은 매겨 봤네'
 const ROWS = [
-  ['🍡 10개', 30, MORE, '🍡 × 10', '모찌 10개'],
-  ['🍡 10개', 3, LESS, '🍡 × 10', '모찌 10개'],
-  ['🍡 10개', 0, LESS, '🍡 × 10', '모찌 10개'],
-  ['🍡 10개', 10, SAME, '🍡 × 10', '모찌 10개'],
-  ['🙅 안 팔아', 30, NEVER, '안 팔아', '안 팔아'],
+  ['10개', 30, MORE, '한정선 10개', '한정선 모찌 10개'],
+  ['10개', 3, LESS, '한정선 10개', '한정선 모찌 10개'],
+  ['10개', 0, LESS, '한정선 10개', '한정선 모찌 10개'],
+  ['10개', 10, SAME, '한정선 10개', '한정선 모찌 10개'],
+  ['안 팔아', 30, NEVER, '안 팔아', '안 팔아'],
 ]
 
 // AC-6: 값 창 · 비교 한 줄 · 서버 대사
@@ -38,8 +38,8 @@ test.each(ROWS)('CAREER-35 AC-6 price %s, server %s shows %s', async (price, moc
   fireEvent.click(submit())
   const card = within(await screen.findByRole('region', { name: '감정 결과' }))
 
-  expect(card.getByTestId('appraised-shown').textContent).toBe(`🍡 × ${mochi}`)
-  expect(card.getByTestId('appraised-price').textContent).toBe(`모찌 ${mochi}개`)
+  expect(card.getByTestId('appraised-shown').textContent).toBe(`한정선 ${mochi}개`)
+  expect(card.getByTestId('appraised-price').textContent).toBe(`한정선 모찌 ${mochi}개`)
   expect(card.getByTestId('my-shown').textContent).toBe(myShown)
   expect(card.getByTestId('my-price').textContent).toBe(myRead)
   expect(card.getByTestId('compare-line').textContent).toBe(compare)
@@ -51,7 +51,7 @@ test('CAREER-35 AC-6 the result appears as soon as the answer comes', async () =
   const { resolve } = hold()
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   expect(screen.getByRole('progressbar', { name: '감정 중' })).toBeTruthy()
   expect(screen.queryByRole('region', { name: '감정 결과' })).toBeNull()

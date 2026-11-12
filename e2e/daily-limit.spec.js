@@ -40,7 +40,7 @@ test('CAREER-27 AC-10 daily_limit shows off-duty and retry works', async ({ page
   await page.getByLabel('사진 고르기').setInputFiles(png)
   await next(page)
   await next(page)
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
   const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
   await submit.click()
 

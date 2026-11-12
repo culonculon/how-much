@@ -29,7 +29,7 @@ test('CAREER-29 AC-2 region notice shows before and after picking', async ({ pag
   await next(page)
   await next(page)
   await expectRegionNotice(page) // 가격을 고르기 전
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
   await expect(page.getByRole('button', { name: '감정 받기!', exact: true })).toBeEnabled()
   await expectRegionNotice(page) // 누르기 전
 })
@@ -52,7 +52,7 @@ test('CAREER-29 AC-3 unavailable returns to idle and retry works', async ({ page
   await page.getByLabel('사진 고르기').setInputFiles(png)
   await next(page)
   await next(page)
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
   const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
   await submit.click()
 
@@ -63,7 +63,7 @@ test('CAREER-29 AC-3 unavailable returns to idle and retry works', async ({ page
 
   await submit.click()
   await expect(page.getByRole('region', { name: '감정 결과' })).toBeVisible()
-  await expect(page.getByTestId('appraised-price')).toHaveText(/^모찌 (1|3|10|30|100)개$/)
-  await expect(page.getByTestId('my-price')).toHaveText('모찌 10개')
+  await expect(page.getByTestId('appraised-price')).toHaveText(/^한정선 모찌 (1|3|10|30|100)개$/)
+  await expect(page.getByTestId('my-price')).toHaveText('한정선 모찌 10개')
   expect(calls).toBe(2)
 })

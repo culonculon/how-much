@@ -31,7 +31,7 @@ test('CAREER-35 AC-8 focus moves into each new step', async () => {
   next() // ④
   expect(document.activeElement).toBe(group('내 값 부르기'))
 
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit()) // ⑤
   expect(document.activeElement).toBe(mascot())
 
@@ -61,7 +61,7 @@ test.each([
   appraise.mockRejectedValueOnce(reject(code))
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   const notice = await screen.findByTestId(code === 'daily_limit' ? 'off-duty' : 'appraise-error')
   expect(document.activeElement).toBe(where === 'status' ? mascot() : notice)
@@ -91,7 +91,7 @@ test('CAREER-35 AC-8 drawn glyphs are not in accessible names', async () => {
   expectDrawnGlyphsHidden() // ③
   expect(screen.getByRole('button', { name: '🎁 선물', exact: true })).toBeTruthy()
   next()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   expectDrawnGlyphsHidden() // ④
   fireEvent.click(submit())
   expectDrawnGlyphsHidden() // ⑤
@@ -110,7 +110,7 @@ test.each([
   appraise.mockRejectedValueOnce(reject(code))
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   await screen.findByTestId(code === 'daily_limit' ? 'off-duty' : 'appraise-error')
   expect(screen.getByRole('button', { name: buttonName, exact: true })).toBeTruthy() // ◀ · ↻ 없는 이름

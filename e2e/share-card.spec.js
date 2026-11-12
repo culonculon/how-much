@@ -95,7 +95,7 @@ const ready = (page) => page.evaluate(() => document.fonts.ready)
 const shareCount = (page) => page.evaluate(() => window.__share.calls.length)
 
 // ① → 감정 받기! 직전(④, 가격 고름)까지
-async function toSubmit(page, { price = '🍡 10개', file = png, fonts = true } = {}) {
+async function toSubmit(page, { price = '10개', file = png, fonts = true } = {}) {
   await page.goto('/')
   if (fonts) await ready(page)
   await enter(page)
@@ -264,8 +264,8 @@ test('CAREER-34 AC-3 card bytes ignore mochi and compare line', async ({ page })
     await press(page)
     return shared(page)
   }
-  const ten = [await take('🍡 10개'), await take('🍡 10개'), await take('🍡 10개')] // 더 쳐줌 · 짜게 봄 · 같음
-  const never = [await take('🙅 안 팔아'), await take('🙅 안 팔아')]
+  const ten = [await take('10개'), await take('10개'), await take('10개')] // 더 쳐줌 · 짜게 봄 · 같음
+  const never = [await take('안 팔아'), await take('안 팔아')]
 
   for (const s of [...ten, ...never]) expect(s.bytes.length).toBeGreaterThan(1000)
   expect(ten[1].bytes.equals(ten[0].bytes)).toBe(true)
@@ -296,28 +296,28 @@ test('CAREER-34 AC-4 card shows only the current result', async ({ page, browser
     return card()
   }
 
-  const d1 = await fresh({ file: png, price: '🍡 1개' })
-  const d2 = await fresh({ file: F3, price: '🍡 100개' })
-  const own10 = await fresh({ file: png, price: '🍡 10개' })
-  const own100 = await fresh({ file: png, price: '🍡 100개' })
+  const d1 = await fresh({ file: png, price: '1개' })
+  const d2 = await fresh({ file: F3, price: '100개' })
+  const own10 = await fresh({ file: png, price: '10개' })
+  const own100 = await fresh({ file: png, price: '100개' })
 
   // ㄱ 첫 감정 뒤 뒤로 → 다른 마음 가격
-  await reveal(page, { file: png, price: '🍡 10개' })
+  await reveal(page, { file: png, price: '10개' })
   await page.goBack()
   await expect(submitOf(page)).toBeVisible() // ④
-  await pickPrice(page, '🍡 1개')
+  await pickPrice(page, '1개')
   await submitOf(page).click()
   await expect(page.getByTestId('mascot-line')).toBeVisible()
   const a = await card()
 
   // ㄴ 첫 감정 뒤 '다른 물건 꺼내기' → 다른 사진 · 다른 마음 가격
-  await reveal(page, { file: png, price: '🍡 10개' })
+  await reveal(page, { file: png, price: '10개' })
   await buttonOf(page, '다른 물건 꺼내기').click()
   await photoInput(page).setInputFiles(F3)
   await next(page)
   await page.getByRole('button', { name: '🎁 선물', exact: true }).click()
   await next(page)
-  await pickPrice(page, '🍡 100개')
+  await pickPrice(page, '100개')
   await submitOf(page).click()
   await expect(page.getByTestId('mascot-line')).toBeVisible()
   const b = await card()
@@ -632,7 +632,7 @@ test.describe('reveal on the smallest iPhone', () => {
 
       await page.goBack()
       await expect(submitOf(page)).toBeVisible() // ④
-      await expect(buttonOf(page, '🍡 10개')).toHaveAttribute('aria-pressed', 'true')
+      await expect(buttonOf(page, '10개')).toHaveAttribute('aria-pressed', 'true')
       await page.goForward()
       await expect(submitOf(page)).toBeVisible()
       await expect(page.getByRole('region', { name: '감정 결과' })).toHaveCount(0)
@@ -685,11 +685,11 @@ test.describe('reveal on the smallest iPhone', () => {
     await routeQueue(page, Array.from({ length: 4 }, () => ok(30, THIRTY)))
     await fakeShare(page, 'notallowed')
 
-    await reveal(page, { file: F2, price: '🍡 10개' })
+    await reveal(page, { file: F2, price: '10개' })
     await press(page)
     save('card-portrait.jpg', (await shared(page)).bytes)
 
-    await reveal(page, { file: F1, price: '🙅 안 팔아' })
+    await reveal(page, { file: F1, price: '안 팔아' })
     await press(page)
     save('card-landscape.jpg', (await shared(page)).bytes)
 
@@ -705,7 +705,7 @@ test.describe('reveal on the smallest iPhone', () => {
     await other.route('**/*.woff2', (r) => r.abort())
     await routeQueue(other, [ok(30, THIRTY)])
     await fakeShare(other, 'hold')
-    await reveal(other, { file: F2, price: '🍡 10개' })
+    await reveal(other, { file: F2, price: '10개' })
     await press(other)
     save('card-fallback.jpg', (await shared(other)).bytes)
   })

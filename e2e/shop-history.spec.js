@@ -44,7 +44,7 @@ const ARRIVE = {
       await walkToPrice(page)
       await pickPrice(page)
       await submitOf(page).click()
-      await expect(priceText(page)).toHaveText('모찌 3개')
+      await expect(priceText(page)).toHaveText('한정선 모찌 3개')
     },
   },
   failure: {
@@ -84,7 +84,7 @@ test('CAREER-35 AC-7 back walks one step at a time with choices kept', async ({ 
   await routeQueue(page, [])
   await walkToPrice(page)
   await pickPrice(page)
-  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('🍡 10개')
+  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('10개')
   expectRoot(page)
 
   await page.goBack() // ③
@@ -109,7 +109,7 @@ test('CAREER-35 AC-7 back walks one step at a time with choices kept', async ({ 
   await page.getByRole('button', { name: '다음', exact: true }).click()
   await expect(tagsGroup(page).locator('[aria-pressed="true"]')).toHaveText('🎁 선물')
   await page.getByRole('button', { name: '다음', exact: true }).click()
-  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('🍡 10개')
+  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('10개')
   expectRoot(page)
 })
 
@@ -121,13 +121,13 @@ for (const where of WHERE) {
     await walkToPrice(page)
     await pickPrice(page)
     await submitOf(page).click()
-    if (where === 'result') await expect(priceText(page)).toHaveText('모찌 3개')
+    if (where === 'result') await expect(priceText(page)).toHaveText('한정선 모찌 3개')
     else await expect(page.getByTestId(where === 'daily_limit' ? 'off-duty' : 'appraise-error')).toBeVisible()
     expectRoot(page)
 
     await page.goBack()
     await expect(submitOf(page)).toBeEnabled() // ④
-    await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('🍡 10개')
+    await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('10개')
     await expect(regionOf(page)).toHaveCount(0)
     await expect(photoInput(page)).toHaveCount(0)
     expectRoot(page)
@@ -141,7 +141,7 @@ test('CAREER-35 AC-7 forward after back shows no old card', async ({ page }) => 
   await walkToPrice(page)
   await pickPrice(page)
   await submitOf(page).click()
-  await expect(priceText(page)).toHaveText('모찌 3개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 3개')
 
   await page.goBack()
   await expect(submitOf(page)).toBeVisible()
@@ -149,7 +149,7 @@ test('CAREER-35 AC-7 forward after back shows no old card', async ({ page }) => 
   await settle(page)
   await expect(submitOf(page)).toBeVisible()
   await expect(regionOf(page)).toHaveCount(0)
-  await expect(page.getByText('모찌 3개')).toHaveCount(0)
+  await expect(page.getByText('한정선 모찌 3개')).toHaveCount(0)
   expectRoot(page)
   expect(posts()).toBe(1)
 })
@@ -161,11 +161,11 @@ test('CAREER-35 AC-7 back never shows an old card after three appraisals', async
   await walkToPrice(page)
   await pickPrice(page)
   await submitOf(page).click()
-  await expect(priceText(page)).toHaveText('모찌 3개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 3개')
 
   await page.goBack() // 같은 것을 다시: ④에서 한 번 더
   await submitOf(page).click()
-  await expect(priceText(page)).toHaveText('모찌 7개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 7개')
 
   await page.getByRole('button', { name: '다른 물건 꺼내기' }).click() // 다른 물건: ②에서 처음부터
   await photoInput(page).setInputFiles(png)
@@ -173,7 +173,7 @@ test('CAREER-35 AC-7 back never shows an old card after three appraisals', async
   await page.getByRole('button', { name: '다음', exact: true }).click()
   await pickPrice(page)
   await submitOf(page).click()
-  await expect(priceText(page)).toHaveText('모찌 9개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 9개')
   await expect.poll(posts).toBe(3)
 
   const screens = [() => submitOf(page), () => tagsGroup(page), () => photoInput(page), () => door(page)]
@@ -239,7 +239,7 @@ test('CAREER-35 AC-7 nothing stays in browser storage', async ({ page }) => {
   await walkToPrice(page)
   await pickPrice(page)
   await submitOf(page).click()
-  await expect(priceText(page)).toHaveText('모찌 3개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 3개')
   expectRoot(page)
 
   const stored = await page.evaluate(async () => ({

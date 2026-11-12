@@ -24,7 +24,7 @@ test('CAREER-35 AC-10 no request leaves the site and the font arrives', async ({
   await walkToPrice(page)
   await pickPrice(page)
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
 
   expect(urls.filter((u) => !u.startsWith(ORIGIN) && !u.startsWith('blob:') && !u.startsWith('data:'))).toEqual([])
   await page.evaluate(() => document.fonts.ready)

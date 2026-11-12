@@ -135,7 +135,7 @@ async function visitScreens(page, visit) {
   await pickPrice(page)
   await visit('price')
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
   await visit('result')
   await page.goBack()
   await submitOf(page).click()
@@ -177,8 +177,8 @@ test('CAREER-35 AC-2 chosen chip shows ▶', async ({ page }) => {
 
   await next(page) // 마음 가격 칩도 같다
   await pickPrice(page)
-  expect(await mark(buttonOf(page, '🍡 10개'))).toContain('▶')
-  expect(await mark(buttonOf(page, '🍡 1개'))).toBe('none')
+  expect(await mark(buttonOf(page, '10개'))).toContain('▶')
+  expect(await mark(buttonOf(page, '1개'))).toBe('none')
 })
 
 // AC-9: 그림은 칸 수의 정수배 폭이고, 조상에 transform이 없고, 칸 경계를 안 흐린다
@@ -194,8 +194,19 @@ test('CAREER-35 AC-9 pixels stay on whole cells', async ({ page }) => {
     expect(r.width % 40, `${where} width ${r.width}`).toBe(0)
     expect(r.transformed, where).toEqual([])
     expect(r.shape.toLowerCase(), where).toBe('crispedges')
-    const items = await page.getByTestId('shop-item').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width % 12))
-    expect(items, where).toEqual([0, 0, 0, 0])
+    // K4: 물건 폭 % 12 → 트럭 판 안 모든 자손 상자(판 기준)가 3의 배수, 1개 이상
+    const off = await page.getByTestId('truck-board').evaluate((board) => {
+      const o = board.getBoundingClientRect()
+      const r2 = (v) => Math.round(v * 100) / 100
+      const all = [...board.querySelectorAll('*')]
+      const bad = all.filter((e) => {
+        const b = e.getBoundingClientRect()
+        return [b.left - o.left, b.top - o.top, b.width, b.height].some((v) => r2(v) % 3 !== 0)
+      })
+      return { total: all.length, bad: bad.length }
+    })
+    expect(off.total, where).toBeGreaterThan(0)
+    expect(off.bad, where).toBe(0)
   }
   await expect(buttonOf(page, '가게에 들어가기')).toBeVisible()
   await check('door')
@@ -206,7 +217,7 @@ test('CAREER-35 AC-9 pixels stay on whole cells', async ({ page }) => {
   await next(page)
   await pickPrice(page)
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
   await check('result')
 })
 
@@ -242,7 +253,7 @@ test('CAREER-35 Q9 shots', async ({ page }, testInfo) => {
   await expect(submitOf(page)).toBeEnabled()
 
   await submitOf(page).click()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 30개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 30개')
   await shot('result')
   await page.goBack()
   await submitOf(page).click()

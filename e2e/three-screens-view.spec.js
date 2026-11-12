@@ -72,7 +72,7 @@ async function press(page) {
   await n.evaluate((el) => el.scrollIntoView({ block: 'end' }))
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
   await n.click()
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
   await page.getByRole('button', { name: '감정 받기!', exact: true }).click()
 }
 
@@ -112,7 +112,7 @@ test('CAREER-32 AC-4 ① thinking, card and again are in view on first and secon
   await expect(uncleOf(page)).toHaveAttribute('data-face', 'think')
   await inView(mascotOf(page))
   q.release()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
   await resultInView(page)
 
   await backToTags(page)
@@ -120,7 +120,7 @@ test('CAREER-32 AC-4 ① thinking, card and again are in view on first and secon
   await expect(uncleOf(page)).toHaveAttribute('data-face', 'think')
   await inView(mascotOf(page))
   q.release()
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 7개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 7개')
   await resultInView(page)
 })
 
@@ -135,7 +135,7 @@ for (const [code, status] of [
     await choose(page)
 
     await press(page)
-    await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+    await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
     await backToTags(page)
     await press(page)
 

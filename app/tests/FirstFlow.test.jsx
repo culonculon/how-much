@@ -8,12 +8,12 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from '../src/App.jsx'
 import { appraise } from '../src/appraise.js'
 import { ERROR_TEXT as APP_ERROR_TEXT, OFF_DUTY_TEXT } from '../src/options.js'
-import { back, enter, face, next, resetHistory, walkToPrice } from './shop-steps.jsx'
+import { back, enter, face, next, priceInput, resetHistory, typePrice, walkToPrice } from './shop-steps.jsx'
 
 vi.mock('../src/appraise.js', () => ({ appraise: vi.fn(), FAKE_DELAY_MS: 800 }))
 
 // contracts/appraise.md §2 순서
-const PRICES = ['🍡 1개', '🍡 10개', '🍡 100개', '🙅 안 팔아']
+const PRICES = ['1개', '10개', '100개', '777개', '안 팔아']
 // contracts/appraise.md §3 이름·순서
 const TAG_GROUPS = [
   ['어떻게 왔나', ['🎁 선물', '💸 첫 월급', '🛫 여행', '🥕 중고 득템', '🎰 뽑기·경품', '👵 물려받음']],
@@ -71,24 +71,26 @@ test('AC-2 a bad file after a good one clears the preview', () => {
   expect(preview()).toBeNull()
 })
 
-// AC-3: 마음 가격 버튼 4개, 마지막에 누른 하나만 선택됨
+// AC-3: 마음 가격 버튼 5개(aria-pressed를 가진 것), 마지막에 누른 하나만 선택됨 — K3: 4개 → 5개
 test('AC-3 four price buttons, only the last pressed is selected', () => {
   renderApp()
   walkToPrice()
-  const buttons = priceGroup().getAllByRole('button')
+  const buttons = priceGroup().getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed'))
   expect(buttons.map((b) => b.textContent)).toEqual(PRICES)
-  pickPrice('🍡 1개')
-  pickPrice('🙅 안 팔아')
+  pickPrice('1개')
+  pickPrice('안 팔아')
   const pressed = Object.fromEntries(
     priceGroup()
       .getAllByRole('button')
+      .filter((b) => b.hasAttribute('aria-pressed'))
       .map((b) => [b.textContent, b.getAttribute('aria-pressed')]),
   )
   expect(pressed).toEqual({
-    '🍡 1개': 'false',
-    '🍡 10개': 'false',
-    '🍡 100개': 'false',
-    '🙅 안 팔아': 'true',
+    '1개': 'false',
+    '10개': 'false',
+    '100개': 'false',
+    '777개': 'false',
+    '안 팔아': 'true',
   })
 })
 
@@ -132,8 +134,31 @@ test('AC-5 no free-text field on the first screen or the result card', async () 
   next()
   expect(container.querySelectorAll(FREE_TEXT)).toHaveLength(0) // ③
   next()
-  expect(container.querySelectorAll(FREE_TEXT)).toHaveLength(0) // ④
-  pickPrice('🍡 10개')
+  // ④ — K7(plan A6 'K7 — 다시 짬'): 글 칸은 숫자 칸 하나뿐이고, 그 칸은 숫자 말고는 아무 글도 밖으로 내보내지 않는다
+  expect([...container.querySelectorAll(FREE_TEXT)]).toEqual([priceInput()]) // 1
+  const field = priceInput() // 2
+  expect(field.type).toBe('text')
+  expect(field.inputMode).toBe('numeric')
+  expect(field.getAttribute('pattern')).toBe('[0-9]*')
+  expect(field.form).toBeNull()
+  expect(field.name).toBe('')
+  const href = location.href
+  for (const text of ['자유글', '23abc', '<b>zz</b>', '１２', '🍡7', 'x'.repeat(500)]) {
+    typePrice(text) // 3
+    expect(submit().disabled).toBe(true)
+    fireEvent.click(submit())
+    fireEvent.keyDown(priceInput(), { key: 'Enter', code: 'Enter' })
+    expect(appraise).toHaveBeenCalledTimes(0)
+    const rest = container.cloneNode(true) // 4: 칸 자신의 value는 React가 비추므로 칸만 뺀다
+    rest.querySelectorAll(FREE_TEXT).forEach((el) => el.remove())
+    expect(rest.textContent.includes(text)).toBe(false)
+    const attrs = [...rest.querySelectorAll('*')].flatMap((el) => [...el.attributes].map((a) => a.value))
+    expect(attrs.some((v) => v.includes(text))).toBe(false)
+    expect(localStorage.length).toBe(0)
+    expect(sessionStorage.length).toBe(0)
+    expect(location.href).toBe(href)
+  }
+  pickPrice('10개') // 5
   const resolve = holdAppraise()
   fireEvent.click(submit())
   expect(container.querySelectorAll(FREE_TEXT)).toHaveLength(0) // ⑤
@@ -156,7 +181,7 @@ test('AC-6b photo only disables the submit button', () => {
 test('AC-6c price only disables the submit button', async () => {
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   await back() // ③
   await back() // ② 사진을 나쁜 파일로 바꾸면 가격만 남는다
   pickFile(txt())
@@ -165,7 +190,7 @@ test('AC-6c price only disables the submit button', async () => {
 test('AC-6 photo and price enable the submit button with zero tags', () => {
   renderApp()
   walkToPrice({ tags: [] })
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   expect(submit().disabled).toBe(false)
 })
 
@@ -183,7 +208,7 @@ test('AC-7 thinking state, disabled button, appraise called once', () => {
   renderApp()
   const photo = png()
   walkToPrice({ photo })
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   const button = submit()
   fireEvent.click(button)
   fireEvent.click(button)
@@ -209,7 +234,7 @@ test('AC-7 passes several tags to appraise in contract order, not press order', 
   renderApp()
   const photo = png()
   walkToPrice({ photo, tags: ['🧓 10년 넘음', '🏆 인생템', '🗑️ 못 버림', '🎁 선물'] })
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   expect(appraise).toHaveBeenCalledWith({
     photo,
@@ -223,13 +248,13 @@ test('AC-8 stamp state and result card', async () => {
   const resolve = holdAppraise()
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   resolve({ mochi: 7, line: '테스트 대사' })
   const card = within(await screen.findByRole('region', { name: '감정 결과' }))
   expect(face()).toBe('happy')
-  expect(card.getByTestId('appraised-price').textContent).toBe('모찌 7개')
-  expect(card.getByTestId('my-price').textContent).toBe('모찌 10개')
+  expect(card.getByTestId('appraised-price').textContent).toBe('한정선 모찌 7개')
+  expect(card.getByTestId('my-price').textContent).toBe('한정선 모찌 10개')
   expect(card.getByTestId('mascot-line').textContent).toBe('테스트 대사')
 })
 
@@ -238,12 +263,12 @@ test('AC-8 never-sell price shows as 안 팔아 on the card', async () => {
   const resolve = holdAppraise()
   renderApp()
   walkToPrice()
-  pickPrice('🙅 안 팔아')
+  pickPrice('안 팔아')
   fireEvent.click(submit())
   resolve({ mochi: 0, line: '허허' })
   const card = within(await screen.findByRole('region', { name: '감정 결과' }))
   expect(card.getByTestId('my-price').textContent).toBe('안 팔아')
-  expect(card.getByTestId('appraised-price').textContent).toBe('모찌 0개')
+  expect(card.getByTestId('appraised-price').textContent).toBe('한정선 모찌 0개')
 })
 
 // contracts/appraise.md §5 문구 (CAREER-26)
@@ -260,7 +285,7 @@ test('AC-7 invalid_input ends thinking, shows the notice, and allows a second tr
   appraise.mockRejectedValueOnce(reject('invalid_input'))
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   const notice = await screen.findByTestId('appraise-error')
   expect(notice.textContent).toBe(ERROR_TEXT.invalid_input)
@@ -286,7 +311,7 @@ test.each([
   appraise.mockRejectedValueOnce(reject(code))
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   expect((await screen.findByTestId('appraise-error')).textContent).toBe(ERROR_TEXT[text])
   expect(face()).toBe(expectedFace)
@@ -298,7 +323,7 @@ async function reachOffDuty() {
   appraise.mockRejectedValueOnce(reject('daily_limit'))
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   await screen.findByTestId('off-duty')
 }
@@ -358,7 +383,7 @@ test('CAREER-31 AC-5 person_limit is a notice, not off-duty, and retry thinks ag
   appraise.mockRejectedValueOnce(reject('person_limit'))
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   await screen.findByTestId('appraise-error')
   expect(face()).not.toBeNull() // 아저씨가 있다 = 퇴근이 아니다

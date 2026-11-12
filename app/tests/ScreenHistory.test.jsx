@@ -48,7 +48,7 @@ function hold() {
 function choose() {
   renderApp()
   walkToPrice() // ④까지
-  pickPrice('🍡 10개')
+  pickPrice('10개')
 }
 
 // 첫 결과(모찌 3개)까지 간다
@@ -56,12 +56,12 @@ async function firstCard() {
   appraise.mockResolvedValueOnce({ mochi: 3, line: '첫 대사' })
   choose()
   fireEvent.click(submit())
-  await screen.findByText('모찌 3개')
+  await screen.findByText('한정선 모찌 3개')
 }
 
 // ④에서 시작해 고른 것이 그대로: ④ 값 / 뒤로 ③ 태그 / 뒤로 ② 사진 · 미리보기, 다음 둘로 ④로 돌아온다
 async function expectInputWithChoices() {
-  expect(priceGroup().getByRole('button', { name: '🍡 10개' }).getAttribute('aria-pressed')).toBe('true')
+  expect(priceGroup().getByRole('button', { name: '10개' }).getAttribute('aria-pressed')).toBe('true')
   await back()
   expect(tagGroup().getByRole('button', { name: '🎁 선물' }).getAttribute('aria-pressed')).toBe('true')
   await back()
@@ -117,10 +117,10 @@ test('CAREER-32 AC-5 history grows by at most one entry over many appraisals', a
   appraise.mockResolvedValueOnce({ mochi: 9, line: 'c' })
   choose()
   const before = history.length // ④까지 걸어간 뒤
-  for (const text of ['모찌 3개', '모찌 7개', '모찌 9개']) {
+  for (const text of ['한정선 모찌 3개', '한정선 모찌 7개', '한정선 모찌 9개']) {
     fireEvent.click(submit())
     await screen.findByText(text)
-    if (text !== '모찌 9개') await back() // ⑥ → ④
+    if (text !== '한정선 모찌 9개') await back() // ⑥ → ④
   }
   expect(history.length).toBeLessThanOrEqual(before + 1)
   expect(history.state).toEqual({ howMuch: 4 })
@@ -158,7 +158,7 @@ test('CAREER-32 R1 late answer leaves focus alone when it is elsewhere', async (
   choose()
   fireEvent.click(submit())
   await popstate()
-  const other = priceGroup().getByRole('button', { name: '🍡 10개' })
+  const other = priceGroup().getByRole('button', { name: '10개' })
   act(() => other.focus())
 
   await act(async () => h.resolve({ mochi: 3, line: 'x' }))

@@ -59,9 +59,9 @@ test('first flow end to end (AC-1,3,4,5,6,7,8, CAREER-26 AC-5)', async ({ page }
   // AC-3
   const prices = page.getByRole('group', { name: '마음 가격' }).getByRole('button')
   await expect(prices).toHaveCount(4)
-  await page.getByRole('button', { name: '🍡 1개', exact: true }).click()
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
-  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('🍡 10개')
+  await page.getByRole('button', { name: '1개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
+  await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('10개')
   await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveCount(1)
 
   // AC-6 → AC-7
@@ -73,8 +73,8 @@ test('first flow end to end (AC-1,3,4,5,6,7,8, CAREER-26 AC-5)', async ({ page }
 
   // AC-8
   await expect(uncle).toHaveAttribute('data-face', 'happy')
-  await expect(page.getByTestId('appraised-price')).toHaveText(/^모찌 \d+개$/)
-  await expect(page.getByTestId('my-price')).toHaveText('모찌 10개')
+  await expect(page.getByTestId('appraised-price')).toHaveText(/^한정선 모찌 \d+개$/)
+  await expect(page.getByTestId('my-price')).toHaveText('한정선 모찌 10개')
   await expect(page.getByTestId('mascot-line')).toHaveText(/\S/)
   await expect(page.locator(FREE_TEXT)).toHaveCount(0) // AC-5 다시
 
