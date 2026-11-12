@@ -3,7 +3,7 @@ import { SHARE_TEXT } from './options.js'
 import { makeCard, saveCard } from './shareCard.js'
 
 // Mounted only on the reveal, so leaving it forgets the card (AC-4).
-export default function ShareRow({ photo, myPrice, children }) {
+export default function ShareRow({ photo, mine, children }) {
   const [card, setCard] = useState(null) // null = drawing | File | 'failed'
   const [saving, setSaving] = useState(false) // true: the button saves instead of sharing
   const [note, setNote] = useState(null)
@@ -12,7 +12,7 @@ export default function ShareRow({ photo, myPrice, children }) {
 
   useEffect(() => {
     let alive = true
-    makeCard(photo, myPrice).then(
+    makeCard(photo, mine).then(
       (file) => alive && setCard(file),
       (e) => {
         console.warn('card not drawn:', e?.name) // the name only, never the photo (contracts §6)
@@ -20,7 +20,7 @@ export default function ShareRow({ photo, myPrice, children }) {
       },
     )
     return () => { alive = false }
-  }, [photo, myPrice])
+  }, [photo, mine])
 
   // No await before share: it must run inside the click (Safari may refuse otherwise).
   function press() {

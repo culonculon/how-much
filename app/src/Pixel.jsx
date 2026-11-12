@@ -1,14 +1,19 @@
 import { memo } from 'react'
 import { I, PI, PU, U } from './pixels.js'
 
-// One <path> per colour ("M{x} {y}h1v1h-1z" per cell) keeps a face to ~20 elements instead of ~1000 (plan A2).
+// One <path> per colour; a run of same-colour cells in a row is one piece ("M{x} {y}h{n}v1h-{n}z"), like mockup-v3 Scene,
+// so there are no hairlines between cells (plan A2 '아저씨').
 function drawn(map, palette) {
   const byColor = {}
-  map.forEach((row, y) =>
-    [...row].forEach((c, x) => {
-      if (c !== '.' && palette[c]) (byColor[palette[c]] ??= []).push(`M${x} ${y}h1v1h-1z`)
-    }),
-  )
+  map.forEach((row, y) => {
+    for (let x = 0; x < row.length; ) {
+      const color = row[x] !== '.' && palette[row[x]]
+      let n = 1
+      while (x + n < row.length && row[x + n] !== '.' && palette[row[x + n]] === color) n++
+      if (color) (byColor[color] ??= []).push(`M${x} ${y}h${n}v1h-${n}z`)
+      x += n
+    }
+  })
   return Object.entries(byColor).map(([fill, d]) => <path key={fill} fill={fill} d={d.join('')} />)
 }
 
