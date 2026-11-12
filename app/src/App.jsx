@@ -332,7 +332,7 @@ export default function App() {
         {view === 'price' && (
           <>
             <div role="group" aria-label="마음 가격" className="price-box">
-              <label htmlFor="my-price-input">{PRICE_TEXT.label}</label>
+              <label htmlFor="my-price-input" className="sr-only">{PRICE_TEXT.label}</label>
               <div className="price-row">
                 <button type="button" className="sq" aria-label="한 개 빼기" disabled={n === undefined || n <= MY_PRICE.min} onClick={() => setMine({ text: String(n - 1), never: false, quick: null })}>
                   {glyph('−')}

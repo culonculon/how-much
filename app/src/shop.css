@@ -584,8 +584,13 @@ button {
   order: 1;
 }
 
+.toast + #region-notice {
+  margin-top: -3px; /* CAREER-40: only when an error note is above (step 4); 10px gap becomes 7px */
+}
+
 #busy-note {
   order: 2;
+  margin-top: -3px; /* CAREER-40: 10px body gap above becomes 7px; only this note, only step 4 */
 }
 
 .toast {
