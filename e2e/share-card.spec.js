@@ -710,3 +710,150 @@ test.describe('reveal on the smallest iPhone', () => {
     save('card-fallback.jpg', (await shared(other)).bytes)
   })
 })
+
+// ================================================================ CAREER-40 T9 — 전당표 카드 (AC-7 · AC-4 카드)
+// 파일 끝에 더하는 새 테스트만. 위 fakeShare · press · shared · ready를 쓴다. (import는 올려 써도 되지만 위 줄을 안 고치려고 여기 둔다)
+import { U as UNCLE_MAP, PU as UNCLE_COLORS } from '../app/src/pixels.js'
+import { typePrice } from './shop-steps.js'
+
+// 카드 바이트를 페이지에서 풀어 1080×1350 RGBA를 돌려준다 (expect 없음)
+async function pixelsOf(page, bytes) {
+  const b64 = await page.evaluate(async (b64) => {
+    const blob = new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))])
+    const bmp = await createImageBitmap(blob)
+    const canvas = document.createElement('canvas')
+    canvas.width = 1080
+    canvas.height = 1350
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(bmp, 0, 0)
+    const d = ctx.getImageData(0, 0, 1080, 1350).data
+    let bin = ''
+    for (let i = 0; i < d.length; i += 0x8000) bin += String.fromCharCode.apply(null, d.subarray(i, i + 0x8000))
+    return btoa(bin)
+  }, bytes.toString('base64'))
+  return new Uint8ClampedArray(Buffer.from(b64, 'base64'))
+}
+const rgbAt = (px, x, y) => [px[(y * 1080 + x) * 4], px[(y * 1080 + x) * 4 + 1], px[(y * 1080 + x) * 4 + 2]]
+const near = (rgb, hex, tol) => [1, 3, 5].every((i, c) => Math.abs(rgb[c] - parseInt(hex.slice(i, i + 2), 16)) <= tol)
+
+// ① → 감정 받기!를 눌러 ⑥까지. 내 값은 숫자 칸에 쳐서(text) 또는 '안 팔아'(null). 카드를 눌러 바이트를 돌려준다.
+async function typedCard(page, text, { file = png } = {}) {
+  await page.goto('/')
+  await ready(page)
+  await enter(page)
+  await photoInput(page).setInputFiles(file)
+  await next(page)
+  await page.getByRole('button', { name: '🎁 선물', exact: true }).click()
+  await next(page)
+  if (text === null) await pickPrice(page, '안 팔아')
+  else await typePrice(page, text)
+  await submitOf(page).click()
+  await expect(page.getByTestId('mascot-line')).toBeVisible()
+  await press(page)
+  return shared(page)
+}
+
+// AC-7: 카드가 전당표 모양이다 (좌표 · 색은 plan A2 '카드 자리표'를 글자로 옮김, JPEG라 ±32)
+test('CAREER-40 AC-7 the card is a pawn ticket', async ({ page }) => {
+  test.slow()
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'hold')
+  const s = await typedCard(page, '23')
+  expect([s.width, s.height]).toEqual([1080, 1350])
+  expect(s.name).toBe(CARD_NAME)
+  const px = await pixelsOf(page, s.bytes)
+
+  expect(near(rgbAt(px, 96, 84), '#c0503a', 32), '차양 빨강').toBe(true)
+  expect(near(rgbAt(px, 168, 84), '#fff4e0', 32), '차양 크림').toBe(true)
+
+  // 점선: 392 줄을 6px 간격으로 보아 점(#c58a52)과 종이색이 3쌍 이상 번갈아 나온다 (글 길이에 따라 시작이 달라 6가지 시작을 모두 본다)
+  const kind = (rgb) => (near(rgb, '#c58a52', 32) ? 'D' : near(rgb, '#fff4e0', 32) ? 'P' : '-')
+  const dotted = [0, 1, 2, 3, 4, 5].some((phase) => {
+    let row = ''
+    for (let x = 462 + phase + 3; x < 960; x += 6) row += kind(rgbAt(px, x, 392))
+    return /(?:DP){3}|(?:PD){3}/.test(row)
+  })
+  expect(dotted, '점선 줄').toBe(true)
+
+  expect(near(rgbAt(px, 120, 840), '#4a2f1c', 32), '나무 칸').toBe(true)
+  // 꼬리표 안쪽 모서리 두 곳 (가운데는 '?' 글자가 지날 수 있어 글자 밖을 본다)
+  expect(near(rgbAt(px, 420, 630), '#ffd27a', 32), '꼬리표 왼쪽 위').toBe(true)
+  expect(near(rgbAt(px, 462, 642), '#ffd27a', 32), '꼬리표 오른쪽 아래').toBe(true)
+  expect(near(rgbAt(px, 822, 1098), '#c0503a', 32), '도장 테두리').toBe(true)
+
+  // 아저씨 얼굴: happy 지도에서 사방이 같은 S 칸 중 흩어진 3곳 (4px 칸 가운데)
+  const solid = []
+  UNCLE_MAP.happy.forEach((row, y) =>
+    [...row].forEach((c, x) => {
+      const around = [UNCLE_MAP.happy[y - 1]?.[x], UNCLE_MAP.happy[y + 1]?.[x], row[x - 1], row[x + 1]]
+      if (c === 'S' && around.every((a) => a === 'S')) solid.push([x, y])
+    }),
+  )
+  expect(solid.length).toBeGreaterThan(3)
+  for (const [x, y] of [0.2, 0.5, 0.8].map((f) => solid[Math.floor(solid.length * f)])) {
+    expect(near(rgbAt(px, 108 + 4 * x + 2, 1074 + 4 * y + 2), UNCLE_COLORS.S, 32), `얼굴 칸 ${x},${y}`).toBe(true)
+  }
+})
+
+// AC-7: 카드에는 내 값이 들어가고 아저씨 값은 들어가지 않는다
+test("CAREER-40 AC-7 my number is on the card, the uncle's is not", async ({ page }) => {
+  test.slow()
+  await routeQueue(page, [ok(30), ok(3), ok(23), ok(30), ok(30)])
+  await fakeShare(page, 'hold')
+  const mine23 = [await typedCard(page, '23'), await typedCard(page, '23'), await typedCard(page, '23')] // mochi 30 · 3 · 23
+  const mine24 = await typedCard(page, '24')
+  const never = await typedCard(page, null)
+
+  for (const s of [...mine23, mine24, never]) expect(s.bytes.length).toBeGreaterThan(1000)
+  expect(mine23[1].bytes.equals(mine23[0].bytes)).toBe(true)
+  expect(mine23[2].bytes.equals(mine23[0].bytes)).toBe(true)
+  expect(mine24.bytes.equals(mine23[0].bytes)).toBe(false) // 내 숫자가 들어간다
+  expect(never.bytes.equals(mine23[0].bytes)).toBe(false)
+})
+
+// AC-1 (K7 짝): 0023과 23은 같은 요청 · 같은 카드로 나간다
+test('CAREER-40 AC-1 0023 and 23 leave the same', async ({ page }) => {
+  test.slow()
+  await routeQueue(page, [ok(30), ok(30)])
+  await fakeShare(page, 'hold')
+  const urls = []
+  page.context().on('request', (r) => {
+    if (r.method() === 'POST' && new URL(r.url()).pathname === '/api/appraise') urls.push(r.url())
+  })
+  const padded = await typedCard(page, '0023')
+  const plain = await typedCard(page, '23')
+
+  expect(urls).toHaveLength(2)
+  expect(urls[0]).toBe(urls[1])
+  expect(urls[0]).toContain('myPrice=ten')
+  expect(urls.join('\n')).not.toContain('0023')
+  expect(padded.bytes.equals(plain.bytes)).toBe(true)
+})
+
+// AC-4: 한정선 9999개가 나무 칸 안에 그려진다 (그려진 그림을 잰다)
+test('CAREER-40 AC-4 한정선 9999개 stays inside the wood box', async ({ page }) => {
+  test.slow()
+  await routeQueue(page, [ok(30)])
+  await fakeShare(page, 'hold')
+  const s = await typedCard(page, '9999')
+  const px = await pixelsOf(page, s.bytes)
+
+  let rightmost = -1
+  let yellow = 0
+  for (let y = 786; y <= 870; y++) {
+    for (let x = 312; x <= 972; x++) {
+      if (near(rgbAt(px, x, y), '#ffd27a', 48)) {
+        yellow++
+        rightmost = Math.max(rightmost, x)
+      }
+    }
+  }
+  expect(yellow, '노란 글자가 그려졌다').toBeGreaterThan(0)
+  expect(rightmost, '가장 오른쪽 노란 점').toBeLessThanOrEqual(924)
+  // 칸 오른쪽 테두리 띠 (칸은 y 726~858이고 위 · 아래 모서리를 뺀 안쪽 줄만 본다)
+  const wrong = []
+  for (let y = 792; y <= 852; y++) {
+    for (let x = 954; x <= 959; x++) if (!near(rgbAt(px, x, y), '#2b1a0e', 40)) wrong.push(`${x},${y}`)
+  }
+  expect(wrong).toEqual([])
+})
