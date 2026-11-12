@@ -57,8 +57,9 @@ test('first flow end to end (AC-1,3,4,5,6,7,8, CAREER-26 AC-5)', async ({ page }
   await expect(submit).toBeDisabled() // AC-6(b) 가격 전에는 못 누름
 
   // AC-3
-  const prices = page.getByRole('group', { name: '마음 가격' }).getByRole('button')
-  await expect(prices).toHaveCount(4)
+  // K3: −/+는 같은 그룹에 있으니 aria-pressed를 가진 버튼만 센다
+  const chips = page.getByRole('group', { name: '마음 가격' }).locator('button[aria-pressed]')
+  await expect(chips).toHaveText(['1개', '10개', '100개', '777개', '안 팔아'])
   await page.getByRole('button', { name: '1개', exact: true }).click()
   await page.getByRole('button', { name: '10개', exact: true }).click()
   await expect(page.locator('[aria-label="마음 가격"] [aria-pressed="true"]')).toHaveText('10개')

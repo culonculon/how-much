@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { enter, next } from './shop-steps.js'
+import { contractText, enter, next } from './shop-steps.js'
 
 // 1×1 PNG — 파일을 따로 두지 않는다
 const png = {
@@ -10,8 +10,8 @@ const png = {
     'base64',
   ),
 }
-// contracts/appraise.md §5 daily_limit 줄의 첫 따옴표 글자 — 글자 그대로
-const OFF_DUTY = '아저씨 오늘 퇴근했어요. 밤 12시에 다시 출근해요.'
+// contracts/appraise.md §5 daily_limit 줄의 첫 따옴표 글자 — 원본에서 읽는다
+const OFF_DUTY = contractText('daily_limit')
 
 test('CAREER-27 AC-10 daily_limit shows off-duty and retry works', async ({ page }) => {
   let release
