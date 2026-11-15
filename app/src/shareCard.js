@@ -8,6 +8,7 @@ export const CARD_W = 1080
 export const CARD_H = 1350
 const FONT_WAIT_MS = 1500
 const MINE_MAX = 612 // the value text must end by x = 924 (inside the wood box)
+const FOOT_MAX = 504 // the footer line starts at x = 288 and must end by x = 792 (before the stamp at 816)
 const font = (px) => `${px}px Galmuri11, 'Apple SD Gothic Neo', monospace`
 
 async function fontReady() {
@@ -140,7 +141,11 @@ export async function makeCard(photo, mine) {
       if (c !== '.' && PU[c]) box(PU[c], 108 + x * 4, 1074 + y * 4, 4, 4)
     }),
   )
-  text(`${CARD.foot} ${location.host}`, 24, '#a3542a', 288, 1206, 'l')
+  const foot = `${CARD.foot} ${location.host}`
+  let fpx = 24
+  ctx.font = font(fpx)
+  while (fpx > 12 && ctx.measureText(foot).width > FOOT_MAX) ctx.font = font((fpx -= 6))
+  text(foot, fpx, '#a3542a', 288, 1206, 'l')
   box('rgba(192, 80, 58, 0.06)', 816, 1092, 132, 132)
   ctx.strokeStyle = '#c0503a'
   ctx.lineWidth = 12
