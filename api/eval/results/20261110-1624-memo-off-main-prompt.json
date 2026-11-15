@@ -1,0 +1,116 @@
+{
+  "memo": "off",
+  "rounds": 5,
+  "rows": [
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 1,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸 만한 느낌이 조금 나는 그릇이군.",
+      "refused": false,
+      "code": null,
+      "ms": 1076,
+      "memo": "off"
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 2,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸 만한 느낌이 살짝 나는 그릇이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 1093,
+      "memo": "off"
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 3,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸 만한 플라스틱 목욕 컵이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 921,
+      "memo": "off"
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 4,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸 만한 플라스틱 목욕 컵이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 885,
+      "memo": "off"
+    },
+    {
+      "photo": "03-note-mug.jpg",
+      "round": 5,
+      "grade": 2,
+      "mochi": 3,
+      "line": "쓸 만한 플라스틱 목욕 컵이구나.",
+      "refused": false,
+      "code": null,
+      "ms": 913,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 1,
+      "grade": 3,
+      "mochi": 10,
+      "line": "낡은 곳이 있지만 괜찮은 테디베어구나.",
+      "refused": false,
+      "code": null,
+      "ms": 657,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 2,
+      "grade": 3,
+      "mochi": 10,
+      "line": "낡은 테디베어지만 괜찮은 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 659,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 3,
+      "grade": 3,
+      "mochi": 10,
+      "line": "낡은 테디베어지만 괜찮은 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 719,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 4,
+      "grade": 3,
+      "mochi": 10,
+      "line": "낡은 테디베어지만 괜찮은 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 708,
+      "memo": "off"
+    },
+    {
+      "photo": "09-teddy.jpg",
+      "round": 5,
+      "grade": 3,
+      "mochi": 10,
+      "line": "낡은 테디베어지만 괜찮은 물건이야.",
+      "refused": false,
+      "code": null,
+      "ms": 665,
+      "memo": "off"
+    }
+  ]
+}

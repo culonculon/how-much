@@ -23,12 +23,17 @@ function readCases() {
 }
 
 async function report(results, cases) {
-  const { judge, driftCounts } = await import('./judge.js');
+  const { judge, driftCounts, stepDrift } = await import('./judge.js');
   const hits = judge(results, cases);
   if (results.memo === 'off') {
     const drifts = driftCounts(results, cases);
     for (const d of drifts) console.log(`DRIFT photo=${d.photo} count=${d.count}`);
     console.log(`drift_total=${drifts.reduce((n, d) => n + d.count, 0)}`);
+    const steps = stepDrift(results, cases);
+    if (steps) {
+      for (const d of steps.photos) console.log(`STEP_DRIFT photo=${d.photo} count=${d.count}`);
+      console.log(`step_agree=${steps.agree}/${steps.total}`);
+    }
   }
   for (const h of hits) {
     console.log(`FAIL rule=${h.rule} photo=${h.photo} round=${h.round} value=${JSON.stringify(h.value)}`);
@@ -92,7 +97,8 @@ async function liveMode() {
 
   // 결과 파일 필드는 E1 모양뿐(plan 실패 시나리오 17)
   mkdirSync('eval/results', { recursive: true });
-  const file = join('eval/results', `${stamp()}-memo-${memoMode}.json`);
+  const { STEPS } = await import('../src/config.js');
+  const file = join('eval/results', `${stamp()}-memo-${memoMode}-steps${STEPS}.json`); // 칸 수를 이름에(CAREER-41 — 3·5 비교)
   const saved = { memo: memoMode, rounds: result.rounds, rows: result.rows };
   writeFileSync(file, `${JSON.stringify(saved, null, 2)}\n`);
   console.log(`결과 파일: ${file}`);

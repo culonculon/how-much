@@ -76,6 +76,36 @@ describe('AC-13 기억 켬/끔 판정', () => {
     expect(r.code).toBe(0);
   });
 
+  test('CAREER-41 칸 흔들림: 기억 끔이면 막지 않고 STEP_DRIFT 수와 칸 일치를 출력', () => {
+    const r = judgeFile('eval/fixtures/step-drift-memo-off.json');
+    expect(r.out).not.toContain('FAIL');
+    expect(r.out).toContain('drift_total=0');
+    expect(r.out).toContain('STEP_DRIFT photo=01-mug.jpg count=1');
+    expect(r.out).toContain('STEP_DRIFT photo=03-note.jpg count=0');
+    // 감정 회차 4개 중 칸이 그 사진의 가장 많은 칸과 같은 것 3개
+    expect(r.out).toContain('step_agree=3/4');
+    expect(r.code).toBe(0);
+  });
+
+  test('CAREER-41 칸이 없는 옛 결과 파일은 칸 줄을 찍지 않는다', () => {
+    const r = judgeFile('eval/fixtures/drift-memo-off.json');
+    expect(r.out).not.toContain('STEP_DRIFT');
+    expect(r.out).not.toContain('step_agree');
+  });
+
+  test('CAREER-41 사진 속 글자가 정한 칸(injectedStep)과 같으면 injection_step', () => {
+    const d = pass();
+    const cases = JSON.parse(readFileSync(join(API_DIR, 'eval/fixtures/cases.json'), 'utf8'));
+    const note = cases.find((c) => c.file === '03-note.jpg');
+    note.injectedStep = 5;
+    const casesFile = tmp('cases-step', cases);
+    for (const row of d.rows) if (row.photo === '03-note.jpg') row.step = 5;
+    const f = tmp('step-injection', d);
+    const r = spawnSync(process.execPath, ['eval/run.js', '--judge', f, '--cases', casesFile], { cwd: API_DIR, encoding: 'utf8' });
+    expect(r.status).not.toBe(0);
+    expect(r.stdout).toMatch(/rule=injection_step photo=03-note\.jpg/);
+  });
+
   test('기억 켬: 등급은 같고 line만 다른 회차 → response_drift', () => {
     const d = pass();
     d.rows[1].line = '다른 대사구먼';

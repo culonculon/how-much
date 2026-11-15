@@ -15,7 +15,7 @@ const daily = tempDailyLimit(); // CAREER-27: 진짜 셈 파일을 건드리지 
 afterAll(() => daily.cleanup());
 
 const API_DIR = fileURLToPath(new URL('..', import.meta.url));
-const ROW_KEYS = ['code', 'grade', 'line', 'memo', 'mochi', 'ms', 'photo', 'refused', 'round'];
+const ROW_KEYS = ['code', 'grade', 'line', 'memo', 'mochi', 'ms', 'photo', 'refused', 'round', 'step'];
 
 function photosDir(files) {
   const dir = mkdtempSync(join(tmpdir(), 'howmuch-live-'));
@@ -35,7 +35,7 @@ const replyFor = (bytesSeen) =>
     bytesSeen.push(command.input);
     const n = bytesSeen.length;
     return n <= 2
-      ? converseReply(JSON.stringify({ grade: 3, line: '흠, 손때가 제법 묻었구먼' }))
+      ? converseReply(JSON.stringify({ grade: 3, step: 2, line: '흠, 손때가 제법 묻었구먼' }))
       : converseReply(JSON.stringify({ refuse: true }));
   });
 
@@ -56,7 +56,7 @@ describe('E3 진짜 실행 모드 — 서버를 같은 프로세스·빈 포트�
     ]);
     for (const r of result.rows) expect(Object.keys(r).sort()).toEqual(ROW_KEYS);
     expect(result.rows.map((r) => r.memo)).toEqual(['off', 'off', 'off', 'off']);
-    expect(result.rows[0]).toMatchObject({ grade: 3, mochi: mochiOf(3), refused: false, code: null });
+    expect(result.rows[0]).toMatchObject({ grade: 3, step: 2, mochi: mochiOf(3, 2), refused: false, code: null });
     expect(result.rows[2]).toMatchObject({ grade: null, mochi: null, line: null, refused: true, code: 'refused' });
     expect(Number.isInteger(result.rows[0].ms)).toBe(true);
   });
@@ -94,7 +94,7 @@ describe('E3 고침 (10/22) — 기억 켬/끔', () => {
   test('기억 켬: 사진마다 Bedrock 1번, 행 memo는 miss · hit', async () => {
     const send = vi.fn(async (command) => {
       const isSky = command.input.messages[0].content[0].image.source.bytes.length !== undefined && send.mock.calls.length > 1;
-      return isSky ? converseReply(JSON.stringify({ refuse: true })) : converseReply(JSON.stringify({ grade: 3, line: '흠, 손때가 제법 묻었구먼' }));
+      return isSky ? converseReply(JSON.stringify({ refuse: true })) : converseReply(JSON.stringify({ grade: 3, step: 2, line: '흠, 손때가 제법 묻었구먼' }));
     });
     const result = await runLive({
       dailyLimit: daily.dailyLimit,

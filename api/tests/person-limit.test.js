@@ -24,7 +24,7 @@ const srcTexts = () =>
 
 const P = { 'cloudfront-viewer-address': '203.0.113.7:40001' };
 const Q = { 'cloudfront-viewer-address': '198.51.100.9:50000' };
-const OK_REPLY = () => converseReply('{"grade":3,"line":"흠"}');
+const OK_REPLY = () => converseReply('{"grade":3,"step":2,"line":"흠"}');
 const photo = (i) => makeJpeg({ width: 100 + i });
 
 let t;

@@ -22,7 +22,7 @@ import {
   USAGE_FILE,
 } from './config.js';
 import { createDailyLimit, DailyLimitError, UsageStoreError } from './daily-limit.js';
-import { mochiOf } from './grades.js';
+import { finalStep, mochiOf } from './grades.js';
 import { checkQuery, InputError } from './input.js';
 import { checkJpeg } from './jpeg.js';
 import { createMemo, memoKey } from './memo.js';
@@ -106,8 +106,12 @@ async function appraise(req, res, entry, send, memo, dailyLimit, personLimit) {
   if (!parsed) parsed = await askModel(req, res, entry, send, photo, tags, memo, key, dailyLimit);
 
   if (parsed.refused) throw new Reply(422, 'refused', 'model_refused');
+  // 칸의 태그 몫은 서버 규칙(CAREER-41 §6): 고른 묶음마다 한 칸, 최대 두 칸
+  const mochi = mochiOf(parsed.grade, finalStep(parsed.step, tags));
   entry.grade = parsed.grade;
-  return { status: 200, body: { mochi: mochiOf(parsed.grade), line: parsed.line } };
+  entry.step = parsed.step;
+  entry.mochi = mochi;
+  return { status: 200, body: { mochi, line: parsed.line } };
 }
 
 async function askModel(req, res, entry, send, photo, tags, memo, key, dailyLimit) {
