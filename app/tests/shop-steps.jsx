@@ -26,6 +26,13 @@ export const next = () => fireEvent.click(screen.getByRole('button', { name: '�
 export const submit = () => screen.getByRole('button', { name: '감정 받기!' })
 export const toPhoto = enter // ① → ②
 
+// CAREER-40 T1: 내 값 숫자 칸 (plan A5). 구현을 import하지 않고 글자를 여기에 적는다.
+export const PRICE_LABEL = '내가 부르는 값 (1~9999개)'
+export const priceInput = () => screen.getByRole('textbox', { name: PRICE_LABEL })
+export const typePrice = (text) => fireEvent.change(priceInput(), { target: { value: text } })
+export const minus = () => fireEvent.click(screen.getByRole('button', { name: '한 개 빼기' }))
+export const plus = () => fireEvent.click(screen.getByRole('button', { name: '한 개 더하기' }))
+
 export const pickFile = (file) =>
   fireEvent.change(screen.getByLabelText('사진 고르기'), { target: { files: [file] } })
 export const pickPrice = (name) => fireEvent.click(priceGroup().getByRole('button', { name, exact: true }))

@@ -48,7 +48,7 @@ function expectOnly({ photo = false, tags = false, price = false }) {
 }
 
 const pressedOf = (group) =>
-  Object.fromEntries(group.getAllByRole('button').map((b) => [b.textContent, b.getAttribute('aria-pressed')]))
+  Object.fromEntries(group.getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed')).map((b) => [b.textContent, b.getAttribute('aria-pressed')]))
 
 // AC-1: ① → ⑥, 한 번에 하나, 고르는 칸은 자기 단계에서만
 test('CAREER-35 AC-1 six steps appear one at a time', async () => {
@@ -85,7 +85,7 @@ test('CAREER-35 AC-1 six steps appear one at a time', async () => {
   expect(screen.getByText(REGION_NOTICE)).toBeTruthy()
   expect(screen.queryByRole('button', { name: '다음' })).toBeNull()
   expectRoot()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
 
   // ⑤
@@ -101,8 +101,8 @@ test('CAREER-35 AC-1 six steps appear one at a time', async () => {
   resolve({ mochi: 30, line: '흠… 귀한 물건이군!' })
   const region = await screen.findByRole('region', { name: '감정 결과' })
   const inCard = within(region)
-  expect(inCard.getByTestId('appraised-price').textContent).toBe('모찌 30개')
-  expect(inCard.getByTestId('my-price').textContent).toBe('모찌 10개')
+  expect(inCard.getByTestId('appraised-price').textContent).toBe('한정선 모찌 30개')
+  expect(inCard.getByTestId('my-price').textContent).toBe('한정선 모찌 10개')
   expect(inCard.getByTestId('compare-line')).toBeTruthy()
   expect(inCard.getByTestId('mascot-line').textContent).toBe('흠… 귀한 물건이군!')
   expect(screen.getByRole('button', { name: '다른 물건 꺼내기' })).toBeTruthy()
@@ -149,7 +149,7 @@ test('CAREER-35 AC-2 tags can be skipped', () => {
   expect(tagGroup().queryAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true')).toHaveLength(0)
   next() // 태그 0개로 ④
   expectOnly({ price: true })
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   expect(appraise).toHaveBeenCalledTimes(1)
   expect(appraise).toHaveBeenCalledWith({ photo, myPrice: 'ten', tags: [] })
@@ -162,7 +162,7 @@ test('CAREER-35 AC-2 submit is off until a price is chosen', () => {
   expect(submit().disabled).toBe(true)
   fireEvent.click(submit())
   expect(appraise).not.toHaveBeenCalled()
-  pickPrice('🙅 안 팔아')
+  pickPrice('안 팔아')
   expect(submit().disabled).toBe(false)
 })
 
@@ -184,7 +184,7 @@ test('CAREER-35 AC-2 tags match contract §3 and are sent in contract order', ()
 
   ;['🧓 10년 넘음', '🏆 인생템', '🗑️ 못 버림', '🎁 선물'].forEach(pickTag) // contracts 차례와 다르게 누른다
   next()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   expect(appraise).toHaveBeenCalledWith({
     photo,
@@ -210,11 +210,12 @@ test('CAREER-35 AC-2 chosen chip is pressed', () => {
 
   pickTag('🏆 인생템')
   next()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   expect(pressedOf(priceGroup())).toEqual({
-    '🍡 1개': 'false',
-    '🍡 10개': 'true',
-    '🍡 100개': 'false',
-    '🙅 안 팔아': 'false',
+    '1개': 'false',
+    '10개': 'true',
+    '100개': 'false',
+    '777개': 'false',
+    '안 팔아': 'false',
   })
 })

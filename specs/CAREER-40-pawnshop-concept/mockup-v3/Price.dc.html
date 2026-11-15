@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>내 값 부르기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Galmuri11';src:url('/_blob/95bc4046d2758508ddf385691c9f59d9') format('woff2');font-display:swap}
+body{margin:0}
+a{color:#ffd27a}a:hover{color:#fff4e0}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pb{background:#fff4e0;color:#3b2416;box-shadow:0 -3px 0 0 #3b2416,0 3px 0 0 #3b2416,-3px 0 0 0 #3b2416,3px 0 0 0 #3b2416,inset 0 -3px 0 0 #e9dccb}
+.pw{background:#6b4224;box-shadow:0 -3px 0 0 #c58a52,0 3px 0 0 #c58a52,-3px 0 0 0 #c58a52,3px 0 0 0 #c58a52}
+.btn{display:block;width:100%;border:0;font-family:'Galmuri11',monospace;-webkit-font-smoothing:none;cursor:pointer;background:#c0503a;color:#ffffff;box-shadow:0 -3px 0 0 #2b1a0e,0 3px 0 0 #2b1a0e,-3px 0 0 0 #2b1a0e,3px 0 0 0 #2b1a0e,inset 0 -6px 0 0 #8e3626,inset 0 3px 0 0 #d9705a}
+.sq{border:0;font-family:'Galmuri11',monospace;-webkit-font-smoothing:none;cursor:pointer;background:#3b2416;color:#fff4e0;box-shadow:0 -3px 0 0 #c58a52,0 3px 0 0 #c58a52,-3px 0 0 0 #c58a52,3px 0 0 0 #c58a52,inset 0 -3px 0 0 #2b1a0e}
+.btn:active,.btn2:active,.sq:active{transform:translateY(3px)}
+@media (prefers-reduced-motion: reduce){.btn:active,.btn2:active,.sq:active{transform:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #4a2f1c; background-image: repeating-linear-gradient(0deg, #4a2f1c 0 18px, #3f2817 18px 21px); color: #fff4e0; font-family: 'Galmuri11', monospace; -webkit-font-smoothing: none; display: flex; flex-direction: column;">
+<div style="border-bottom: 6px solid #2b1a0e;">
+<dc-import name="Scene" face="base" mode="idle" hint-size="390px,300px"></dc-import>
+</div>
+<div style="padding: 21px 21px; display: flex; flex-direction: column; gap: 21px;">
+<div class="pb" style="padding: 9px 12px; line-height: 18px; font-size: 12px;">
+<div style="color: #a3542a;">감정사</div>
+자네는 이걸 한정선 몇 개로 치나?
+</div>
+<div class="pw" style="padding: 12px; display: flex; flex-direction: column; gap: 15px;">
+<label for="mine" style="font-size: 12px; color: #ffd27a;">내가 부르는 값 (1~9999개)</label>
+<div style="display: flex; gap: 12px; align-items: stretch;">
+<button class="sq" aria-label="한 개 빼기" onClick="{{dec}}" disabled="{{never}}" style="width: 48px; min-height: 54px; font-size: 24px;">−</button>
+<div class="pb" style="flex-grow: 1; display: flex; align-items: center; gap: 9px; padding: 0 9px; opacity: {{boxOpacity}};">
+<svg aria-hidden="true" width="36" height="30" viewBox="0 0 12 10" style="shape-rendering: crispEdges; flex-shrink: 0;"><rect x="3" y="1" width="6" height="1" fill="#3b2416"></rect><rect x="2" y="2" width="1" height="1" fill="#3b2416"></rect><rect x="9" y="2" width="1" height="1" fill="#3b2416"></rect><rect x="1" y="3" width="1" height="5" fill="#3b2416"></rect><rect x="10" y="3" width="1" height="5" fill="#3b2416"></rect><rect x="2" y="8" width="1" height="1" fill="#3b2416"></rect><rect x="9" y="8" width="1" height="1" fill="#3b2416"></rect><rect x="3" y="9" width="6" height="1" fill="#3b2416"></rect><rect x="3" y="2" width="6" height="1" fill="#fffaf2"></rect><rect x="2" y="3" width="8" height="5" fill="#fffaf2"></rect><rect x="3" y="8" width="6" height="1" fill="#e9dccb"></rect><rect x="4" y="3" width="1" height="1" fill="#f6b7c3"></rect><rect x="7" y="4" width="1" height="1" fill="#f6b7c3"></rect><rect x="5" y="6" width="1" height="1" fill="#f6b7c3"></rect></svg>
+<input id="mine" type="number" inputmode="numeric" min="1" max="9999" step="1" value="{{valStr}}" onInput="{{onVal}}" disabled="{{never}}" style="flex-grow: 1; min-width: 0; width: 100%; border: 0; background: transparent; font-family: 'Galmuri11', monospace; -webkit-font-smoothing: none; font-size: 36px; color: #3b2416; text-align: right; outline: none;">
+<span style="font-size: 12px; color: #3b2416;">개</span>
+</div>
+<button class="sq" aria-label="한 개 더하기" onClick="{{inc}}" disabled="{{never}}" style="width: 48px; min-height: 54px; font-size: 24px;">+</button>
+</div>
+<div style="display: flex; gap: 12px; flex-wrap: wrap; padding: 3px;">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="5">
+<button onClick="{{c.pick}}" style="{{c.st}}">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+<button class="btn" onClick="{{goSubmit}}" style="min-height: 54px; padding: 12px; font-size: 24px;">감정 받기!</button>
+<div style="font-size: 12px; text-align: center; color: #ffd27a; min-height: 18px;">{{summary}}</div>
+<p style="margin: 0; font-size: 12px; line-height: 18px; text-align: center; color: #e8d3b4;">사진은 감정하는 동안 서울 밖<br>아시아 리전에서 처리될 수 있어요.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { val: 7, never: false, sent: false };
+}
+renderVals() {
+const s = this.state;
+const clamp = (n) => Math.max(1, Math.min(9999, n));
+const setVal = (n) => this.setState({ val: clamp(n), never: false, sent: false });
+const base = 'min-height: 44px; padding: 6px 12px; border: 0; font-family: Galmuri11, monospace; -webkit-font-smoothing: none; font-size: 12px; cursor: pointer; ';
+const off = base + 'background: #3b2416; color: #fff4e0; box-shadow: 0 -3px 0 0 #c58a52, 0 3px 0 0 #c58a52, -3px 0 0 0 #c58a52, 3px 0 0 0 #c58a52;';
+const on = base + 'background: #fff4e0; color: #3b2416; box-shadow: 0 -3px 0 0 #e8b84a, 0 3px 0 0 #e8b84a, -3px 0 0 0 #e8b84a, 3px 0 0 0 #e8b84a;';
+const chips = [1, 10, 100, 777].map((n) => ({
+label: n + '개',
+st: (!s.never && s.val === n) ? on : off,
+pick: () => setVal(n)
+}));
+chips.push({ label: '안 팔아', st: s.never ? on : off, pick: () => this.setState({ never: !s.never, sent: false }) });
+let summary = '';
+if (s.sent) summary = s.never ? '내 값: 안 팔아 — 감정만 받아요' : '내 값: 한정선 ' + s.val + '개로 감정을 요청했어요';
+return {
+no: false,
+never: s.never,
+valStr: String(s.val),
+boxOpacity: s.never ? '0.45' : '1',
+chips,
+summary,
+dec: () => setVal(s.val - 1),
+inc: () => setVal(s.val + 1),
+onVal: (e) => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setVal(n); },
+goSubmit: () => this.setState({ sent: true })
+};
+}
+}
+</script>
+</body>
+</html>

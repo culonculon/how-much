@@ -39,14 +39,14 @@ test('CAREER-35 AC-8 keyboard can finish all six steps', async ({ page }) => {
   await page.keyboard.press('Enter') // ④
   await expect(groupOf(page, '내 값 부르기')).toBeFocused()
 
-  const price = buttonOf(page, '🍡 10개')
+  const price = buttonOf(page, '10개')
   await tabTo(page, price)
   await page.keyboard.press('Space')
   await expect(price).toHaveAttribute('aria-pressed', 'true')
   await tabTo(page, submitOf(page))
   await page.keyboard.press('Enter') // ⑤ → ⑥
 
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
   await expect(page.getByRole('region', { name: '감정 결과' })).toBeFocused()
   await tabTo(page, buttonOf(page, '다른 물건 꺼내기')) // ⑥의 버튼도 키보드로 닿는다
 })
@@ -67,7 +67,7 @@ test('CAREER-35 AC-8 nothing moves with reduced motion', async ({ page }) => {
   await expect(page.getByRole('progressbar', { name: '감정 중' })).toBeVisible()
   expect(await moving()).toBe(0)
   q.release() // ⑥
-  await expect(page.getByTestId('appraised-price')).toHaveText('모찌 3개')
+  await expect(page.getByTestId('appraised-price')).toHaveText('한정선 모찌 3개')
   expect(await moving()).toBe(0)
 
   await page.goBack() // ④ → 실패

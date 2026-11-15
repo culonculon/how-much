@@ -78,7 +78,13 @@ const press = async (page, name) => {
 }
 export const enter = (page) => press(page, '가게에 들어가기') // ① → ②
 export const next = (page) => press(page, '다음')
-export const pickPrice = (page, name = '🍡 10개') => press(page, name)
+export const pickPrice = (page, name = '10개') => press(page, name) // K6
+// CAREER-40 T1: 내 값 숫자 칸 (plan A5)
+export const priceInput = (page) => page.getByRole('textbox', { name: '내가 부르는 값 (1~9999개)' })
+export const typePrice = async (page, text) => {
+  await priceInput(page).waitFor({ timeout: 5000 })
+  await priceInput(page).fill(text)
+}
 
 // ①(goto) → ③. 이미 열려 있으면 open: false
 export async function walkToTags(page, { open = true } = {}) {

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>감정 중</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Galmuri11';src:url('/_blob/95bc4046d2758508ddf385691c9f59d9') format('woff2');font-display:swap}
+body{margin:0}
+a{color:#ffd27a}a:hover{color:#fff4e0}
+.pb{background:#fff4e0;color:#3b2416;box-shadow:0 -3px 0 0 #3b2416,0 3px 0 0 #3b2416,-3px 0 0 0 #3b2416,3px 0 0 0 #3b2416,inset 0 -3px 0 0 #e9dccb}
+.btn{display:block;width:100%;border:0;font-family:'Galmuri11',monospace;-webkit-font-smoothing:none;cursor:pointer;background:#c0503a;color:#ffffff;box-shadow:0 -3px 0 0 #2b1a0e,0 3px 0 0 #2b1a0e,-3px 0 0 0 #2b1a0e,3px 0 0 0 #2b1a0e,inset 0 -6px 0 0 #8e3626,inset 0 3px 0 0 #d9705a}
+.tag{background:#3b2416;color:#ffd27a;box-shadow:0 -3px 0 0 #c58a52,0 3px 0 0 #c58a52,-3px 0 0 0 #c58a52,3px 0 0 0 #c58a52}
+.btn:active,.btn2:active,.sq:active{transform:translateY(3px)}
+@media (prefers-reduced-motion: reduce){.btn:active,.btn2:active,.sq:active{transform:none}}
+.a-bar{animation:hmBar 2.4s steps(8,end) infinite}
+@keyframes hmBar{0%{width:0}100%{width:100%}}
+.a-dots{animation:hmDots .9s steps(1,end) infinite}
+@keyframes hmDots{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.a-bar{animation:none;width:60%}.a-dots{animation:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #4a2f1c; background-image: repeating-linear-gradient(0deg, #4a2f1c 0 18px, #3f2817 18px 21px); color: #fff4e0; font-family: 'Galmuri11', monospace; -webkit-font-smoothing: none; display: flex; flex-direction: column;">
+<div style="border-bottom: 6px solid #2b1a0e;">
+<dc-import name="Scene" face="base" mode="think" hint-size="390px,300px"></dc-import>
+</div>
+<div style="padding: 21px 21px; display: flex; flex-direction: column; gap: 21px;">
+<div class="pb" style="padding: 15px 12px; line-height: 24px; font-size: 12px; text-align: center;">
+어디 보자… 흐음…<span class="a-dots">…</span>
+</div>
+<div class="pb" style="padding: 9px;">
+<div class="a-bar" style="height: 15px; background: repeating-linear-gradient(90deg, #c0503a 0 12px, transparent 12px 18px);"></div>
+</div>
+<p style="margin: 0; font-size: 12px; line-height: 18px; text-align: center; color: #e8d3b4;">아저씨가 돋보기로 살펴보는 중이에요.<br>보통 몇 초면 끝나요.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { no: false };
+}
+}
+</script>
+</body>
+</html>

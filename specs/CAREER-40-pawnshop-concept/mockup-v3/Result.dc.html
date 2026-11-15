@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>값 공개 — 한정선</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Galmuri11';src:url('/_blob/95bc4046d2758508ddf385691c9f59d9') format('woff2');font-display:swap}
+body{margin:0}
+a{color:#ffd27a}a:hover{color:#fff4e0}
+.pb{background:#fff4e0;color:#3b2416;box-shadow:0 -3px 0 0 #3b2416,0 3px 0 0 #3b2416,-3px 0 0 0 #3b2416,3px 0 0 0 #3b2416,inset 0 -3px 0 0 #e9dccb}
+.btn{display:block;width:100%;border:0;font-family:'Galmuri11',monospace;-webkit-font-smoothing:none;cursor:pointer;background:#c0503a;color:#ffffff;box-shadow:0 -3px 0 0 #2b1a0e,0 3px 0 0 #2b1a0e,-3px 0 0 0 #2b1a0e,3px 0 0 0 #2b1a0e,inset 0 -6px 0 0 #8e3626,inset 0 3px 0 0 #d9705a}
+.btn2{display:block;width:100%;border:0;font-family:'Galmuri11',monospace;-webkit-font-smoothing:none;cursor:pointer;background:#3b2416;color:#fff4e0;box-shadow:0 -3px 0 0 #c58a52,0 3px 0 0 #c58a52,-3px 0 0 0 #c58a52,3px 0 0 0 #c58a52,inset 0 -3px 0 0 #2b1a0e}
+.stamp{color:#c0503a;box-shadow:0 -3px 0 0 #c0503a,0 3px 0 0 #c0503a,-3px 0 0 0 #c0503a,3px 0 0 0 #c0503a}
+.a-stamp{animation:hmStamp .45s steps(3,end) both}
+@keyframes hmStamp{0%{transform:scale(2.4);opacity:0}100%{transform:scale(1);opacity:1}}
+.a-spark{animation:hmSpark .6s steps(1,end) infinite}
+@keyframes hmSpark{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.a-stamp,.a-spark{animation:none}}
+.btn:active,.btn2:active,.sq:active{transform:translateY(3px)}
+@media (prefers-reduced-motion: reduce){.btn:active,.btn2:active,.sq:active{transform:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #4a2f1c; background-image: repeating-linear-gradient(0deg, #4a2f1c 0 18px, #3f2817 18px 21px); color: #fff4e0; font-family: 'Galmuri11', monospace; -webkit-font-smoothing: none; display: flex; flex-direction: column;">
+<div style="border-bottom: 6px solid #2b1a0e;">
+<dc-import name="Scene" face="happy" mode="idle" hint-size="390px,300px"></dc-import>
+</div>
+<div style="padding: 21px 21px; display: flex; flex-direction: column; gap: 21px;">
+<div class="pb" style="padding: 9px 12px; line-height: 18px; font-size: 12px;">
+<div style="color: #a3542a;">감정사</div>
+허허, 이건 맡아 둘 만하구먼!
+</div>
+<div class="pb" style="position: relative; padding: 15px 12px; text-align: center; font-size: 12px; line-height: 18px;">
+<div style="color: #a3542a;">아저씨 감정가</div>
+<div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 6px 0;">
+<svg aria-hidden="true" width="48" height="40" viewBox="0 0 12 10" style="shape-rendering: crispEdges;"><rect x="3" y="1" width="6" height="1" fill="#3b2416"></rect><rect x="2" y="2" width="1" height="1" fill="#3b2416"></rect><rect x="9" y="2" width="1" height="1" fill="#3b2416"></rect><rect x="1" y="3" width="1" height="5" fill="#3b2416"></rect><rect x="10" y="3" width="1" height="5" fill="#3b2416"></rect><rect x="2" y="8" width="1" height="1" fill="#3b2416"></rect><rect x="9" y="8" width="1" height="1" fill="#3b2416"></rect><rect x="3" y="9" width="6" height="1" fill="#3b2416"></rect><rect x="3" y="2" width="6" height="1" fill="#fffaf2"></rect><rect x="2" y="3" width="8" height="5" fill="#fffaf2"></rect><rect x="3" y="8" width="6" height="1" fill="#e9dccb"></rect><rect x="4" y="3" width="1" height="1" fill="#f6b7c3"></rect><rect x="7" y="4" width="1" height="1" fill="#f6b7c3"></rect><rect x="5" y="6" width="1" height="1" fill="#f6b7c3"></rect></svg>
+<span style="font-size: 36px; line-height: 36px; color: #a3542a; min-width: 96px; text-align: left;">× {{n}}</span>
+</div>
+<div>한정선 {{n}}개</div>
+<div style="margin: 12px auto 9px; width: 80%; height: 3px; background: repeating-linear-gradient(90deg, #c58a52 0 6px, transparent 6px 12px);"></div>
+<div>내가 부른 값 · 한정선 7개</div>
+<div style="color: #c0503a; min-height: 18px;">{{diffText}}</div>
+<sc-if value="{{stampOn}}" hint-placeholder-val="{{ true }}">
+<div class="stamp a-stamp" aria-hidden="true" style="position: absolute; right: 12px; top: 12px; padding: 6px 6px; font-size: 12px; line-height: 15px;">감정<br>필</div>
+<div class="a-spark" aria-hidden="true" style="position: absolute; left: 30px; top: 39px; width: 3px; height: 9px; background: #e8b84a; box-shadow: -3px 3px 0 0 #e8b84a, 3px 3px 0 0 #e8b84a;"></div>
+<div class="a-spark" aria-hidden="true" style="position: absolute; left: 66px; top: 84px; width: 3px; height: 9px; background: #e8b84a; box-shadow: -3px 3px 0 0 #e8b84a, 3px 3px 0 0 #e8b84a; animation-delay: .3s;"></div>
+<div class="a-spark" aria-hidden="true" style="position: absolute; right: 42px; top: 90px; width: 3px; height: 9px; background: #e8b84a; box-shadow: -3px 3px 0 0 #e8b84a, 3px 3px 0 0 #e8b84a; animation-delay: .15s;"></div>
+</sc-if>
+</div>
+<button class="btn" style="min-height: 54px; padding: 12px; font-size: 24px;">전당표 공유하기</button>
+<button class="btn2" style="min-height: 48px; padding: 9px; font-size: 12px;">다른 물건 꺼내기</button>
+<button onClick="{{replay}}" style="align-self: center; min-height: 44px; padding: 6px 12px; border: 0; background: transparent; color: #ffd27a; font-family: 'Galmuri11', monospace; -webkit-font-smoothing: none; font-size: 12px; cursor: pointer; text-decoration: underline;">▶ 값 공개 다시 보기 (시안 확인용)</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { n: 0, stampOn: false };
+}
+componentDidMount() { this.start(); }
+componentWillUnmount() { clearInterval(this.timer); }
+start() {
+clearInterval(this.timer);
+this.setState({ n: 0, stampOn: false });
+let n = 0;
+this.timer = setInterval(() => {
+n += 1;
+if (n >= 23) {
+clearInterval(this.timer);
+this.setState({ n: 23, stampOn: true });
+} else {
+this.setState({ n });
+}
+}, 55);
+}
+renderVals() {
+const s = this.state;
+return {
+n: s.n,
+stampOn: s.stampOn,
+diffText: s.stampOn ? '▲ 아저씨가 16개 더 쳐줬다!' : '',
+replay: () => this.start()
+};
+}
+}
+</script>
+</body>
+</html>

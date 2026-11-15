@@ -32,7 +32,7 @@ test('CAREER-35 AC-3 double press sends once', async ({ page }) => {
   await submitOf(page).dblclick()
   await expect.poll(posts).toBe(1)
   q.release()
-  await expect(priceText(page)).toHaveText('모찌 3개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 3개')
   expect(posts()).toBe(1)
 })
 
@@ -43,7 +43,7 @@ test('CAREER-35 AC-3 another item does not send; pressing on step 4 does', async
   await walkToPrice(page)
   await pickPrice(page)
   await submitOf(page).click()
-  await expect(priceText(page)).toHaveText('모찌 3개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 3개')
   await expect.poll(posts).toBe(1)
 
   await page.getByRole('button', { name: '다른 물건 꺼내기' }).click()
@@ -56,7 +56,7 @@ test('CAREER-35 AC-3 another item does not send; pressing on step 4 does', async
   await pickPrice(page)
   expect(posts()).toBe(1)
   await submitOf(page).click()
-  await expect(priceText(page)).toHaveText('모찌 7개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 7개')
   await expect.poll(posts).toBe(2)
 })
 
@@ -82,7 +82,7 @@ for (const code of ['refused', 'unavailable', 'person_limit', 'daily_limit']) {
     expect(posts()).toBe(1)
 
     await submitOf(page).click()
-    await expect(priceText(page)).toHaveText('모찌 3개')
+    await expect(priceText(page)).toHaveText('한정선 모찌 3개')
     await expect.poll(posts).toBe(2)
   })
 }
@@ -94,7 +94,7 @@ test('CAREER-35 AC-3 back, forward and reload do not send', async ({ page }) => 
   await walkToPrice(page)
   await pickPrice(page)
   await submitOf(page).click()
-  await expect(priceText(page)).toHaveText('모찌 3개')
+  await expect(priceText(page)).toHaveText('한정선 모찌 3개')
   await expect.poll(posts).toBe(1)
 
   await page.goBack() // ④

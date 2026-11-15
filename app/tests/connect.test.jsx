@@ -46,7 +46,7 @@ test('CAREER-29 AC-2 region notice stays right before submit after picking', () 
   walkToPrice()
   fireEvent.click(
     within(screen.getByRole('group', { name: '마음 가격' })).getByRole('button', {
-      name: '🍡 10개',
+      name: '10개',
       exact: true,
     }),
   )

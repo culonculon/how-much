@@ -40,7 +40,7 @@ const CODES = [
 async function reachFailure(code, afterCard) {
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   if (afterCard) {
     appraise.mockResolvedValueOnce({ mochi: 3, line: '첫 대사' })
     fireEvent.click(submit())
@@ -86,11 +86,11 @@ describe.each(WHERE)('CAREER-35 AC-5 %s', (where, afterCard) => {
       next() // ③ 태그 그대로
       expect(pressedNames(tagGroup())).toEqual(['🎁 선물'])
       next() // ④ 가격 그대로
-      expect(pressedNames(priceGroup())).toEqual(['🍡 10개'])
+      expect(pressedNames(priceGroup())).toEqual(['10개'])
     } else {
       expect(submit()).toBeTruthy() // ④
       expect(submit().disabled).toBe(false)
-      expect(pressedNames(priceGroup())).toEqual(['🍡 10개'])
+      expect(pressedNames(priceGroup())).toEqual(['10개'])
       expect(noticeText()).toBe(noticeWant)
       await back() // ③ 태그 그대로
       expect(pressedNames(tagGroup())).toEqual(['🎁 선물'])
@@ -105,7 +105,7 @@ describe.each(WHERE)('CAREER-35 AC-5 %s', (where, afterCard) => {
 test('CAREER-35 AC-5 ③ invalid_input returns to step 2', async () => {
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   appraise.mockRejectedValueOnce(reject('invalid_input'))
   fireEvent.click(submit())
   const notice = await screen.findByTestId('appraise-error')
@@ -121,7 +121,7 @@ test('CAREER-35 AC-5 ③ invalid_input returns to step 2', async () => {
   next()
   expect(pressedNames(tagGroup())).toEqual(['🎁 선물'])
   next()
-  expect(pressedNames(priceGroup())).toEqual(['🍡 10개'])
+  expect(pressedNames(priceGroup())).toEqual(['10개'])
   expect(appraise).toHaveBeenCalledTimes(1)
 })
 
@@ -133,7 +133,7 @@ test.each([
   const h = hold()
   renderApp()
   walkToPrice()
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   await back()
 
@@ -151,7 +151,7 @@ test.each([
   appraise.mockResolvedValueOnce({ mochi: 7, line: '둘째' })
   fireEvent.click(submit())
   const region = await screen.findByRole('region', { name: '감정 결과' })
-  expect(within(region).getByTestId('appraised-price').textContent).toBe('모찌 7개')
+  expect(within(region).getByTestId('appraised-price').textContent).toBe('한정선 모찌 7개')
   expect(within(region).getByTestId('mascot-line').textContent).toBe('둘째')
   expect(appraise).toHaveBeenCalledTimes(2)
 })
@@ -161,7 +161,7 @@ test('CAREER-35 Q2 another item clears everything and goes to step 2', async () 
   appraise.mockResolvedValueOnce({ mochi: 3, line: '첫 대사' })
   renderApp()
   walkToPrice({ tags: ['🎁 선물', '🏆 인생템'] })
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
   await screen.findByRole('region', { name: '감정 결과' })
 

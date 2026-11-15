@@ -35,7 +35,7 @@ async function pickAndAppraise(page, file) {
   await page.getByLabel('사진 고르기').setInputFiles(file)
   await next(page)
   await next(page)
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
   await page.getByRole('button', { name: '감정 받기!', exact: true }).click()
 }
 const result = (page) => page.getByRole('region', { name: '감정 결과' })
@@ -75,7 +75,7 @@ test('AC-3 orientation stays portrait after EXIF is removed', async ({ page }) =
   await expect.poll(() => preview.evaluate((i) => i.naturalHeight > i.naturalWidth)).toBe(true)
   await next(page)
   await next(page)
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
   await page.getByRole('button', { name: '감정 받기!', exact: true }).click()
   await expect(result(page)).toBeVisible()
   expect(hits).toHaveLength(1)
@@ -121,7 +121,7 @@ test('AC-6 unreadable photo is not sent, asks to pick again', async ({ page }) =
   await page.getByLabel('사진 고르기').setInputFiles(F4)
   await next(page)
   await next(page)
-  await page.getByRole('button', { name: '🍡 10개', exact: true }).click()
+  await page.getByRole('button', { name: '10개', exact: true }).click()
   const submit = page.getByRole('button', { name: '감정 받기!', exact: true })
   if (await submit.isEnabled()) await submit.click()
   await expect(page.getByTestId('appraise-error')).toHaveText(INVALID_INPUT_TEXT) // 안 읽히는 사진은 자동으로 ②로 돌아와 거기서 문구가 보인다

@@ -42,15 +42,17 @@ function cellsOf(map, palette) {
   return cells
 }
 
-// svg의 <path d="M{x} {y}h1v1h-1z…" fill> → { 'x,y': 색 }. 모르는 글자가 남으면 · 같은 칸이 두 번이면 던진다
+// svg의 <path d="M{x} {y}h{n}v1h-{n}z…" fill> (n칸 이어진 조각) → { 'x,y': 색 }. 모르는 글자가 남으면 · 같은 칸이 두 번이면 던진다
 function cellsOfSvg(svg) {
   const cells = {}
   let n = 0
   for (const path of svg.querySelectorAll('path')) {
     const d = path.getAttribute('d')
-    const rest = d.replace(/M(\d+) (\d+)h1v1h-1z/g, (_m, x, y) => {
-      cells[`${x},${y}`] = path.getAttribute('fill')
-      n++
+    const rest = d.replace(/M(\d+) (\d+)h(\d+)v1h-\3z/g, (_m, x, y, w) => {
+      for (let i = 0; i < Number(w); i++) {
+        cells[`${Number(x) + i},${y}`] = path.getAttribute('fill')
+        n++
+      }
       return ''
     })
     if (rest !== '') throw new Error(`path d에 풀 수 없는 글자가 남았다: ${rest}`)

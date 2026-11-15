@@ -61,7 +61,7 @@ button {
   border: 0;
 }
 
-/* scene */
+/* scene — F3. A 390x300 board of 3px cells (mockup-v3 Scene). Every size and place here is a multiple of 3. */
 .px {
   display: block;
   image-rendering: pixelated;
@@ -71,142 +71,372 @@ button {
   position: relative;
   height: 180px;
   overflow: hidden;
-  background: repeating-linear-gradient(90deg, #b07a48 0 26px, #a06c3c 26px 28px, #b9834f 28px 54px, #9a6638 54px 56px);
-  border-bottom: 4px solid #2b1a0e;
+  background: #f6e3b8;
+  border-bottom: 6px solid #2b1a0e;
 }
 
 .scene.tall {
-  height: 340px;
-}
-
-.scene::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, transparent 0 37px, rgba(60, 30, 10, 0.18) 37px 39px);
+  height: 300px;
+  background: linear-gradient(#f6e3b8 255px, #5b5148 255px);
 }
 
 .scene.night {
-  background: repeating-linear-gradient(90deg, #5a3d24 0 26px, #4f351f 26px 28px, #5f4127 28px 54px, #4a311c 54px 56px);
+  background: #2b2140;
 }
 
-.shelf {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  top: 54px;
-  height: 8px;
-  background: #6b4224;
-  border-bottom: 4px solid #3b2416;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
-}
-
-.items {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  top: 18px;
-  height: 36px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.item {
-  width: 36px;
-}
-
-.gap {
-  flex: none;
-  width: 80px;
-}
-
-/* the uncle is centred by flex, never by translateX (half a pixel would blur the cells) */
-.uncle-slot {
+/* 375 wide: the board sits at the left and its last 15px (road and sky only) are cut. Wider: centred on a 3px step. */
+.board {
   position: absolute;
   left: 0;
-  right: 0;
-  bottom: 26px;
-  display: flex;
-  justify-content: center;
+  top: -66px;
+  width: 390px;
+  height: 300px;
+  overflow: hidden;
+  margin-left: 0;
+  margin-left: max(0px, round(down, (100% - 390px) / 2, 3px));
 }
 
-.tall .uncle-slot {
-  bottom: 30px;
+.tall .board {
+  top: 0;
 }
 
-.uncle {
+.c,
+.layer,
+.truck,
+.uncle-box,
+.post,
+.post > *,
+.smoke,
+.puff,
+.shutter,
+.shutter-sign,
+.pan,
+.pan i,
+.mag,
+.mag i,
+.bubble,
+.bubble i,
+.pt,
+.eyes,
+.eyes i {
+  position: absolute;
+}
+
+.layer,
+.truck {
+  left: 0;
+  top: 0;
+  width: 390px;
+  height: 300px;
+}
+
+.truck[data-truck='gone'],
+.smoke {
+  visibility: hidden;
+}
+
+.pt {
+  white-space: pre;
+  text-align: center;
+}
+
+.sign-text {
+  left: 42px;
+  top: 30px; /* mockup 31: the 3px grid test needs a multiple of 3 */
+  width: 186px;
+  font-size: 24px;
+  line-height: 24px;
+  color: #ffd27a;
+}
+
+.caption {
+  left: 12px;
+  top: 213px;
+  width: 252px;
+  font-size: 12px;
+  line-height: 12px;
+  color: #fff4e0;
+}
+
+.uncle-box {
+  left: 78px;
+  top: 90px;
   width: 120px;
   height: 120px;
 }
 
-.tall .uncle {
-  width: 200px;
-  height: 200px;
-}
-
-.counter {
+.uncle {
   position: absolute;
   left: 0;
-  right: 0;
-  bottom: 0;
-  height: 34px;
-  background: #7a4a26;
-  border-top: 6px solid #c58a52;
-  box-shadow: inset 0 -6px 0 #5e3818;
+  top: 0;
+  width: 120px;
+  height: 120px;
 }
 
-.counter::after {
+.eyes {
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  opacity: 0;
+}
+
+.eyes i {
+  top: 42px;
+  width: 9px;
+  height: 12px;
+  background: #ffd9b0;
+}
+
+.eyes i::after {
   content: '';
   position: absolute;
   left: 0;
-  right: 0;
-  top: 10px;
-  height: 2px;
-  background: #5e3818;
+  top: 6px;
+  width: 9px;
+  height: 3px;
+  background: #2a1a10;
 }
 
-.sign,
-.closed {
-  position: absolute;
-  left: 0;
-  right: 0;
-  width: max-content;
-  margin: 0 auto;
+.shutter {
+  left: 21px;
+  top: 99px;
+  width: 234px;
+  height: 0;
+  overflow: hidden;
+  background: repeating-linear-gradient(0deg, #8a8f96 0 6px, #5f666e 6px 9px);
 }
 
-.sign {
-  top: 70px;
-  background: #3b2416;
-  color: #ffd27a;
-  padding: 4px 10px;
-  border: 3px solid #c58a52;
-  font-size: 16px;
-  font-weight: normal;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  text-shadow: 2px 2px 0 #000;
+.shutter[data-shutter='down'] {
+  height: 87px;
 }
 
-.closed {
-  top: 84px;
-  transform: rotate(-3deg);
+.shutter-sign {
+  left: 54px;
+  top: 15px;
+  width: 126px;
+  height: 36px;
   background: #fff4e0;
+  box-shadow: 0 -3px 0 0 #2b1a0e, 0 3px 0 0 #2b1a0e, -3px 0 0 0 #2b1a0e, 3px 0 0 0 #2b1a0e;
   color: #3b2416;
-  border: 3px solid #3b2416;
-  padding: 6px 12px;
-  font-size: 15px;
-  box-shadow: 3px 3px 0 #2b1a0e;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  white-space: pre;
 }
 
-.closed::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -22px;
-  width: 2px;
-  height: 20px;
-  background: #3b2416;
+.pan {
+  left: 27px;
+  top: 162px;
+  width: 36px;
+  height: 9px;
+}
+
+.pan i:nth-child(1) {
+  left: 0;
+  top: 0;
+  width: 36px;
+  height: 6px;
+  background: #e8b84a;
+}
+
+.pan i:nth-child(2) {
+  left: 0;
+  top: 6px;
+  width: 36px;
+  height: 3px;
+  background: #a07a2a;
+}
+
+.mag.small {
+  left: 216px;
+  top: 168px;
+  width: 27px;
+  height: 18px;
+}
+
+.mag.small i:nth-child(1) {
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  background: #2b1a0e;
+}
+
+.mag.small i:nth-child(2) {
+  left: 3px;
+  top: 3px;
+  width: 12px;
+  height: 12px;
+  background: #d9eefc;
+}
+
+.mag.small i:nth-child(3) {
+  left: 6px;
+  top: 6px;
+  width: 3px;
+  height: 3px;
+  background: #fff;
+}
+
+.mag.small i:nth-child(4) {
+  left: 15px;
+  top: 15px;
+  width: 12px;
+  height: 3px;
+  background: #6b4224;
+}
+
+.mag.big {
+  left: 153px;
+  top: 120px;
+  width: 48px;
+  height: 48px;
+}
+
+.mag.big i:nth-child(1) {
+  left: 3px;
+  top: 0;
+  width: 30px;
+  height: 36px;
+  background: #2b1a0e;
+}
+
+.mag.big i:nth-child(2) {
+  left: 0;
+  top: 3px;
+  width: 36px;
+  height: 30px;
+  background: #2b1a0e;
+}
+
+.mag.big i:nth-child(3) {
+  left: 6px;
+  top: 6px;
+  width: 24px;
+  height: 24px;
+  background: #d9eefc;
+  opacity: 0.85;
+}
+
+.mag.big i:nth-child(4) {
+  left: 9px;
+  top: 9px;
+  width: 6px;
+  height: 3px;
+  background: #fff;
+}
+
+.mag.big i:nth-child(5) {
+  left: 33px;
+  top: 33px;
+  width: 6px;
+  height: 6px;
+  background: #6b4224;
+}
+
+.mag.big i:nth-child(6) {
+  left: 39px;
+  top: 39px;
+  width: 6px;
+  height: 6px;
+  background: #6b4224;
+}
+
+.bubble {
+  left: 0;
+  top: 0;
+  width: 390px;
+  height: 66px;
+}
+
+.bubble i:nth-child(1) {
+  left: 249px;
+  top: 12px;
+  width: 132px;
+  height: 39px;
+  background: #fff4e0;
+  box-shadow: 0 -3px 0 0 #2b1a0e, 0 3px 0 0 #2b1a0e, -3px 0 0 0 #2b1a0e, 3px 0 0 0 #2b1a0e;
+}
+
+.bubble i:nth-child(2) {
+  left: 312px;
+  top: 54px;
+  width: 6px;
+  height: 3px;
+  background: #2b1a0e;
+}
+
+.bubble i:nth-child(3) {
+  left: 315px;
+  top: 57px;
+  width: 3px;
+  height: 3px;
+  background: #2b1a0e;
+}
+
+.bubble .pt {
+  left: 255px;
+  top: 15px; /* mockup 16 */
+  width: 120px;
+  font-size: 12px;
+  line-height: 15px;
+  color: #3b2416;
+}
+
+.smoke {
+  left: -24px;
+  top: 228px;
+  width: 30px;
+  height: 24px;
+}
+
+.puff {
+  left: 6px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  background: #d9dde2;
+  box-shadow: -9px 6px 0 -3px #b9bec5, 6px -6px 0 -3px #b9bec5;
+}
+
+/* the pole post that stays on the empty road (plan A2 ⑨-1: 84x66 at 153,196) */
+.post {
+  left: 153px;
+  top: 195px; /* plan 196: the 3px grid test needs a multiple of 3 */
+  width: 84px;
+  height: 66px;
+}
+
+.pole {
+  left: 39px;
+  top: 30px;
+  width: 6px;
+  height: 36px;
+  background: #6b4224;
+}
+
+.plank {
+  left: 0;
+  top: 0;
+  width: 84px;
+  height: 33px;
+  background: #fff4e0;
+  box-shadow: 0 -3px 0 0 #2b1a0e, 0 3px 0 0 #2b1a0e, -3px 0 0 0 #2b1a0e, 3px 0 0 0 #2b1a0e;
+}
+
+.post-text {
+  left: 0;
+  top: 3px;
+  width: 84px;
+  font-size: 12px;
+  line-height: 12px;
+  text-align: center;
+  color: #3b2416;
+}
+
+.post-text span {
+  display: block;
 }
 
 /* body */
@@ -295,6 +525,7 @@ button {
 }
 
 .chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -318,6 +549,7 @@ button {
 }
 
 .btn {
+  position: relative;
   display: block;
   width: 100%;
   min-height: 48px;
@@ -352,8 +584,13 @@ button {
   order: 1;
 }
 
+.toast + #region-notice {
+  margin-top: -3px; /* CAREER-40: only when an error note is above (step 4); 10px gap becomes 7px */
+}
+
 #busy-note {
   order: 2;
+  margin-top: -3px; /* CAREER-40: 10px body gap above becomes 7px; only this note, only step 4 */
 }
 
 .toast {
@@ -405,4 +642,554 @@ button {
   flex: 1 1 0;
   width: auto;
   min-width: 0;
+}
+
+/* CAREER-40 F1: price field (plan A5). Font >= 16px so iOS does not zoom on focus; every number is a multiple of 3 where it draws. */
+.price-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px; /* plan A4 budget: border 3 + padding 6, rows 3 apart */
+  padding: 6px;
+  background: #6b4224;
+  border: 3px solid #c58a52;
+}
+
+.price-box label {
+  font-size: 12px;
+  color: #ffd27a;
+}
+
+.price-row {
+  display: flex;
+  gap: 9px;
+  align-items: stretch;
+}
+
+.sq {
+  position: relative;
+  flex: none;
+  width: 48px;
+  min-height: 48px; /* plan F1: 48 or more */
+  font-size: 24px;
+  background: #3b2416;
+  color: #fff4e0;
+  border: 3px solid #c58a52;
+  box-shadow: inset 0 -3px 0 #2b1a0e;
+  cursor: pointer;
+}
+
+.sq:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.price-field {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  background: #fff4e0;
+  color: #3b2416;
+  border: 3px solid #3b2416;
+}
+
+.price-field input {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 24px;
+  color: #3b2416;
+  text-align: right;
+  outline: none;
+}
+
+.price-field:focus-within {
+  outline: 3px solid #ffd27a;
+  outline-offset: 2px;
+}
+
+.price-field > span {
+  font-size: 12px;
+}
+
+.price-box .chips {
+  margin: 0;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.price-box .chip {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  padding: 0 3px;
+}
+
+.price-box .note {
+  text-align: left;
+  color: #e8d3b4;
+}
+
+.title {
+  display: block;
+  font-size: 24px;
+  line-height: 36px;
+}
+
+.who + .title {
+  margin: 0;
+}
+
+.tags {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.tags span {
+  padding: 3px 9px;
+  background: #3b2416;
+  color: #ffd27a;
+  border: 3px solid #c58a52;
+}
+
+.pre {
+  white-space: pre-line;
+}
+
+/* CAREER-40 F2: the reveal. One value line, never wrapped (9999 must fit at 375). */
+.value {
+  position: relative;
+}
+
+.price {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.cap.dash {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 3px dotted #c58a52;
+}
+
+.stamp {
+  position: absolute;
+  top: 12px;
+  right: 24px; /* the 96px first frame (margin -24) must stay inside the box, or 9999 scrolls sideways */
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12px;
+  line-height: 15px;
+  color: #c0503a;
+  border: 3px solid #c0503a;
+}
+
+.spark {
+  position: absolute;
+  width: 3px;
+  height: 9px;
+  background: #e8b84a;
+  box-shadow: -3px 3px 0 0 #e8b84a, 3px 3px 0 0 #e8b84a;
+}
+
+.spark.s1 {
+  left: 30px;
+  top: 39px;
+}
+
+.spark.s2 {
+  left: 66px;
+  top: 84px;
+}
+
+.spark.s3 {
+  right: 42px;
+  top: 90px;
+}
+
+.reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* CAREER-40 F4: motion A~F (plan A2 '움직임 규칙'). Everything moves in steps(), once or on the allowed repeats, and only here:
+   outside this query (reduced motion, no support) the last picture shows. No transform / translate / scale / rotate — places go by
+   left / top, sizes by width / height / margin, all multiples of 3. No fill-mode forwards or both. */
+@media (prefers-reduced-motion: no-preference) {
+  /* A ① opening */
+  [data-mode='arrive'] .truck {
+    animation: hm-arrive 1.68s;
+  }
+
+  [data-mode='arrive'] .shutter {
+    animation: hm-shut-up 0.84s 1.8s backwards;
+  }
+
+  [data-mode='arrive'] .bubble {
+    animation: hm-bubble 0.12s steps(1, start) 2.82s backwards;
+  }
+
+  /* B staying */
+  .uncle-box {
+    animation: hm-breathe 1.4s steps(1, end) infinite;
+  }
+
+  .eyes {
+    animation: hm-blink 4s steps(1, end) infinite;
+  }
+
+  /* C ⑤ */
+  .mag.big {
+    animation: hm-mag 2s steps(1, end) infinite;
+  }
+
+  [data-mode='think'] .pan {
+    animation: hm-pan 0.8s steps(1, end) infinite;
+  }
+
+  .bar {
+    animation: hm-bar 2.4s steps(8, end) infinite;
+  }
+
+  .dots {
+    animation: hm-dots 0.9s steps(1, end) infinite;
+  }
+
+  /* D ⑥ (the count is a Web Animation, see countUp.js) */
+  .stamp {
+    animation: hm-stamp 0.45s steps(1, end) 0.6s backwards;
+  }
+
+  .spark {
+    animation: hm-spark 0.6s steps(1, end) 1.05s backwards;
+  }
+
+  /* E off duty: shutter down, the truck leaves once, an empty road and the pole sign stay */
+  [data-mode='leave'] .shutter {
+    animation: hm-shut-down 1.2s;
+  }
+
+  [data-mode='leave'] .truck {
+    animation: hm-drive 2.04s steps(14, end) 1.8s backwards;
+  }
+
+  [data-mode='leave'] .smoke {
+    animation: hm-smoke 2.04s steps(1, end) 1.8s;
+  }
+
+  [data-mode='leave'] .post {
+    animation: hm-post 3.96s steps(1, end);
+  }
+
+  /* F pressing */
+  .btn:not(:disabled):active,
+  .chip:active,
+  .sq:not(:disabled):active {
+    animation: hm-press 0.12s steps(1, end);
+  }
+
+  @keyframes hm-arrive {
+    0% {
+      left: -396px;
+      top: 0;
+      animation-timing-function: steps(12, end);
+    }
+
+    85.7143% {
+      left: 0;
+      top: 0;
+      animation-timing-function: steps(1, end);
+    }
+
+    92.8571% {
+      left: 0;
+      top: -3px;
+      animation-timing-function: steps(1, end);
+    }
+
+    100% {
+      left: 0;
+      top: 0;
+    }
+  }
+
+  @keyframes hm-shut-up {
+    0% {
+      height: 87px;
+      animation-timing-function: steps(1, end);
+    }
+
+    16.6667% {
+      height: 72px;
+      animation-timing-function: steps(1, end);
+    }
+
+    33.3333% {
+      height: 57px;
+      animation-timing-function: steps(1, end);
+    }
+
+    50% {
+      height: 42px;
+      animation-timing-function: steps(1, end);
+    }
+
+    66.6667% {
+      height: 27px;
+      animation-timing-function: steps(1, end);
+    }
+
+    83.3333% {
+      height: 12px;
+      animation-timing-function: steps(1, end);
+    }
+
+    100% {
+      height: 0;
+    }
+  }
+
+  @keyframes hm-bubble {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes hm-breathe {
+    0% {
+      top: 90px;
+    }
+
+    50% {
+      top: 87px;
+    }
+
+    100% {
+      top: 90px;
+    }
+  }
+
+  @keyframes hm-blink {
+    0%,
+    89% {
+      opacity: 0;
+    }
+
+    90%,
+    94% {
+      opacity: 1;
+    }
+
+    95%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes hm-mag {
+    0%,
+    100% {
+      left: 153px;
+    }
+
+    25%,
+    75% {
+      left: 126px;
+    }
+
+    50% {
+      left: 99px;
+    }
+  }
+
+  @keyframes hm-pan {
+    0%,
+    100% {
+      top: 162px;
+    }
+
+    50% {
+      top: 165px;
+    }
+  }
+
+  @keyframes hm-bar {
+    from {
+      width: 0;
+    }
+
+    to {
+      width: 100%;
+    }
+  }
+
+  @keyframes hm-dots {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes hm-stamp {
+    0% {
+      width: 96px;
+      height: 96px;
+      margin: -24px -24px 0 0;
+      opacity: 0;
+      animation-timing-function: steps(1, end);
+    }
+
+    33.3333% {
+      width: 72px;
+      height: 72px;
+      margin: -12px -12px 0 0;
+      opacity: 1;
+      animation-timing-function: steps(1, end);
+    }
+
+    66.6667% {
+      width: 48px;
+      height: 48px;
+      margin: 0;
+      opacity: 1;
+    }
+
+    100% {
+      width: 48px;
+      height: 48px;
+      margin: 0;
+      opacity: 1;
+    }
+  }
+
+  @keyframes hm-spark {
+    0% {
+      opacity: 0;
+    }
+
+    25% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0;
+    }
+
+    75%,
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes hm-shut-down {
+    0% {
+      height: 0;
+      animation-timing-function: steps(1, end);
+    }
+
+    16.6667% {
+      height: 12px;
+      animation-timing-function: steps(1, end);
+    }
+
+    33.3333% {
+      height: 27px;
+      animation-timing-function: steps(1, end);
+    }
+
+    50% {
+      height: 42px;
+      animation-timing-function: steps(1, end);
+    }
+
+    66.6667% {
+      height: 57px;
+      animation-timing-function: steps(1, end);
+    }
+
+    83.3333% {
+      height: 72px;
+      animation-timing-function: steps(1, end);
+    }
+
+    100% {
+      height: 87px;
+    }
+  }
+
+  @keyframes hm-drive {
+    from {
+      left: 0;
+      visibility: visible;
+    }
+
+    to {
+      left: 420px;
+      visibility: visible;
+    }
+  }
+
+  @keyframes hm-smoke {
+    0%,
+    20%,
+    40%,
+    60%,
+    80%,
+    100% {
+      left: -24px;
+      top: 228px;
+      visibility: visible;
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      left: -30px;
+      top: 225px;
+      visibility: visible;
+    }
+  }
+
+  @keyframes hm-post {
+    from,
+    to {
+      visibility: hidden;
+    }
+  }
+
+  @keyframes hm-press {
+    from {
+      top: 3px;
+    }
+
+    to {
+      top: 0;
+    }
+  }
 }

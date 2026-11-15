@@ -17,7 +17,7 @@ afterEach(cleanup)
 
 // ④에서 가격을 고르고 누른다
 function press() {
-  pickPrice('🍡 10개')
+  pickPrice('10개')
   fireEvent.click(submit())
 }
 
@@ -85,12 +85,12 @@ const SCREENS = [
   ['person_limit', 'sleepy', () => rejectedWith('person_limit')],
 ]
 
-// 선반 물건 4개 · 계산대가 낮 장면에 있다
+// 트럭 · 확성기 · 저울 각 1개, 선반 물건 0개 · 계산대가 낮 장면에 있다 (K4)
 function expectDayScene() {
   const scene = screen.getByTestId('shop-scene')
   expect(scene.getAttribute('data-scene')).toBe('day')
-  const items = screen.getAllByTestId('shop-item').map((el) => el.getAttribute('data-item'))
-  expect(items.sort()).toEqual(['bear', 'clock', 'lamp', 'vase'])
+  for (const id of ['truck', 'truck-loudspeaker', 'truck-scale']) expect(screen.getAllByTestId(id)).toHaveLength(1)
+  expect(screen.queryAllByTestId('shop-item')).toHaveLength(0)
   expect(screen.getByTestId('shop-counter')).toBeTruthy()
 }
 

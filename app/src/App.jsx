@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { appraise } from './appraise.js'
+import { useCountUp } from './countUp.js'
 import Shop from './Shop.jsx'
 import ShareRow from './ShareRow.jsx'
 import {
-  BAD_FILE_TEXT, BUSY_TEXT, ERROR_TEXT, FAIL_BUTTONS, OFF_DUTY_TEXT, PRICES, REGION_NOTICE, STEPS, TAG_GROUPS, THINKING_LINE,
-  compareLine,
+  BAD_FILE_TEXT, BUSY_TEXT, ERROR_TEXT, FAIL_BUTTONS, HANJEONG, MY_PRICE, NOTICE_DOOR, NOTICE_THINKING, OFF_DUTY_TEXT, PRICE_TEXT,
+  REGION_NOTICE, STEPS, TAG_GROUPS, THINKING_LINE, compareLine, priceIdOf, readOf, shownOf,
 } from './options.js'
 
 const ALL_TAG_IDS = TAG_GROUPS.flatMap((g) => g.tags.map((t) => t.id))
@@ -21,6 +22,15 @@ function faceOf(view, status, error) {
 }
 const glyph = (c) => <span aria-hidden="true">{c}</span>
 
+// plan A5. ASCII digits only: '１２' (full width), '-5', '3.5', ' 23' are not numbers. The text is never rewritten.
+const DIGITS = /^[0-9]+$/
+const NO_MINE = { text: '', never: false, quick: null }
+const numberOf = ({ text, never }) => {
+  if (never || !DIGITS.test(text)) return undefined
+  const n = Number(text)
+  return n >= MY_PRICE.min && n <= MY_PRICE.max ? n : undefined
+}
+
 function Chip({ on, onClick, children }) {
   return (
     <button type="button" className="chip" aria-pressed={on} onClick={onClick}>
@@ -30,12 +40,22 @@ function Chip({ on, onClick, children }) {
   )
 }
 
-// A drawn price: the symbol is seen, the words are read.
-function Price({ shown, read, shownId, readId }) {
+const Hanjeong = ({ cell }) => (
+  <svg className="px" width={12 * cell} height={10 * cell} viewBox="0 0 12 10" shapeRendering="crispEdges" aria-hidden="true">
+    {HANJEONG.map(([fill, d]) => <path key={fill} fill={fill} d={d} />)}
+  </svg>
+)
+
+// A drawn price: the picture is seen, the words are read.
+// The seen number counts up (aria-hidden); the read words are the end value from the start.
+function Price({ n, shownId, readId }) {
+  const ref = useRef(null)
+  const counted = useCountUp(ref, n)
   return (
     <p className="price">
-      <span aria-hidden="true" data-testid={shownId}>{shown}</span>
-      <span className="sr-only" data-testid={readId}>{read}</span>
+      <Hanjeong cell={4} />
+      <span ref={ref} aria-hidden="true" data-testid={shownId}>{shownOf(counted)}</span>
+      <span className="sr-only" data-testid={readId}>{readOf(n)}</span>
     </p>
   )
 }
@@ -45,7 +65,7 @@ export default function App() {
   const [photo, setPhoto] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [fileError, setFileError] = useState(false)
-  const [myPrice, setMyPrice] = useState(null)
+  const [mine, setMine] = useState(NO_MINE) // { text, never, quick }: what the price field shows
   const [tags, setTags] = useState([])
   const [status, setStatus] = useState('idle') // idle | done | off
   const [result, setResult] = useState(null)
@@ -107,10 +127,11 @@ export default function App() {
     setStatus((s) => (s === 'off' ? 'idle' : s))
     advance('thinking')
     setBusy(true)
+    const sent = mine.never ? null : numberOf(mine) // what is sent and drawn; null = never
     try {
-      const r = await appraise({ photo, myPrice, tags: ALL_TAG_IDS.filter((t) => tags.includes(t)) })
+      const r = await appraise({ photo, myPrice: priceIdOf(sent), tags: ALL_TAG_IDS.filter((t) => tags.includes(t)) })
       if (id !== reqRef.current) return
-      setResult(r)
+      setResult({ ...r, mine: sent })
       setStatus('done')
       setView('result')
     } catch (e) {
@@ -138,7 +159,7 @@ export default function App() {
     setPhoto(null)
     setPreviewUrl(null)
     setFileError(false)
-    setMyPrice(null)
+    setMine(NO_MINE)
     setTags([])
     setResult(null)
     setError(null)
@@ -182,8 +203,10 @@ export default function App() {
   }, [busy])
 
   const step = STEPS[view]
-  const mine = PRICES.find((p) => p.id === myPrice)
+  const n = numberOf(mine)
+  const ready = mine.never || n !== undefined
   const isOff = status === 'off'
+  const sceneMode = view === 'door' ? 'arrive' : view === 'thinking' ? 'think' : view === 'result' && isOff ? 'leave' : 'idle'
   const offNote = isOff && <p data-testid="off-duty">{OFF_DUTY_TEXT}</p>
   const errorNote = error && (view === 'photo' || view === 'price') && (
     <div className="toast">
@@ -195,20 +218,21 @@ export default function App() {
   // The status box is always there (live regions must exist before they speak); it looks like a window only when it has words.
   const statusBox = (
     <div role="status" aria-label="감정사 아저씨" tabIndex={-1} ref={mascotRef} className={view === 'thinking' || isOff ? 'win' : undefined}>
-      {view === 'thinking' && <>{THINKING_LINE}{glyph('…')}</>}
+      {view === 'thinking' && <>{THINKING_LINE}<span aria-hidden="true" className="dots">…</span></>}
       {offNote}
     </div>
   )
 
   return (
     <main className="shop">
-      <Shop face={faceOf(view, status, error)} night={view === 'result' && status === 'off'} big={view === 'door' || view === 'thinking'}>
-        <h1 className={view === 'door' ? 'sign' : 'sr-only'}>how-much</h1>
+      <Shop face={faceOf(view, status, error)} mode={sceneMode}>
+        <h1 className="sr-only">how-much</h1>
       </Shop>
       <div className="body">
         {step && (
           <div role="group" aria-label={step.label} aria-describedby="step-line" tabIndex={-1} ref={stepRef} className={view === 'door' ? 'win center' : 'win'}>
             {view !== 'door' && <span className="who">감정사<br /></span>}
+            {view === 'door' && <><span className="who">{step.kicker}</span><span className="title">{step.title}</span></>}
             <span id="step-line">{step.line}</span>
             {view !== 'door' && glyph('▼')}
           </div>
@@ -216,22 +240,28 @@ export default function App() {
         {statusBox}
         {showCard && (
           <section aria-label="감정 결과" tabIndex={-1} ref={cardRef}>
-            <div role="group" aria-label="값 공개" className="win">
+            <div role="group" aria-label="값 공개" className="reveal">
+            <div className="win">
               <span className="who">감정사<br /></span>
               <span data-testid="mascot-line">{result.line}</span>
               {glyph('▼')}
             </div>
             <div className="win value">
               <p className="cap">아저씨 감정가</p>
-              <Price shown={`🍡 × ${result.mochi}`} read={`모찌 ${result.mochi}개`} shownId="appraised-shown" readId="appraised-price" />
-              <p className="cap">
+              <Price n={result.mochi} shownId="appraised-shown" readId="appraised-price" />
+              <p className="cap dash">
                 내가 부른 값{' '}
                 <span className="mine">
-                  <span aria-hidden="true" data-testid="my-shown">{mine.mochi == null ? '안 팔아' : `🍡 × ${mine.mochi}`}</span>
-                  <span className="sr-only" data-testid="my-price">{mine.card}</span>
+                  <span aria-hidden="true" data-testid="my-shown">{shownOf(result.mine)}</span>
+                  <span className="sr-only" data-testid="my-price">{readOf(result.mine)}</span>
                 </span>
               </p>
-              <CompareLine mine={mine.mochi} mochi={result.mochi} />
+              <CompareLine mine={result.mine} mochi={result.mochi} />
+              <span className="stamp" data-testid="stamp" aria-hidden="true">감정<br />필</span>
+              <span className="spark s1" aria-hidden="true" />
+              <span className="spark s2" aria-hidden="true" />
+              <span className="spark s3" aria-hidden="true" />
+            </div>
             </div>
           </section>
         )}
@@ -248,7 +278,7 @@ export default function App() {
           </>
         )}
         {showCard && (
-          <ShareRow photo={photo} myPrice={myPrice}>
+          <ShareRow photo={photo} mine={result.mine}>
             <button type="button" className="btn" onClick={another}>다른 물건 꺼내기</button>
           </ShareRow>
         )}
@@ -257,6 +287,12 @@ export default function App() {
           <button type="button" className="btn" onClick={() => advance('photo')}>
             {glyph('▶︎')} 가게에 들어가기{glyph('_')}
           </button>
+        )}
+        {view === 'door' && (
+          <>
+            <p className="tags">{['맡기면 값부터', '고물도 OK', '전당표 공유'].map((t) => <span key={t}>{t}</span>)}</p>
+            <p className="note pre">{NOTICE_DOOR}</p>
+          </>
         )}
 
         {view === 'photo' && (
@@ -295,14 +331,37 @@ export default function App() {
 
         {view === 'price' && (
           <>
-            <div role="group" aria-label="마음 가격" className="chips">
-              {PRICES.map((p) => (
-                <Chip key={p.id} on={myPrice === p.id} onClick={() => setMyPrice(p.id)}>{p.button}</Chip>
-              ))}
+            <div role="group" aria-label="마음 가격" className="price-box">
+              <label htmlFor="my-price-input" className="sr-only">{PRICE_TEXT.label}</label>
+              <div className="price-row">
+                <button type="button" className="sq" aria-label="한 개 빼기" disabled={n === undefined || n <= MY_PRICE.min} onClick={() => setMine({ text: String(n - 1), never: false, quick: null })}>
+                  {glyph('−')}
+                </button>
+                <span className="price-field" style={mine.never ? { opacity: 0.45 } : undefined}>
+                  <Hanjeong cell={3} />
+                  {/* the user's text stays in this one field: not in a form, no name, never copied elsewhere (K7) */}
+                  <input
+                    id="my-price-input" type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="off" enterKeyHint="done"
+                    value={mine.text} aria-invalid={!ready || undefined} aria-describedby={ready ? undefined : 'price-hint'}
+                    onChange={(e) => setMine({ text: e.target.value, never: false, quick: null })}
+                  />
+                  {glyph('개')}
+                </span>
+                <button type="button" className="sq" aria-label="한 개 더하기" disabled={n === MY_PRICE.max || (mine.text !== '' && n === undefined)} onClick={() => setMine({ text: String((n ?? 0) + 1), never: false, quick: null })}>
+                  {glyph('+')}
+                </button>
+              </div>
+              {!ready && <p id="price-hint" className="note">{mine.text === '' ? PRICE_TEXT.empty : PRICE_TEXT.bad}</p>}
+              <div className="chips">
+                {MY_PRICE.quick.map((q) => (
+                  <Chip key={q} on={mine.quick === q} onClick={() => setMine({ text: String(q), never: false, quick: q })}>{q}개</Chip>
+                ))}
+                <Chip on={mine.never} onClick={() => setMine({ text: '', never: true, quick: null })}>안 팔아</Chip>
+              </div>
             </div>
             {errorNote}
             <p id="region-notice" className="note">{REGION_NOTICE}</p>
-            <button type="button" className="btn" ref={submitRef} aria-describedby={busy ? 'region-notice busy-note' : 'region-notice'} disabled={!photo || !myPrice || busy} onClick={submit}>
+            <button type="button" className="btn" ref={submitRef} aria-describedby={busy ? 'region-notice busy-note' : 'region-notice'} disabled={!photo || !ready || busy} onClick={submit}>
               감정 받기!
             </button>
             {busy && <p id="busy-note" className="toast" ref={busyRef} tabIndex={-1}>{BUSY_TEXT}</p>}
@@ -310,9 +369,12 @@ export default function App() {
         )}
 
         {view === 'thinking' && (
-          <div className="win bar-box">
-            <div role="progressbar" aria-label="감정 중" className="bar" />
-          </div>
+          <>
+            <div className="win bar-box">
+              <div role="progressbar" aria-label="감정 중" className="bar" />
+            </div>
+            <p className="note pre">{NOTICE_THINKING}</p>
+          </>
         )}
       </div>
     </main>
